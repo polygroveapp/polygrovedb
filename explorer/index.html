@@ -351,6 +351,8 @@ let ECOGEO=null, ECOBBOX={}, SEAS={}, AUDIO={}, ECOMETA={};
 // ── URL ROUTER (user, 2026-09-22): every species/ecoregion/park is its own
 // shareable page via the hash (#/species/<id>, #/eco/<id>, #/park/<name>,
 // #/coverage, #/pool/<sci>) — the browser back button walks the history.
+// v5 dropped the _removed flag old guards relied on — probe the style instead
+function _mapAlive(m){ try{ return !!(m&&m.getStyle&&m.getStyle()); }catch(e){ return false; } }
 let _hashLock=false;
 function nav(h){ if(_hashLock) return; if(location.hash!=='#/'+h) location.hash='/'+h; }
 function applyHashRoute(){
@@ -1201,7 +1203,7 @@ function renderEcoMiniMap(eid,park){   // the region's PLACE on the globe; `park
     // countries solid grey, states dotted
     (window._bordersFC?Promise.resolve(window._bordersFC)
       :fetch('data/borders.geojson',{cache:'no-cache'}).then(r=>r.json()).then(b=>window._bordersFC=b))
-      .then(bf=>{ if(m._removed||!bf) return;
+      .then(bf=>{ if(!_mapAlive(m)||!bf) return;
         m.addSource('mb',{type:'geojson',data:bf});
         m.addLayer({id:'mco',type:'line',source:'mb',filter:['==',['get','lvl'],0],
           paint:{'line-color':'#8a8f8a','line-width':0.9,'line-opacity':0.6}});
@@ -1211,20 +1213,20 @@ function renderEcoMiniMap(eid,park){   // the region's PLACE on the globe; `park
     // blue lakes on the minimap too (user, 2026-09-10)
     (window._lakesFC?Promise.resolve(window._lakesFC)
       :fetch('data/lakes.geojson',{cache:'no-cache'}).then(r=>r.json()).then(l=>window._lakesFC=l))
-      .then(l=>{ if(m._removed) return;
+      .then(l=>{ if(!_mapAlive(m)) return;
         m.addSource('mlakes',{type:'geojson',data:l});
         m.addLayer({id:'mlakes',type:'fill',source:'mlakes',
           paint:{'fill-color':'#1d4266','fill-opacity':0.85,'fill-outline-color':'#2f5e8c'}});
       }).catch(()=>{});
     // country names + key cities, like the species map (user, 2026-09-09)
-    fetch('data/admin_labels.geojson',{cache:'no-cache'}).then(r=>r.json()).then(al=>{ if(m._removed) return;
+    fetch('data/admin_labels.geojson',{cache:'no-cache'}).then(r=>r.json()).then(al=>{ if(!_mapAlive(m)) return;
       m.addSource('mal',{type:'geojson',data:al});
       m.addLayer({id:'mcountry',type:'symbol',source:'mal',filter:['==',['get','lvl'],0],
         layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':7.5,
                 'text-transform':'uppercase','text-letter-spacing':0.15,'text-padding':6},
         paint:{'text-color':'#9aa1a8','text-halo-color':'#0a0d12','text-halo-width':1.1,'text-opacity':0.85}});
     }).catch(()=>{});
-    getLabels().then(([cityFC])=>{ if(m._removed||!cityFC) return;
+    getLabels().then(([cityFC])=>{ if(!_mapAlive(m)||!cityFC) return;
       m.addSource('mc',{type:'geojson',data:cityFC});
       m.addLayer({id:'mcity',type:'symbol',source:'mc',
         filter:['>=',['*',['get','pop'],['case',['==',['get','cap'],1],3,1]],2200000],   // megacities only at this zoom
@@ -1873,6 +1875,9 @@ async function renderRangeMap(ids,sci,opts){
   opts=opts||{};
   const el=document.getElementById('rangemap'); if(!el||!window.maplibregl||!ECOGEO) return;
   if(opts.focusEco!=null||opts.park){ _habItems=[]; _habSci=null; _habTotal=null; }   // hover tip must not show the LAST species' record shares
+  // tear down the PREVIOUS map — leaked instances keep their render/pulse loops
+  // alive against a dead style and error-loop forever (found pre-deploy, 2026-09-22)
+  if(window._map){ try{ window._map.remove(); }catch(e){} window._map=null; }
   // EVERY ecoregion this species was recorded in, opacity by share of records — no top-N
   // cutoff, so a naturalized foothold reads faint and a core range reads solid, and
   // islands with real dots are no longer unfilled land (user, 2026-08-25).
@@ -2080,7 +2085,7 @@ async function renderRangeMap(ids,sci,opts){
     // land + range fills so water reads as water inside a green range
     (window._lakesFC?Promise.resolve(window._lakesFC)
       :fetch('data/lakes.geojson',{cache:'no-cache'}).then(r=>r.json()).then(l=>window._lakesFC=l))
-      .then(l=>{ if(map._removed||map.getLayer('lakes')) return;
+      .then(l=>{ if(!_mapAlive(map)||map.getLayer('lakes')) return;
         map.addSource('lakes',{type:'geojson',data:l});
         map.addLayer({id:'lakes',type:'fill',source:'lakes',
           paint:{'fill-color':'#1d4266','fill-opacity':0.85,'fill-outline-color':'#2f5e8c'}},
@@ -2096,7 +2101,7 @@ async function renderRangeMap(ids,sci,opts){
     // importance-gated by zoom — Everest-class from z2.5, everything by z5.5
     (window._peaksFC?Promise.resolve(window._peaksFC)
       :fetch('data/peaks.geojson',{cache:'no-cache'}).then(r=>r.json()).then(p=>window._peaksFC=p))
-      .then(p=>{ if(map._removed||map.getLayer('peaklbl')) return;
+      .then(p=>{ if(!_mapAlive(map)||map.getLayer('peaklbl')) return;
         map.addSource('peaks',{type:'geojson',data:p});
         // a drawn TRIANGLE icon sits exactly on the summit point, name below
         // (user, 2026-09-16) — the font's ▲ glyph range 404s, so it's a canvas
@@ -2118,7 +2123,7 @@ async function renderRangeMap(ids,sci,opts){
         // layer in the pre-raster dead zone. NOT map.on('idle') — the shimmer
         // animation repaints every frame, so 'idle' never fires. Retry timer:
         let _pkTries=0;
-        const fixPeakOrder=()=>{ if(map._removed||!map.getLayer('peaklbl')) return;
+        const fixPeakOrder=()=>{ if(!_mapAlive(map)||!map.getLayer('peaklbl')) return;
           const ids=map.getStyle().layers.map(l=>l.id), hi=ids.indexOf('hillshade');
           if(hi>=0){ if(ids.indexOf('peaklbl')<hi)
               map.moveLayer('peaklbl', map.getLayer('obsdots')?'obsdots':undefined); return; }
@@ -2127,10 +2132,10 @@ async function renderRangeMap(ids,sci,opts){
       }).catch(()=>{});
     // TRAILS (user, 2026-09-10): NPS Public Trails (public domain), lazy-loaded
     // the first time the map is actually zoomed in far enough to read them
-    const loadTrails=()=>{ if(map._removed||map.getSource('trails')||map.getZoom()<5.5) return;
+    const loadTrails=()=>{ if(!_mapAlive(map)||map.getSource('trails')||map.getZoom()<5.5) return;
       map.off('zoomend',loadTrails);
       fetch('data/trails.geojson',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(t=>{
-        if(!t||map._removed||map.getSource('trails')) return;
+        if(!t||!_mapAlive(map)||map.getSource('trails')) return;
         map.addSource('trails',{type:'geojson',data:t});
         map.addLayer({id:'trails',type:'line',source:'trails',minzoom:5.5,
           // GREEN trails on park AND ecoregion pages (user, 2026-09-22); species maps keep orange
@@ -2167,7 +2172,7 @@ async function renderRangeMap(ids,sci,opts){
     if(opts.park){ const pk2=opts.park;
       (window._parkBoundsFC?Promise.resolve(window._parkBoundsFC)
         :fetch('data/park_bounds.geojson',{cache:'no-cache'}).then(r=>r.json()).then(b=>window._parkBoundsFC=b))
-        .then(bf=>{ if(map._removed) return;
+        .then(bf=>{ if(!_mapAlive(map)) return;
           const norm=s=>(s||'').toLowerCase().replace(/national park|national|park/g,'').trim();
           const nb=norm(pk2.name);
           const f=bf&&bf.features.find(x=>{const a=norm(x.properties.name); return a&&nb&&(a===nb||a.includes(nb)||nb.includes(a));});
@@ -2181,7 +2186,7 @@ async function renderRangeMap(ids,sci,opts){
               paint:{'line-color':'#ffe14d','line-width':1.8,'line-opacity':0.9}});
             // drop the generic brown dashed boundary for THIS park — only its
             // yellow border shows (user, 2026-09-22)
-            const exSelf=()=>{ if(map._removed) return;
+            const exSelf=()=>{ if(!_mapAlive(map)) return;
               if(map.getLayer('parkline')) map.setFilter('parkline',
                 ['all',['==',['get','mm'],1],['!=',['get','name'],f.properties.name||'']]);
               else setTimeout(exSelf,900); };
@@ -2229,7 +2234,7 @@ async function renderRangeMap(ids,sci,opts){
     }
     if(window._addPill){ _addPill('ecopill','#81C784'); _pillify('ecosel','ecopill'); }   // green-bordered pill for the selected ecoregion's name
     (function pulse(t){
-      if(map._removed||!map.getLayer('ecohl-glow')) return;
+      if(!_mapAlive(map)||!map.getLayer('ecohl-glow')) return;
       const k=0.5+0.28*Math.sin(t/220);                      // breathe like the pack button, quicker
       try{ map.setPaintProperty('ecohl-glow','line-opacity',k);
            map.setPaintProperty('ecohl-glow','line-width',6.5+3*Math.sin(t/220));
