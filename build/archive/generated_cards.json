@@ -1,0 +1,1350 @@
+{
+  "SPECIES": [
+    {
+      "id": "banana-slug",
+      "name": "Banana Slug",
+      "sci": "Ariolimax columbianus",
+      "group": "Mollusk",
+      "trophic": null,
+      "emoji": "🐌",
+      "color": "#9E9E9E",
+      "accent": "#9E9E9E",
+      "role": null,
+      "falseRole": null,
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "pale oyster",
+            "evidence": 17,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Sunshine Amanita",
+            "evidence": 7,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Royal fly agaric",
+            "evidence": 6,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Short-stemmed Russula",
+            "evidence": 4,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Northwestern Garter Snake",
+            "evidence": 26,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Dicamptodon tenebrosus",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "West Coast Reishi",
+            "evidence": 1,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Rana draytonii",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "pale oyster",
+        "Sunshine Amanita",
+        "Royal fly agaric",
+        "Short-stemmed Russula"
+      ],
+      "eatenBy": [
+        "Northwestern Garter Snake",
+        "Dicamptodon tenebrosus",
+        "West Coast Reishi",
+        "Rana draytonii"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "ca-newt",
+      "name": "California Newt",
+      "sci": "Taricha torosa",
+      "group": "Amphibian",
+      "trophic": null,
+      "emoji": "🦎",
+      "color": "#9E9E9E",
+      "accent": "#9E9E9E",
+      "role": null,
+      "falseRole": null,
+      "base": {
+        "habitat": "aquatic"
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "Cephalogonimus americanus",
+            "evidence": 8,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Echinostoma trivolvis lineage",
+            "evidence": 6,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Ribeiroia ondatrae",
+            "evidence": 6,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Common Green Darner",
+            "evidence": 6,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Aquatic Garter Snake",
+            "evidence": 16,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "CA Red-sided Garter Snake",
+            "evidence": 8,
+            "card": true,
+            "inSet": "garter-snake"
+          },
+          {
+            "name": "American Giant Water Bug",
+            "evidence": 4,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Batrachochytrium dendrobatidis",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "Cephalogonimus americanus",
+        "Echinostoma trivolvis lineage",
+        "Ribeiroia ondatrae",
+        "Common Green Darner"
+      ],
+      "eatenBy": [
+        "Aquatic Garter Snake",
+        "CA Red-sided Garter Snake",
+        "American Giant Water Bug",
+        "Batrachochytrium dendrobatidis"
+      ],
+      "connections": [
+        "garter-snake"
+      ],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": "AmphiBIO",
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "deer",
+      "name": "Black-tailed Deer",
+      "sci": "Odocoileus hemionus",
+      "group": "Mammal",
+      "trophic": "Herbivore",
+      "emoji": "🦌",
+      "color": "#81C784",
+      "accent": "#81C784",
+      "role": "a herbivore",
+      "falseRole": "an omnivore",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "coast live oak",
+            "evidence": 5,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Rubus mercieri",
+            "evidence": 4,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Oregon oak",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "lace lichen",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Mountain Lion",
+            "evidence": 231,
+            "card": true,
+            "inSet": "mountain-lion"
+          },
+          {
+            "name": "Canis latrans",
+            "evidence": 116,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Turkey Vulture",
+            "evidence": 63,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Canis lupus",
+            "evidence": 52,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "coast live oak",
+        "Rubus mercieri",
+        "Oregon oak",
+        "lace lichen"
+      ],
+      "eatenBy": [
+        "Mountain Lion",
+        "Canis latrans",
+        "Turkey Vulture",
+        "Canis lupus"
+      ],
+      "connections": [
+        "mountain-lion"
+      ],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "douglas-fir",
+      "name": "Coast Douglas-fir",
+      "sci": "Pseudotsuga macrocarpa",
+      "group": "Plant",
+      "trophic": "Producer",
+      "emoji": "🌲",
+      "color": "#FFD54F",
+      "accent": "#FFD54F",
+      "role": "a producer",
+      "falseRole": "a decomposer",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [],
+        "eatenBy": [
+          {
+            "name": "LD Moth",
+            "evidence": 106,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Hemlock Looper",
+            "evidence": 10,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Western Spruce Budworm Moth",
+            "evidence": 9,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Western Carpet",
+            "evidence": 7,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [],
+      "eatenBy": [
+        "LD Moth",
+        "Hemlock Looper",
+        "Western Spruce Budworm Moth",
+        "Western Carpet"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "garter-snake",
+      "name": "CA Red-sided Garter Snake",
+      "sci": "Thamnophis sirtalis",
+      "group": "Reptile",
+      "trophic": "Carnivore",
+      "emoji": "🐍",
+      "color": "#E57373",
+      "accent": "#E57373",
+      "role": "a carnivore",
+      "falseRole": "a herbivore",
+      "base": {
+        "habitat": "Forest"
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "Anaxyrus americanus",
+            "evidence": 1026,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Lithobates sylvaticus",
+            "evidence": 141,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Lithobates clamitans",
+            "evidence": 96,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Lithobates catesbeianus",
+            "evidence": 86,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "North American Racer",
+            "evidence": 20,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Great Blue Heron",
+            "evidence": 16,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Eastern Milksnake",
+            "evidence": 14,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Red-shouldered Hawk",
+            "evidence": 14,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "Anaxyrus americanus",
+        "Lithobates sylvaticus",
+        "Lithobates clamitans",
+        "Lithobates catesbeianus"
+      ],
+      "eatenBy": [
+        "North American Racer",
+        "Great Blue Heron",
+        "Eastern Milksnake",
+        "Red-shouldered Hawk"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": "ReptTraits",
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "mountain-lion",
+      "name": "Mountain Lion",
+      "sci": "Puma concolor",
+      "group": "Mammal",
+      "trophic": "Carnivore",
+      "emoji": "🦁",
+      "color": "#E57373",
+      "accent": "#E57373",
+      "role": "a carnivore",
+      "falseRole": "a herbivore",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "Black-tailed Deer",
+            "evidence": 231,
+            "card": true,
+            "inSet": "deer"
+          },
+          {
+            "name": "Cervus elaphus",
+            "evidence": 113,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Odocoileus virginianus",
+            "evidence": 106,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Ovis canadensis",
+            "evidence": 78,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Vulpes vulpes",
+            "evidence": 10,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Canis lupus",
+            "evidence": 5,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Ursus americanus",
+            "evidence": 4,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Andean Condor",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "Black-tailed Deer",
+        "Cervus elaphus",
+        "Odocoileus virginianus",
+        "Ovis canadensis"
+      ],
+      "eatenBy": [
+        "Vulpes vulpes",
+        "Canis lupus",
+        "Ursus americanus",
+        "Andean Condor"
+      ],
+      "connections": [
+        "deer"
+      ],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "murrelet",
+      "name": "Marbled Murrelet",
+      "sci": "Brachyramphus marmoratus",
+      "group": "Bird",
+      "trophic": "Carnivore",
+      "emoji": "🪽",
+      "color": "#E57373",
+      "accent": "#E57373",
+      "role": "a carnivore",
+      "falseRole": "a herbivore",
+      "base": {
+        "habitat": "Marine"
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "Ammodytes hexapterus",
+            "evidence": 31,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Clupea pallasii",
+            "evidence": 13,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Engraulis mordax",
+            "evidence": 12,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Thysanoessa spinifera",
+            "evidence": 8,
+            "card": false,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Common Raven",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Peregrine Falcon",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Bald Eagle",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Steller's Jay",
+            "evidence": 2,
+            "card": true,
+            "inSet": "stellers-jay"
+          }
+        ]
+      },
+      "eats": [
+        "Ammodytes hexapterus",
+        "Clupea pallasii",
+        "Engraulis mordax",
+        "Thysanoessa spinifera"
+      ],
+      "eatenBy": [
+        "Common Raven",
+        "Peregrine Falcon",
+        "Bald Eagle",
+        "Steller's Jay"
+      ],
+      "connections": [
+        "stellers-jay"
+      ],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": "AVONET",
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "raccoon",
+      "name": "Raccoon",
+      "sci": "Procyon lotor",
+      "group": "Mammal",
+      "trophic": "Omnivore",
+      "emoji": "🦝",
+      "color": "#64B5F6",
+      "accent": "#64B5F6",
+      "role": "an omnivore",
+      "falseRole": "a strict herbivore",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "Odocoileus virginianus",
+            "evidence": 19,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Bufo japonicus",
+            "evidence": 19,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Hynobius retardatus",
+            "evidence": 14,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Ondatra zibethicus",
+            "evidence": 9,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Turkey Vulture",
+            "evidence": 121,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Black Vulture",
+            "evidence": 91,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Mountain Lion",
+            "evidence": 46,
+            "card": true,
+            "inSet": "mountain-lion"
+          },
+          {
+            "name": "Canis latrans",
+            "evidence": 41,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "Odocoileus virginianus",
+        "Bufo japonicus",
+        "Hynobius retardatus",
+        "Ondatra zibethicus"
+      ],
+      "eatenBy": [
+        "Turkey Vulture",
+        "Black Vulture",
+        "Mountain Lion",
+        "Canis latrans"
+      ],
+      "connections": [
+        "mountain-lion"
+      ],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "redwood",
+      "name": "Coast Redwood",
+      "sci": "Sequoia sempervirens",
+      "group": "Plant",
+      "trophic": "Producer",
+      "emoji": "🌲",
+      "color": "#FFD54F",
+      "accent": "#FFD54F",
+      "role": "a producer",
+      "falseRole": "a decomposer",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [],
+        "eatenBy": [
+          {
+            "name": "Colladonus holmesi",
+            "evidence": 4,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Idiocerus shivelyanus",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Western Carpenter Bee",
+            "evidence": 1,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Idiocerus amabilis",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [],
+      "eatenBy": [
+        "Colladonus holmesi",
+        "Idiocerus shivelyanus",
+        "Western Carpenter Bee",
+        "Idiocerus amabilis"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "redwood-sorrel",
+      "name": "Redwood Sorrel",
+      "sci": "Oxalis trilliifolia",
+      "group": "Plant",
+      "trophic": "Producer",
+      "emoji": "🍀",
+      "color": "#FFD54F",
+      "accent": "#FFD54F",
+      "role": "a producer",
+      "falseRole": "a decomposer",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [],
+        "eatenBy": [
+          {
+            "name": "Margined White",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Western Honey Bee",
+            "evidence": 1,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Trichodezia californiata",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Melanostoma mellina",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [],
+      "eatenBy": [
+        "Margined White",
+        "Western Honey Bee",
+        "Trichodezia californiata",
+        "Melanostoma mellina"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "stellers-jay",
+      "name": "Steller's Jay",
+      "sci": "Cyanocitta stelleri",
+      "group": "Bird",
+      "trophic": "Omnivore",
+      "emoji": "🐦",
+      "color": "#64B5F6",
+      "accent": "#64B5F6",
+      "role": "an omnivore",
+      "falseRole": "a strict herbivore",
+      "base": {
+        "habitat": "Forest"
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "Dusky Flycatcher",
+            "evidence": 4,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Mexican teosinte",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Western Subterranean Termite",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Golden Buprestid Beetle",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Accipiter gentilis",
+            "evidence": 5,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Golden Eagle",
+            "evidence": 5,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Accipiter cooperii",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Sharp-shinned Hawk",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "Dusky Flycatcher",
+        "Mexican teosinte",
+        "Western Subterranean Termite",
+        "Golden Buprestid Beetle"
+      ],
+      "eatenBy": [
+        "Accipiter gentilis",
+        "Golden Eagle",
+        "Accipiter cooperii",
+        "Sharp-shinned Hawk"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": "AVONET",
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "tan-oak",
+      "name": "Tan Oak",
+      "sci": "Notholithocarpus densiflorus",
+      "group": "Plant",
+      "trophic": "Producer",
+      "emoji": "🌳",
+      "color": "#FFD54F",
+      "accent": "#FFD54F",
+      "role": "a producer",
+      "falseRole": "a decomposer",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [],
+        "eatenBy": [
+          {
+            "name": "California Oak Moth",
+            "evidence": 7,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Golden Hairstreak",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Ursus americanus",
+            "evidence": 1,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Crown Whitefly",
+            "evidence": 1,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [],
+      "eatenBy": [
+        "California Oak Moth",
+        "Golden Hairstreak",
+        "Ursus americanus",
+        "Crown Whitefly"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "tree-frog",
+      "name": "Pacific Tree Frog",
+      "sci": "Pseudacris regilla",
+      "group": "Amphibian",
+      "trophic": "Carnivore",
+      "emoji": "🐸",
+      "color": "#E57373",
+      "accent": "#E57373",
+      "role": "a carnivore",
+      "falseRole": "a herbivore",
+      "base": {
+        "habitat": "aquatic"
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "Cephalogonimus americanus",
+            "evidence": 2,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Common Green Darner",
+            "evidence": 1,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Echinostoma trivolvis lineage",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Ribeiroia ondatrae",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "CA Red-sided Garter Snake",
+            "evidence": 27,
+            "card": true,
+            "inSet": "garter-snake"
+          },
+          {
+            "name": "Two-striped Garter Snake",
+            "evidence": 10,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Giant Garter Snake",
+            "evidence": 10,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Aquatic Garter Snake",
+            "evidence": 10,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "Cephalogonimus americanus",
+        "Common Green Darner",
+        "Echinostoma trivolvis lineage",
+        "Ribeiroia ondatrae"
+      ],
+      "eatenBy": [
+        "CA Red-sided Garter Snake",
+        "Two-striped Garter Snake",
+        "Giant Garter Snake",
+        "Aquatic Garter Snake"
+      ],
+      "connections": [
+        "garter-snake"
+      ],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": "AmphiBIO",
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "turkey-tail",
+      "name": "Turkey Tail Fungus",
+      "sci": "Trametes versicolor",
+      "group": "Fungus",
+      "trophic": "Decomposer",
+      "emoji": "🍄",
+      "color": "#A0785A",
+      "accent": "#A0785A",
+      "role": "a decomposer",
+      "falseRole": "a producer",
+      "base": {
+        "habitat": null
+      },
+      "foodweb": {
+        "eats": [],
+        "eatenBy": [
+          {
+            "name": "Banana Slug",
+            "evidence": 2,
+            "card": true,
+            "inSet": "banana-slug"
+          },
+          {
+            "name": "Large Brindled Clothes Moth",
+            "evidence": 1,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Nemaxera betulinella",
+            "evidence": 1,
+            "card": false,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [],
+      "eatenBy": [
+        "Banana Slug",
+        "Large Brindled Clothes Moth",
+        "Nemaxera betulinella"
+      ],
+      "connections": [
+        "banana-slug"
+      ],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": null,
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    },
+    {
+      "id": "woodpecker",
+      "name": "Acorn Woodpecker",
+      "sci": "Melanerpes formicivorus",
+      "group": "Bird",
+      "trophic": "Herbivore",
+      "emoji": "🪶",
+      "color": "#81C784",
+      "accent": "#81C784",
+      "role": "a herbivore",
+      "falseRole": "an omnivore",
+      "base": {
+        "habitat": "Woodland"
+      },
+      "foodweb": {
+        "eats": [
+          {
+            "name": "valley oak",
+            "evidence": 8,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Myrsidea borneoensis",
+            "evidence": 4,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Aphaenogaster subterranea",
+            "evidence": 3,
+            "card": false,
+            "inSet": null
+          },
+          {
+            "name": "Mexican teosinte",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          }
+        ],
+        "eatenBy": [
+          {
+            "name": "Lynx rufus",
+            "evidence": 3,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Aplomado Falcon",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "California Banana Slug",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          },
+          {
+            "name": "Western Yellowjacket",
+            "evidence": 2,
+            "card": true,
+            "inSet": null
+          }
+        ]
+      },
+      "eats": [
+        "valley oak",
+        "Myrsidea borneoensis",
+        "Aphaenogaster subterranea",
+        "Mexican teosinte"
+      ],
+      "eatenBy": [
+        "Lynx rufus",
+        "Aplomado Falcon",
+        "California Banana Slug",
+        "Western Yellowjacket"
+      ],
+      "connections": [],
+      "_sources": {
+        "sci": "GBIF",
+        "group": "GBIF-class",
+        "trophic": "vert_niche/trophic_roles",
+        "habitat": "AVONET",
+        "foodweb": "GloBI (top-N by evidence)"
+      }
+    }
+  ],
+  "CARDS": [
+    {
+      "speciesId": "ca-newt",
+      "label": "Size",
+      "value": "8.9",
+      "source": "EOL",
+      "solarEats": "Cephalogonimus americanus",
+      "solarEatenBy": "Aquatic Garter Snake"
+    },
+    {
+      "speciesId": "ca-newt",
+      "label": "Habitat",
+      "value": "aquatic",
+      "source": "AmphiBIO",
+      "solarEats": "Cephalogonimus americanus",
+      "solarEatenBy": "Aquatic Garter Snake"
+    },
+    {
+      "speciesId": "deer",
+      "label": "Size",
+      "value": "2952.67",
+      "source": "EOL",
+      "solarEats": "coast live oak",
+      "solarEatenBy": "Mountain Lion"
+    },
+    {
+      "speciesId": "douglas-fir",
+      "label": "Origin",
+      "value": "NORTHERN AMERICA",
+      "source": "WCVP",
+      "solarEats": null,
+      "solarEatenBy": "LD Moth"
+    },
+    {
+      "speciesId": "garter-snake",
+      "label": "Size",
+      "value": "862.30519 g",
+      "source": "ReptTraits",
+      "solarEats": "Anaxyrus americanus",
+      "solarEatenBy": "North American Racer"
+    },
+    {
+      "speciesId": "garter-snake",
+      "label": "Habitat",
+      "value": "Forest",
+      "source": "ReptTraits",
+      "solarEats": "Anaxyrus americanus",
+      "solarEatenBy": "North American Racer"
+    },
+    {
+      "speciesId": "mountain-lion",
+      "label": "Size",
+      "value": "43000",
+      "source": "EOL",
+      "solarEats": "Black-tailed Deer",
+      "solarEatenBy": "Vulpes vulpes"
+    },
+    {
+      "speciesId": "murrelet",
+      "label": "Size",
+      "value": "220.0 g",
+      "source": "AVONET",
+      "solarEats": "Ammodytes hexapterus",
+      "solarEatenBy": "Common Raven"
+    },
+    {
+      "speciesId": "murrelet",
+      "label": "Habitat",
+      "value": "Marine",
+      "source": "AVONET",
+      "solarEats": "Ammodytes hexapterus",
+      "solarEatenBy": "Common Raven"
+    },
+    {
+      "speciesId": "raccoon",
+      "label": "Size",
+      "value": "4842.2",
+      "source": "EOL",
+      "solarEats": "Odocoileus virginianus",
+      "solarEatenBy": "Turkey Vulture"
+    },
+    {
+      "speciesId": "redwood",
+      "label": "Origin",
+      "value": "NORTHERN AMERICA",
+      "source": "WCVP",
+      "solarEats": null,
+      "solarEatenBy": "Colladonus holmesi"
+    },
+    {
+      "speciesId": "redwood-sorrel",
+      "label": "Origin",
+      "value": "NORTHERN AMERICA",
+      "source": "WCVP",
+      "solarEats": null,
+      "solarEatenBy": "Margined White"
+    },
+    {
+      "speciesId": "stellers-jay",
+      "label": "Size",
+      "value": "113.398",
+      "source": "EOL",
+      "solarEats": "Dusky Flycatcher",
+      "solarEatenBy": "Accipiter gentilis"
+    },
+    {
+      "speciesId": "stellers-jay",
+      "label": "Habitat",
+      "value": "Forest",
+      "source": "AVONET",
+      "solarEats": "Dusky Flycatcher",
+      "solarEatenBy": "Accipiter gentilis"
+    },
+    {
+      "speciesId": "tan-oak",
+      "label": "Origin",
+      "value": "NORTHERN AMERICA",
+      "source": "WCVP",
+      "solarEats": null,
+      "solarEatenBy": "California Oak Moth"
+    },
+    {
+      "speciesId": "tree-frog",
+      "label": "Size",
+      "value": "4.800000000000001",
+      "source": "EOL",
+      "solarEats": "Cephalogonimus americanus",
+      "solarEatenBy": "CA Red-sided Garter Snake"
+    },
+    {
+      "speciesId": "tree-frog",
+      "label": "Habitat",
+      "value": "aquatic",
+      "source": "AmphiBIO",
+      "solarEats": "Cephalogonimus americanus",
+      "solarEatenBy": "CA Red-sided Garter Snake"
+    },
+    {
+      "speciesId": "woodpecker",
+      "label": "Size",
+      "value": "73",
+      "source": "EOL",
+      "solarEats": "valley oak",
+      "solarEatenBy": "Lynx rufus"
+    },
+    {
+      "speciesId": "woodpecker",
+      "label": "Habitat",
+      "value": "Woodland",
+      "source": "AVONET",
+      "solarEats": "valley oak",
+      "solarEatenBy": "Lynx rufus"
+    }
+  ]
+}

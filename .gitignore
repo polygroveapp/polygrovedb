@@ -1,0 +1,8 @@
+# build INPUTS — multi-GB dumps, never in git (the pipeline re-downloads/reads them from data/)
+/data/
+polygrove.duckdb
+*.duckdb
+*.duckdb.wal
+__pycache__/
+.DS_Store
+.ipynb_checkpoints/
