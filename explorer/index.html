@@ -2243,8 +2243,10 @@ async function renderRangeMap(ids,sci,opts){
            // breathing deep-gold → pale-gold, so the range visibly twinkles
            if(map.getLayer('obsdots')){
              const m2=0.5+0.5*Math.sin(t/560);   // slower, and peaks stay GOLD not white (user, 2026-09-09)
-             map.setPaintProperty('obsdots','icon-halo-color',`rgba(255,215,0,${(0.22+0.42*m2).toFixed(3)})`);
-             map.setPaintProperty('obsdots','icon-halo-width',1+2.6*m2);
+             // eco-border glow tech on the X marks (user, 2026-09-24): the aura
+             // breathes like focushl-glow — opacity AND width in the same sweep
+             map.setPaintProperty('obsdots','icon-halo-color',`rgba(255,215,0,${(0.3+0.45*m2).toFixed(3)})`);
+             map.setPaintProperty('obsdots','icon-halo-width',1.5+3.2*m2);
              map.setPaintProperty('obsdots','icon-color',`rgb(255,${Math.round(212+22*m2)},${Math.round(50+65*m2)})`);
            }
            // focused ecoregion/park outline SHIMMERS GOLD in the same breath (user, 2026-09-22)
@@ -2455,8 +2457,10 @@ async function renderRangeMap(ids,sci,opts){
             'icon-size':['interpolate',['exponential',1.5],['zoom'],
               0,['*',0.3,byCount], 3,['*',0.65,byCount], 6,['*',1.5,byCount], 9,['*',2.6,byCount]]},
           paint:{'icon-opacity':0,'icon-opacity-transition':{duration:700},
-            'icon-color':'#ffe14d',   // flat yellow (density ramp + glow retired — user, 2026-09-09)
-            'icon-halo-color':'rgba(255,215,0,0.35)','icon-halo-width':1.1,'icon-halo-blur':1.4}},   // gold halo — SHIMMERS via the pulse loop (user, 2026-09-09; replaced the grey border)
+            'icon-color':'#ffe14d',   // crisp yellow core, like the eco border's #ffe14d line
+            // the eco-border glow tech (user, 2026-09-24): wide soft #FFD700 aura
+            // under the crisp core — the pulse loop swells it in the same breath
+            'icon-halo-color':'rgba(255,215,0,0.5)','icon-halo-width':2,'icon-halo-blur':3}},
           map.getLayer('citylbl')?'citylbl':undefined);
         // hillshade sits ABOVE the range fill (user, 2026-09-09): the terrain's
         // shadows carve into the green itself, so relief reads inside the range
