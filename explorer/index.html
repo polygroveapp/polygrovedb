@@ -2429,17 +2429,17 @@ async function renderRangeMap(ids,sci,opts){
         // ZOOM-RESPONSIVE radius (user, 2026-08-25): fixed-size dots merge into one
         // opaque blanket at continental zoom. Small at world scale so density reads
         // as texture, growing as you dive so single sightings stay findable.
-        // hexagon MARKERS per cell (H3 aggregation tried and reversed same day —
-        // markers won): the app's pointy-top hex, gold, dark edge, zoom-scaled
+        // X MARKERS per cell (user, 2026-09-24 — replaced the gold hexagons;
+        // "X marks the sighting"), still gold + shimmering halo, zoom-scaled
         const byCount=['interpolate',['linear'],['sqrt',['get','n']],1,0.4,100,0.75,3000,1.1];
-        // SDF hex so each marker can be TINTED by its count (denser = darker orange)
-        if(!map.hasImage('hexpt')) map.addImage('hexpt', mkIcon((g,z)=>{
-          g.fillStyle='#ffffff'; g.beginPath();
-          const c=z/2, r=z/2-1;
-          for(let i=0;i<6;i++){ const a2=Math.PI/6 + i*Math.PI/3;
-            const x=c+r*Math.cos(a2), y=c+r*Math.sin(a2);
-            i?g.lineTo(x,y):g.moveTo(x,y); }
-          g.closePath(); g.fill();},18), {pixelRatio:2, sdf:true});
+        // SDF so each marker can be TINTED + halo-shimmered by the pulse loop
+        if(!map.hasImage('xpt')) map.addImage('xpt', mkIcon((g,z)=>{
+          const c=z/2, r=z/2-2.5;
+          g.strokeStyle='#ffffff'; g.lineWidth=3.2; g.lineCap='round';
+          g.beginPath();
+          g.moveTo(c-r,c-r); g.lineTo(c+r,c+r);
+          g.moveTo(c-r,c+r); g.lineTo(c+r,c-r);
+          g.stroke();},18), {pixelRatio:2, sdf:true});
         map.addLayer({id:'obsdots',type:'symbol',source:'obs',
           // fewer dots the further out you are (user, 2026-09-09, softened same day —
           // "less aggressive"): cap the count per zoom bracket via keep-rank q
@@ -2451,7 +2451,7 @@ async function renderRangeMap(ids,sci,opts){
             3,   ['<',['get','q'], Math.min(1, 1800/obsFeats.length)],
             4.5, ['<',['get','q'], Math.min(1, 2800/obsFeats.length)],
             5.5, true],
-          layout:{'icon-image':'hexpt','icon-allow-overlap':true,'icon-ignore-placement':true,
+          layout:{'icon-image':'xpt','icon-allow-overlap':true,'icon-ignore-placement':true,
             'icon-size':['interpolate',['exponential',1.5],['zoom'],
               0,['*',0.3,byCount], 3,['*',0.65,byCount], 6,['*',1.5,byCount], 9,['*',2.6,byCount]]},
           paint:{'icon-opacity':0,'icon-opacity-transition':{duration:700},
