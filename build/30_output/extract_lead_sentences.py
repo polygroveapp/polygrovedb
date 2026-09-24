@@ -39,18 +39,41 @@ def get_wikitext(title,hops=0):
     return wt,title
 CONVERT_RE=re.compile(r"\{\{(?:convert|cvt)\s*\|\s*([^|}]+)\s*\|\s*([^|}]+)[^}]*\}\}", re.I)
 def lead_sentence(wt):
-    """First real sentence of the lead: skip templates/infobox, strip markup."""
+    """SECOND real sentence of the lead (user, 2026-09-24) — sentence one is the
+    dry definition the card already covers; sentence two is where the interesting
+    fact lives (wormwood: "…ingredient in the spirit absinthe"). Falls back to the
+    first when the article is a one-sentence stub."""
     if not wt: return None
     body=re.split(r"(?m)^=+",wt)[0]                      # lead section only
     body=CONVERT_RE.sub(r"\1 \2",body)
     body=re.sub(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>","",body,flags=re.DOTALL)
-    text=mw.parse(body).strip_code()
-    for s in re.split(r"(?<=[.!?])\s+",text.strip()):
+    code=mw.parse(body)
+    # remove File:/Image: links BEFORE strip_code — their captions otherwise glue
+    # onto the first sentence ("thumb|Illustration of wormwood… Artemisia absinthium
+    # … is a species…"), sinking it (412 cards shipped a pronoun opener that way)
+    for ln in code.filter_wikilinks():
+        t=str(ln.title).strip().lower()
+        if t.startswith(("file:","image:")):
+            try: code.remove(ln)
+            except ValueError: pass
+    text=code.strip_code()
+    # re-join fragments split at abbreviations ("the Lake Mweru endemic, L. miodon",
+    # "described by John O. Westwood") — 266 leads shipped truncated at these
+    ABBR=re.compile(r"\b(?:[A-Z]|sp|subsp|ssp|var|cf|ca|St|Mt|no|subg|sect|et al)\.$")
+    sents=[]; buf=""
+    for f in re.split(r"(?<=[.!?])\s+",text.strip()):
+        buf=(buf+" "+f).strip()
+        if ABBR.search(buf): continue
+        sents.append(buf); buf=""
+    if buf: sents.append(buf)
+    good=[]
+    for s in sents:
         s=re.sub(r"\s+"," ",s).strip()
         if len(s.split())<6 or not s[:1].isupper(): continue
         if "|" in s or "{" in s or "}" in s: continue
-        return s
-    return None
+        good.append(s)
+        if len(good)==2: break
+    return good[1] if len(good)>1 else (good[0] if good else None)
 # deck + their wiki titles (from the fame pass) + genus
 deck=_con.sql("""SELECT c.species_id, s.canonicalName, split_part(s.canonicalName,' ',1) genus
   FROM pg.catalog c JOIN pg.species s USING(species_id) ORDER BY c.species_id""").fetchall()
