@@ -259,7 +259,7 @@
   .zoomctl button:hover{border-color:var(--accent);color:var(--accent)}
   /* map legend (user, 2026-09-24): layer toggles, right edge between ⛶ and i;
      slides away TO THE RIGHT */
-  .maplegend{position:absolute;right:10px;bottom:76px;z-index:40;min-width:158px;max-height:62%;overflow-y:auto;
+  .maplegend{position:absolute;right:48px;top:10px;z-index:40;min-width:168px;max-height:calc(100% - 20px);overflow-y:auto;
     background:rgba(14,21,18,.9);border:1px solid var(--line);border-radius:12px;padding:9px 12px 10px;
     font-size:11.5px;backdrop-filter:blur(8px);transition:transform .35s ease,opacity .35s ease}
   .maplegend.gone{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none}
@@ -1948,18 +1948,28 @@ async function renderRangeMap(ids,sci,opts){
   // the panel slides away to the right. Built lazily on open — layers arrive
   // async, so the list reflects whatever this page's map actually has by then.
   const lgPanel=document.createElement('div'); lgPanel.className='maplegend gone'; el.appendChild(lgPanel);
-  const LG=[   // [label, fallback color, swatch shape, layer ids]
+  const LG=[   // [label, fallback color, swatch shape, layer ids] — LITERALLY
+    // EVERYTHING on the map (user, 2026-09-24), fine-grained rows
     ['Observations','#ffe14d','x',['obsdots']],
-    ['Range','#4CAF50','fill',['range']],
-    ['Highlighted region','#ffe14d','fill',['focusfill','focusfillp','focushl','focushl-glow','foclbl','parkfoc']],
-    ['Ecoregions','#81C784','line',['ecoline','ecohl','ecohl-glow','selhl','selhl-glow','ecosel']],
-    ['Parks','#c49a76','line',['parkline','parklbl','parkdot']],
-    ['Trails','#ff8c1a','line',['trails','traillbl']],
+    ['Range fill','#4CAF50','fill',['range']],
+    ['Highlighted region','#ffe14d','fill',['focusfill','focusfillp','focushl','focushl-glow','parkfoc']],
+    ['Region name','#ffe14d','txt',['foclbl','ecosel']],
+    ['Ecoregion borders','#81C784','line',['ecoline']],
+    ['Hover / selection glow','#81C784','line',['ecohl','ecohl-glow','selhl','selhl-glow']],
+    ['Park boundaries','#c49a76','line',['parkline']],
+    ['Park names & dots','#c49a76','dot',['parklbl','parkdot']],
+    ['Trails','#ff8c1a','line',['trails']],
+    ['Trail names','#ff8c1a','txt',['traillbl']],
     ['Peaks','#cfc9bb','tri',['peaklbl']],
-    ['Lakes','#3d6a8a','fill',['lakes','lakelbl']],
-    ['Cities','#6f9ac8','dot',['citylbl','citydot']],
-    ['Borders & states','#8a8f8a','line',['adminlines','adminlines-st','adminlbl']],
-    ['Terrain shading','#6b6f62','fill',['hillshade','relief']]];
+    ['Lakes','#3d6a8a','fill',['lakes']],
+    ['Lake names','#9aa3ab','txt',['lakelbl']],
+    ['City names & dots','#6f9ac8','dot',['citylbl','citydot']],
+    ['Country borders','#8a8f8a','line',['adminlines']],
+    ['State borders','#8a8f8a','line',['adminlines-st']],
+    ['Country & state names','#8a8f8a','txt',['adminlbl']],
+    ['Terrain shading','#6b6f62','fill',['hillshade']],
+    ['Terrain color','#6b6f46','fill',['relief']],
+    ['Land','#1d2b20','fill',['land']]];
   const lgCol=(ids,fb)=>{ for(const id of ids){ if(!map.getLayer(id)) continue;
       for(const p of ['line-color','fill-color','text-color','icon-color']){
         try{ const v=map.getPaintProperty(id,p); if(typeof v==='string') return v; }catch(e){} } } return fb; };
@@ -1967,13 +1977,19 @@ async function renderRangeMap(ids,sci,opts){
     :shape==='line'?`<span class="sw"><span style="display:inline-block;width:14px;height:3px;border-radius:2px;background:${c};vertical-align:middle"></span></span>`
     :shape==='dot'?`<span class="sw"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};vertical-align:middle"></span></span>`
     :shape==='tri'?`<span class="sw" style="color:${c};font-size:9px">▲</span>`
+    :shape==='txt'?`<span class="sw" style="color:${c};font-size:10px;font-weight:700">A</span>`
     :`<span class="sw"><span style="display:inline-block;width:14px;height:10px;border-radius:3px;background:${c};opacity:.85;vertical-align:middle"></span></span>`;
   const lgBuild=()=>{ if(!_mapAlive(map)) return;
-    const rows=LG.filter(([,,,ids])=>ids.some(id=>map.getLayer(id)));
+    // catch-all so the list really is EVERYTHING: any layer no curated row
+    // covers (future additions included) gets its own row under its raw id
+    const covered=new Set(LG.flatMap(e=>e[3]).concat(['bg']));
+    for(const ly of (map.getStyle().layers||[]))
+      if(!covered.has(ly.id)){ LG.push([ly.id,'#9aa39c','fill',[ly.id]]); covered.add(ly.id); }
+    const rows=LG.map((e,i)=>[e,i]).filter(([[,,,ids]])=>ids.some(id=>map.getLayer(id)));
     lgPanel.innerHTML=`<div class="lg-h">Legend<button title="Hide legend">»</button></div>`+
-      rows.map(([lb,fb,shape,ids],i)=>{
+      rows.map(([[lb,fb,shape,ids],i])=>{
         const on=ids.some(id=>map.getLayer(id)&&map.getLayoutProperty(id,'visibility')!=='none');
-        return `<label>${lgSw(shape,lgCol(ids,fb))}<input type="checkbox" data-lg="${i}" ${on?'checked':''}>${lb}</label>`;}).join('');
+        return `<label><input type="checkbox" data-lg="${i}" ${on?'checked':''}>${lgSw(shape,lgCol(ids,fb))}<span>${lb}</span></label>`;}).join('');
     lgPanel.querySelector('.lg-h button').onclick=()=>lgPanel.classList.add('gone');
     lgPanel.querySelectorAll('input[data-lg]').forEach(cb=>cb.onchange=()=>{
       const ids=LG[+cb.dataset.lg][3];
@@ -1983,10 +1999,7 @@ async function renderRangeMap(ids,sci,opts){
       d.innerHTML='<button aria-label="Legend" title="Legend">▤</button>';
       d.firstChild.onclick=()=>{ if(lgPanel.classList.contains('gone')){ lgBuild(); lgPanel.classList.remove('gone'); }
         else lgPanel.classList.add('gone'); };
-      return d;}, onRemove(){}}, 'bottom-right');
-  // stack the ▤ ABOVE the attribution i ("in between the fullscreen and i")
-  const _brc=el.querySelector('.maplibregl-ctrl-bottom-right');
-  if(_brc&&_brc.lastChild) _brc.prepend(_brc.lastChild);
+      return d;}, onRemove(){}}, 'top-right');   // right below ⛶ (user, 2026-09-24)
   window._map=map;   // debug/testing handle
   // PILL BOXES behind EVERY map name (user, 2026-09-09): grey-filled rounded chip
   // whose BORDER matches that name's color language. icon-text-fit stretches the
