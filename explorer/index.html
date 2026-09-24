@@ -2245,7 +2245,12 @@ async function renderRangeMap(ids,sci,opts){
              // each X twinkles on its OWN clock (user, 2026-09-24 "shimmer at
              // different times"): the cell's stable coord hash h is its phase
              // offset, so the field sparkles instead of breathing in unison
-             const m2=['+',0.5,['*',0.5,['sin',['+',t/280,['*',['get','h'],0.0628]]]]];   // 2x faster (user, 2026-09-24)
+             // irregular flicker (user, 2026-09-24 "not a consistent pulse"):
+             // per-X TEMPO from the hash (0.6x–1.5x, mod 101 to decorrelate from
+             // the phase mod) + two incommensurate sines (golden ratio) so no
+             // X ever settles into a clean repeating beat
+             const p=['+',['*',t/280,['+',0.6,['*',0.0089,['%',['get','h'],101]]]],['*',['get','h'],0.0628]];
+             const m2=['+',0.5,['*',0.25,['sin',p]],['*',0.25,['sin',['*',1.618,p]]]];
              map.setPaintProperty('obsdots','icon-halo-color',
                ['interpolate',['linear'],m2,0,'rgba(255,215,0,0.3)',1,'rgba(255,215,0,0.75)']);
              map.setPaintProperty('obsdots','icon-halo-width',['+',1.5,['*',3.2,m2]]);
