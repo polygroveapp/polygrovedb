@@ -2242,12 +2242,15 @@ async function renderRangeMap(ids,sci,opts){
            // a real glow: wide blurred halo swelling 1→4px AND the fill itself
            // breathing deep-gold → pale-gold, so the range visibly twinkles
            if(map.getLayer('obsdots')){
-             const m2=0.5+0.5*Math.sin(t/560);   // slower, and peaks stay GOLD not white (user, 2026-09-09)
-             // eco-border glow tech on the X marks (user, 2026-09-24): the aura
-             // breathes like focushl-glow — opacity AND width in the same sweep
-             map.setPaintProperty('obsdots','icon-halo-color',`rgba(255,215,0,${(0.3+0.45*m2).toFixed(3)})`);
-             map.setPaintProperty('obsdots','icon-halo-width',1.5+3.2*m2);
-             map.setPaintProperty('obsdots','icon-color',`rgb(255,${Math.round(212+22*m2)},${Math.round(50+65*m2)})`);
+             // each X twinkles on its OWN clock (user, 2026-09-24 "shimmer at
+             // different times"): the cell's stable coord hash h is its phase
+             // offset, so the field sparkles instead of breathing in unison
+             const m2=['+',0.5,['*',0.5,['sin',['+',t/560,['*',['get','h'],0.0628]]]]];
+             map.setPaintProperty('obsdots','icon-halo-color',
+               ['interpolate',['linear'],m2,0,'rgba(255,215,0,0.3)',1,'rgba(255,215,0,0.75)']);
+             map.setPaintProperty('obsdots','icon-halo-width',['+',1.5,['*',3.2,m2]]);
+             map.setPaintProperty('obsdots','icon-color',
+               ['interpolate',['linear'],m2,0,'rgb(255,212,50)',1,'rgb(255,234,115)']);
            }
            // focused ecoregion/park outline SHIMMERS GOLD in the same breath (user, 2026-09-22)
            if(map.getLayer('focushl-glow')){
@@ -2454,8 +2457,8 @@ async function renderRangeMap(ids,sci,opts){
             4.5, ['<',['get','q'], Math.min(1, 2800/obsFeats.length)],
             5.5, true],
           layout:{'icon-image':'xpt','icon-allow-overlap':true,'icon-ignore-placement':true,
-            'icon-size':['interpolate',['exponential',1.5],['zoom'],
-              0,['*',0.3,byCount], 3,['*',0.65,byCount], 6,['*',1.5,byCount], 9,['*',2.6,byCount]]},
+            'icon-size':['interpolate',['exponential',1.5],['zoom'],   // ~35% bigger (user, 2026-09-24)
+              0,['*',0.4,byCount], 3,['*',0.88,byCount], 6,['*',2.0,byCount], 9,['*',3.5,byCount]]},
           paint:{'icon-opacity':0,'icon-opacity-transition':{duration:700},
             'icon-color':'#ffe14d',   // crisp yellow core, like the eco border's #ffe14d line
             // the eco-border glow tech (user, 2026-09-24): wide soft #FFD700 aura
