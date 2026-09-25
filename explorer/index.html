@@ -2568,7 +2568,7 @@ async function renderRangeMap(ids,sci,opts){
         setTimeout(()=>{ if(map.getLayer('obsdots')) map.setPaintProperty('obsdots','icon-opacity',0.92); }, 2100);
         // ✕ amount slider, bottom edge between − and i (user, 2026-09-25)
         const amtWrap=document.createElement('div'); amtWrap.className='obsamt';
-        amtWrap.innerHTML=`<input type="range" min="2" max="100" value="${Math.round((window._obsAmt??1)*100)}" title="How many sightings show">`;
+        amtWrap.innerHTML=`<input type="range" min="0" max="100" value="${Math.round((window._obsAmt??1)*100)}" title="How many sightings show">`;
         amtWrap.lastChild.oninput=e=>{ const v=+e.target.value/100; window._obsAmt=v;
           if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', v<1?['<',['get','q'],v]:['<',['get','q'],2]); };
         el.appendChild(amtWrap);
