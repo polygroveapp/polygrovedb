@@ -2274,10 +2274,8 @@ async function renderRangeMap(ids,sci,opts){
     // YELLOW with a shimmering gold outline; park pages shimmer the park's
     // real boundary (470 NPS polygons) or a gold ring at its point
     if(opts.focusEco!=null&&!opts.park){
-      // yellow fill goes BEHIND the orange trails when they exist (user, 2026-09-25)
-      map.addLayer({id:'focusfill',type:'fill',source:'eco',filter:['==',['get','eco'],opts.focusEco],
-        paint:{'fill-color':'#ffe14d','fill-opacity':0.45,'fill-outline-color':'#ffe14d'}},
-        map.getLayer('trails')?'trails':undefined);
+      // interior YELLOW FILL removed (user, 2026-09-25 "try not painting in the
+      // borders") — the highlighted region is its shimmering border alone now
       {
         map.addLayer({id:'focushl-glow',type:'line',source:'eco',filter:['==',['get','eco'],opts.focusEco],
           paint:{'line-color':'#FFD700','line-width':8,'line-blur':6,'line-opacity':0.5}});
@@ -2293,11 +2291,7 @@ async function renderRangeMap(ids,sci,opts){
           const nb=norm(pk2.name);
           const f=bf&&bf.features.find(x=>{const a=norm(x.properties.name); return a&&nb&&(a===nb||a.includes(nb)||nb.includes(a));});
           if(f){ map.addSource('parkfocb',{type:'geojson',data:f});
-            // the park's INSIDE fills yellow too (user, 2026-09-22) — behind the
-            // orange trails when they exist (user, 2026-09-25)
-            map.addLayer({id:'focusfillp',type:'fill',source:'parkfocb',
-              paint:{'fill-color':'#ffe14d','fill-opacity':0.38}},
-              map.getLayer('trails')?'trails':undefined);
+            // interior yellow fill removed (user, 2026-09-25) — border only
             map.addLayer({id:'focushl-glow',type:'line',source:'parkfocb',
               paint:{'line-color':'#FFD700','line-width':8,'line-blur':6,'line-opacity':0.5}});
             map.addLayer({id:'focushl',type:'line',source:'parkfocb',
