@@ -1375,8 +1375,9 @@ let _parkSel=null; const _parkEcoCache={}, _parkWikiCache={};
 // LOCATOR THUMB (user, 2026-09-22): when Wikipedia has no photo, show where it
 // is on OUR map — canvas-drawn dark world, the region yellow / the park a gold dot
 const _locThumbCache={};
-function locatorThumb(eid,pt){
-  const key=(eid==null?'':eid)+'|'+(pt?pt.join(','):'');
+function locatorThumb(eid,pt,color){   // color: hover cards pass GREEN (user, 2026-09-25)
+  color=color||'#ffe14d';
+  const key=(eid==null?'':eid)+'|'+(pt?pt.join(','):'')+'|'+color;
   if(_locThumbCache[key]) return _locThumbCache[key];
   if(!ECOGEO) return '';
   const W=300,H=200,cv=document.createElement('canvas'); cv.width=W; cv.height=H;
@@ -1395,8 +1396,8 @@ function locatorThumb(eid,pt){
       for(let i=1;i<r.length;i++) g.lineTo(X(r[i][0]),Y(r[i][1])); g.closePath(); }
     g.fill(); };
   for(const f of ECOGEO.features) draw(f,'#242b25');
-  if(eid!=null) for(const f of ECOGEO.features) if(f.properties.eco===eid) draw(f,'#ffe14d');
-  if(pt){ const x=X(pt[0]),y=Y(pt[1]); g.fillStyle='#ffe14d'; g.beginPath(); g.arc(x,y,5.5,0,7); g.fill();
+  if(eid!=null) for(const f of ECOGEO.features) if(f.properties.eco===eid) draw(f,color);
+  if(pt){ const x=X(pt[0]),y=Y(pt[1]); g.fillStyle=color; g.beginPath(); g.arc(x,y,5.5,0,7); g.fill();
     g.strokeStyle='#0d0d0d'; g.lineWidth=1.6; g.stroke(); }
   return _locThumbCache[key]=cv.toDataURL();
 }
@@ -2062,12 +2063,12 @@ async function renderRangeMap(ids,sci,opts){
       if(!ph||!ph.properties||!ph.properties.name){ tip.style.display='none'; hvEco=null; return; }
       const nm=ph.properties.name, key='pk:'+nm;
       if(hvEco===key) return; hvEco=key;
-      tip.innerHTML=`<b style="color:#ffe14d">${nm}</b><span>★ ${ph.properties.fame||0} · loading…</span>`;
+      tip.innerHTML=`<b style="color:#81C784">${nm}</b><span>★ ${ph.properties.fame||0} · loading…</span>`;
       tip.style.display='block';
       _parkWiki(nm).then(d=>{ if(hvEco!==key) return;
         const ex=(d&&d.extract)||'';
-        tip.innerHTML=`<img src="${d&&d.thumbnail?d.thumbnail.source:locatorThumb(null,ph.geometry&&ph.geometry.coordinates)}" style="width:100%;max-height:96px;object-fit:cover;border-radius:8px;margin:4px 0 6px">
-          <b style="color:#ffe14d">${nm}</b><span>${ex?ex.slice(0,150)+(ex.length>150?'…':''):('★ '+(ph.properties.fame||0)+' · no article found')}</span>`;
+        tip.innerHTML=`<img src="${d&&d.thumbnail?d.thumbnail.source:locatorThumb(null,ph.geometry&&ph.geometry.coordinates,'#81C784')}" style="width:100%;max-height:96px;object-fit:cover;border-radius:8px;margin:4px 0 6px">
+          <b style="color:#81C784">${nm}</b><span>${ex?ex.slice(0,150)+(ex.length>150?'…':''):('★ '+(ph.properties.fame||0)+' · no article found')}</span>`;
       });
       return;
     }
@@ -2083,8 +2084,8 @@ async function renderRangeMap(ids,sci,opts){
       // count, first line of the Wikipedia lead (user, 2026-09-22)
       const mem=(typeof ecoMembers==='function'?(ecoMembers()[eid]||[]):[]).length;
       const ph2=meta&&meta.photo, lead=(meta&&meta.lead)||'';
-      tip.innerHTML=`<img src="${ph2?ph2.thumb:locatorThumb(eid)}" style="width:100%;max-height:96px;object-fit:cover;border-radius:8px;margin:4px 0 6px">
-        <b style="color:#ffe14d">${meta?meta.name:('Ecoregion '+eid)}</b>
+      tip.innerHTML=`<img src="${ph2?ph2.thumb:locatorThumb(eid,null,'#81C784')}" style="width:100%;max-height:96px;object-fit:cover;border-radius:8px;margin:4px 0 6px">
+        <b style="color:#81C784">${meta?meta.name:('Ecoregion '+eid)}</b>
         <span>${mem} deck species${lead?' · '+lead.slice(0,120)+(lead.length>120?'…':''):''}</span>`;
       tip.style.display='block'; return;
     }
@@ -2242,8 +2243,9 @@ async function renderRangeMap(ids,sci,opts){
         if(!t||!_mapAlive(map)||map.getSource('trails')) return;
         map.addSource('trails',{type:'geojson',data:t});
         map.addLayer({id:'trails',type:'line',source:'trails',minzoom:5.5,
-          // GREEN trails on park AND ecoregion pages (user, 2026-09-22); species maps keep orange
-          paint:{'line-color':(opts.park||opts.focusEco!=null)?'#81C784':'#ff8c1a','line-width':['interpolate',['linear'],['zoom'],6,0.6,9,1.4,12,2.2],
+          // ORANGE trails on EVERY page again (user, 2026-09-25; green era over —
+          // green now belongs to the non-highlighted borders/names)
+          paint:{'line-color':'#ff8c1a','line-width':['interpolate',['linear'],['zoom'],6,0.6,9,1.4,12,2.2],
                  'line-opacity':0.95,'line-dasharray':[2,1.4]}},
           map.getLayer('ecohl-glow')?'ecohl-glow':undefined);
         // POINT placement, not 'line': the map caps at maxZoom 10, and long trail
@@ -2255,7 +2257,7 @@ async function renderRangeMap(ids,sci,opts){
           filter:['!=',['get','name'],''],
           layout:{'symbol-placement':'point','text-field':['get','name'],'text-font':['Noto Sans Regular'],
                   'text-size':9,'text-padding':6,'text-max-width':8,'text-offset':[0,0.8],'text-anchor':'top'},
-          paint:{'text-color':(opts.park||opts.focusEco!=null)?'#a5e8a9':'#ffa040','text-halo-color':'#0d0d0d','text-halo-width':1.1,'text-opacity':0.9}},
+          paint:{'text-color':'#ffa040','text-halo-color':'#0d0d0d','text-halo-width':1.1,'text-opacity':0.9}},
           map.getLayer('obsdots')?'obsdots':(map.getLayer('ecohl-glow')?'ecohl-glow':undefined));
       }).catch(()=>{});
     };
