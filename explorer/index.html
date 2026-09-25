@@ -287,6 +287,14 @@
     display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:999px;overflow:hidden;
     background:rgba(14,21,18,.85);border:1px solid var(--line);backdrop-filter:blur(8px)}
   .obsamt .xk{color:#ffe14d;font-weight:700;font-size:11px;line-height:1}
+  /* month filter buttons (user, 2026-09-25): above the amount slider */
+  .obsmon{position:absolute;bottom:46px;left:124px;right:46px;z-index:35;height:26px;box-sizing:border-box;
+    display:flex;align-items:center;gap:1px;padding:2px 6px;border-radius:999px;overflow:hidden;
+    background:rgba(14,21,18,.85);border:1px solid var(--line);backdrop-filter:blur(8px)}
+  .obsmon button{flex:1;min-width:0;height:20px;background:none;border:none;border-radius:7px;
+    color:var(--dim);font-size:9.5px;line-height:1;cursor:pointer;padding:0}
+  .obsmon button:hover{color:var(--text)}
+  .obsmon button.on{background:rgba(255,225,77,.16);color:#ffe14d;font-weight:700}
   /* min-width:0 lets the input SHRINK with the pill — its intrinsic width was
      overflowing the rounded edge on narrow maps (user, 2026-09-25 "glitch").
      Full appearance reset: the GLOBAL input rule (border+padding+radius, line 74)
@@ -2576,9 +2584,11 @@ async function renderRangeMap(ids,sci,opts){
 
     if(sci){
       if(cells.length && map.getStyle()){
-        const obsFeats=cells.map(([cx,cy,n2])=>({type:'Feature',
+        const obsFeats=cells.map(([cx,cy,n2,ms])=>({type:'Feature',
           geometry:{type:'Point',coordinates:[cx/100+0.005, cy/100+0.005]},
-          properties:{n:n2, h:(((cx*73856093)^(cy*19349663))>>>0)%100000}}));
+          // ms: months with records (from the month scan) — absent on old shards
+          properties:{n:n2, h:(((cx*73856093)^(cy*19349663))>>>0)%100000, ms:ms||0}}));
+        const hasMonths=cells.some(c=>c[3]);
         // keep-rank q in [0,1): densest cells first, n-ties shuffled by the stable
         // coord hash (NOT array order — ties there sort west->east). The zoom filter
         // below shows the top-q fraction, so zooming out keeps the most-recorded cells.
@@ -2605,10 +2615,14 @@ async function renderRangeMap(ids,sci,opts){
           // (~900 world / ~1800 / ~2800 / all by z5.5); for small decks the caps
           // exceed the cell count and nothing is hidden.
           // zoom MUST be the top-level step here — nested ['zoom'] silently kills filters
-          // amount shown at any distance = the ✕ SLIDER on the bottom edge (user,
-          // 2026-09-25); keep-rank q means sliding down keeps the densest cells.
-          // _obsAmt persists across page navigations; 1 = every datapoint
-          filter:(window._obsAmt??1)<1?['<',['get','q'],window._obsAmt]:['<',['get','q'],2],
+          // amount shown = the ✕ SLIDER (keep-rank q, densest kept); month = the
+          // MONTH buttons (ms bitmask; bit extracted arithmetically — expressions
+          // have no bitwise ops). Both persist across page navigations.
+          filter:(window._obsFilter=()=>{ const conds=[]; const amt=window._obsAmt??1;
+            if(amt<1) conds.push(['<',['get','q'],amt]);
+            const m=window._obsMonth||0;
+            if(m&&hasMonths) conds.push(['==',['%',['floor',['/',['get','ms'],Math.pow(2,m-1)]],2],1]);
+            return conds.length>1?['all',...conds]:(conds[0]||['<',['get','q'],2]); })(),
           layout:{'icon-image':'xpt','icon-allow-overlap':true,'icon-ignore-placement':true,
             'icon-size':['interpolate',['exponential',1.5],['zoom'],   // world-scale size
               // back to original (user, 2026-09-25); still grows hard when diving
@@ -2630,9 +2644,21 @@ async function renderRangeMap(ids,sci,opts){
         // ✕ amount slider, bottom edge between − and i (user, 2026-09-25)
         const amtWrap=document.createElement('div'); amtWrap.className='obsamt';
         amtWrap.innerHTML=`<input type="range" min="0" max="100" value="${Math.round((window._obsAmt??1)*100)}" title="How many sightings show">`;
-        amtWrap.lastChild.oninput=e=>{ const v=+e.target.value/100; window._obsAmt=v;
-          if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', v<1?['<',['get','q'],v]:['<',['get','q'],2]); };
+        amtWrap.lastChild.oninput=e=>{ window._obsAmt=+e.target.value/100;
+          if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', window._obsFilter()); };
         el.appendChild(amtWrap);
+        // MONTH buttons: one per month + All (user, 2026-09-25) — only once the
+        // shards carry month bitmasks (hasMonths), so old data shows no dead row
+        if(hasMonths){
+          const monWrap=document.createElement('div'); monWrap.className='obsmon';
+          const MN=['All','J','F','M','A','M','J','J','A','S','O','N','D'];
+          monWrap.innerHTML=MN.map((l,m)=>`<button data-m="${m}" class="${(window._obsMonth||0)===m?'on':''}" title="${m?['January','February','March','April','May','June','July','August','September','October','November','December'][m-1]:'All months'}">${l}</button>`).join('');
+          monWrap.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+            window._obsMonth=+b.dataset.m;
+            monWrap.querySelectorAll('button').forEach(x=>x.classList.toggle('on',+x.dataset.m===window._obsMonth));
+            if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', window._obsFilter()); });
+          el.appendChild(monWrap);
+        }
 
       }
     }
