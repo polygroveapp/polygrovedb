@@ -2246,7 +2246,13 @@ async function renderRangeMap(ids,sci,opts){
           // ORANGE trails on EVERY page again (user, 2026-09-25; green era over —
           // green now belongs to the non-highlighted borders/names)
           paint:{'line-color':'#ff8c1a','line-width':['interpolate',['linear'],['zoom'],6,0.6,9,1.4,12,2.2],
-                 'line-opacity':0.95,'line-dasharray':[2,1.4]}},
+                 'line-opacity':0.95,
+                 // dasharray is in line-width units, so thin low-zoom lines cram
+                 // the dots together — counter-scale by zoom to keep the SAME
+                 // on-screen spacing at all zooms (user, 2026-09-25)
+                 'line-dasharray':['step',['zoom'],['literal',[7,11]],
+                   7,['literal',[4.5,6.5]], 8.5,['literal',[3,4.5]],
+                   10,['literal',[2.4,3.6]], 11.5,['literal',[2,3]]]}},
           map.getLayer('ecohl-glow')?'ecohl-glow':undefined);
         // POINT placement, not 'line': the map caps at maxZoom 10, and long trail
         // names never fit along the simplified zigzag lines below that — line-fit
