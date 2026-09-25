@@ -2527,12 +2527,13 @@ async function renderRangeMap(ids,sci,opts){
           // (~900 world / ~1800 / ~2800 / all by z5.5); for small decks the caps
           // exceed the cell count and nothing is hidden.
           // zoom MUST be the top-level step here — nested ['zoom'] silently kills filters
-          // zoom culling REMOVED (user, 2026-09-25 "see them from any distance"):
-          // every recorded cell shows at every zoom; world-scale density reads as texture
+          // ALL datapoints at every zoom, but world-scale size back to the original
+          // (user, 2026-09-25 "back to before the full blown version, with all the
+          // datapoints"): no culling, small-at-distance Xs
           layout:{'icon-image':'xpt','icon-allow-overlap':true,'icon-ignore-placement':true,
-            'icon-size':['interpolate',['exponential',1.5],['zoom'],   // visible from
-              // world scale too (user, 2026-09-25 "see the xs from farther away")
-              0,['*',0.6,byCount], 3,['*',1.25,byCount], 6,['*',2.7,byCount], 9,['*',5,byCount]]},
+            'icon-size':['interpolate',['exponential',1.5],['zoom'],   // world-scale size
+              // back to original (user, 2026-09-25); still grows hard when diving
+              0,['*',0.4,byCount], 3,['*',0.88,byCount], 6,['*',2.7,byCount], 9,['*',5,byCount]]},
           paint:{'icon-opacity':0,'icon-opacity-transition':{duration:700},
             'icon-color':'#ffe14d',   // crisp yellow core, like the eco border's #ffe14d line
             // the eco-border glow tech (user, 2026-09-24): wide soft #FFD700 aura
