@@ -2150,9 +2150,9 @@ async function renderRangeMap(ids,sci,opts){
     if(!opts.park) map.addLayer({id:'ecoline',type:'line',source:'eco',
       // the FOCUSED region keeps only its shimmering border (user, 2026-09-22)
       filter:opts.focusEco!=null?['!=',['get','eco'],opts.focusEco]:true,
-      // ECOREGION pages draw ALL region borders YELLOW and DOTTED — only the
-      // highlighted one is solid (user, 2026-09-22); species pages keep green solid
-      paint:Object.assign({'line-color':opts.focusEco!=null?'#ffe14d':'#3f6a45',
+      // ECOREGION pages draw the other regions' borders GREEN and DOTTED — only
+      // the highlighted one is yellow/shimmering (user, 2026-09-25; was all-yellow)
+      paint:Object.assign({'line-color':opts.focusEco!=null?'#81C784':'#3f6a45',
              'line-width':['interpolate',['linear'],['zoom'],1,0.4,5,0.8,7.5,1.2],
              'line-opacity':opts.focusEco!=null?0.6:0.85},
              opts.focusEco!=null?{'line-dasharray':[1.6,1.9]}:{})});
@@ -2496,9 +2496,10 @@ async function renderRangeMap(ids,sci,opts){
         filter:['==',['get','mm'],1],
         // no minzoom: a real boundary never disappears (user, 2026-09-08) — it just
         // thins to a hairline at world scale and thickens as you approach
-        // PARK pages draw every boundary SOLID YELLOW; species pages keep the
-        // brown dashed cartographic mark (user, 2026-09-22)
-        paint:opts.park?{'line-color':'#ffe14d','line-width':['interpolate',['linear'],['zoom'],1,0.5,4,1.1,7,1.8,10,2.4],
+        // PARK pages draw the other parks' boundaries GREEN dotted — only the
+        // highlighted park is yellow/shimmering (user, 2026-09-25; was all-yellow);
+        // species pages keep the brown dashed cartographic mark (user, 2026-09-22)
+        paint:opts.park?{'line-color':'#81C784','line-width':['interpolate',['linear'],['zoom'],1,0.5,4,1.1,7,1.8,10,2.4],
                'line-dasharray':[2.2,2],   // dotted except the highlighted park (user, 2026-09-22)
                'line-opacity':['interpolate',['linear'],['zoom'],1,0.55,4,0.85]}
              :{'line-color':'#c49a76','line-width':['interpolate',['linear'],['zoom'],1,0.4,4,0.9,7,1.6,10,2.2],
