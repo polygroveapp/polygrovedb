@@ -2259,6 +2259,8 @@ async function renderRangeMap(ids,sci,opts){
                   'text-size':9,'text-padding':6,'text-max-width':8,'text-offset':[0,0.8],'text-anchor':'top'},
           paint:{'text-color':'#ffa040','text-halo-color':'#0d0d0d','text-halo-width':1.1,'text-opacity':0.9}},
           map.getLayer('obsdots')?'obsdots':(map.getLayer('ecohl-glow')?'ecohl-glow':undefined));
+        // yellow highlight fill sits BEHIND the orange trails (user, 2026-09-25)
+        for(const fid of ['focusfill','focusfillp']) if(map.getLayer(fid)&&map.getLayer('trails')) map.moveLayer(fid,'trails');
       }).catch(()=>{});
     };
     map.on('zoomend',loadTrails); loadTrails();
@@ -2266,8 +2268,10 @@ async function renderRangeMap(ids,sci,opts){
     // YELLOW with a shimmering gold outline; park pages shimmer the park's
     // real boundary (470 NPS polygons) or a gold ring at its point
     if(opts.focusEco!=null&&!opts.park){
+      // yellow fill goes BEHIND the orange trails when they exist (user, 2026-09-25)
       map.addLayer({id:'focusfill',type:'fill',source:'eco',filter:['==',['get','eco'],opts.focusEco],
-        paint:{'fill-color':'#ffe14d','fill-opacity':0.45,'fill-outline-color':'#ffe14d'}});   // obs-dot yellow inside (user, 2026-09-22)
+        paint:{'fill-color':'#ffe14d','fill-opacity':0.45,'fill-outline-color':'#ffe14d'}},
+        map.getLayer('trails')?'trails':undefined);
       {
         map.addLayer({id:'focushl-glow',type:'line',source:'eco',filter:['==',['get','eco'],opts.focusEco],
           paint:{'line-color':'#FFD700','line-width':8,'line-blur':6,'line-opacity':0.5}});
@@ -2283,9 +2287,11 @@ async function renderRangeMap(ids,sci,opts){
           const nb=norm(pk2.name);
           const f=bf&&bf.features.find(x=>{const a=norm(x.properties.name); return a&&nb&&(a===nb||a.includes(nb)||nb.includes(a));});
           if(f){ map.addSource('parkfocb',{type:'geojson',data:f});
-            // the park's INSIDE fills yellow too (user, 2026-09-22)
+            // the park's INSIDE fills yellow too (user, 2026-09-22) — behind the
+            // orange trails when they exist (user, 2026-09-25)
             map.addLayer({id:'focusfillp',type:'fill',source:'parkfocb',
-              paint:{'fill-color':'#ffe14d','fill-opacity':0.38}});
+              paint:{'fill-color':'#ffe14d','fill-opacity':0.38}},
+              map.getLayer('trails')?'trails':undefined);
             map.addLayer({id:'focushl-glow',type:'line',source:'parkfocb',
               paint:{'line-color':'#FFD700','line-width':8,'line-blur':6,'line-opacity':0.5}});
             map.addLayer({id:'focushl',type:'line',source:'parkfocb',
