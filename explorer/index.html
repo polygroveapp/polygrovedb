@@ -2456,13 +2456,14 @@ async function renderRangeMap(ids,sci,opts){
       map.addSource('adminb',{type:'geojson',data:b});
       // two layers because line-dasharray can't be data-driven: countries solid,
       // states DOTTED (user, 2026-09-09)
-      // borders OFF by default (user, 2026-09-25) — the legend can toggle them on
+      // borders OFF by default (user, 2026-09-25) — EXCEPT the Parks tab, where
+      // state + country lines anchor the park locations (user, same day)
       map.addLayer({id:'adminlines',type:'line',source:'adminb',filter:['==',['get','lvl'],0],
-        layout:{visibility:'none'},
+        layout:{visibility:opts.park?'visible':'none'},
         paint:{'line-color':'#8a8f8a','line-width':1.1,'line-opacity':0.6}},
         map.getLayer('obsdots')?'obsdots':undefined);
       map.addLayer({id:'adminlines-st',type:'line',source:'adminb',filter:['!=',['get','lvl'],0],
-        layout:{visibility:'none'},
+        layout:{visibility:opts.park?'visible':'none'},
         paint:{'line-color':'#8a8f8a','line-width':0.9,'line-opacity':0.55,   // dots eat ~half the ink — thicker than the old solid state line
                'line-dasharray':[1,1.6]}},
         map.getLayer('obsdots')?'obsdots':undefined);
