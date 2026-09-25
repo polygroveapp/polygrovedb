@@ -2527,12 +2527,8 @@ async function renderRangeMap(ids,sci,opts){
           // (~900 world / ~1800 / ~2800 / all by z5.5); for small decks the caps
           // exceed the cell count and nothing is hidden.
           // zoom MUST be the top-level step here — nested ['zoom'] silently kills filters
-          filter:['step',['zoom'],   // reveal SOONER while zooming in (user, 2026-09-25):
-            // caps up + thresholds down (~1200 world / ~2600 by z2 / ~4200 by z3.2 / all by z4.2)
-            ['<',['get','q'], Math.min(1, 1200/obsFeats.length)],
-            2,   ['<',['get','q'], Math.min(1, 2600/obsFeats.length)],
-            3.2, ['<',['get','q'], Math.min(1, 4200/obsFeats.length)],
-            4.2, true],
+          // zoom culling REMOVED (user, 2026-09-25 "see them from any distance"):
+          // every recorded cell shows at every zoom; world-scale density reads as texture
           layout:{'icon-image':'xpt','icon-allow-overlap':true,'icon-ignore-placement':true,
             'icon-size':['interpolate',['exponential',1.5],['zoom'],   // visible from
               // world scale too (user, 2026-09-25 "see the xs from farther away")
