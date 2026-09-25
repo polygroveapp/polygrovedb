@@ -2319,13 +2319,14 @@ async function renderRangeMap(ids,sci,opts){
              // per-X TEMPO from the hash (0.6x–1.5x, mod 101 to decorrelate from
              // the phase mod) + two incommensurate sines (golden ratio) so no
              // X ever settles into a clean repeating beat
-             const p=['+',['*',t/280,['+',0.6,['*',0.0089,['%',['get','h'],101]]]],['*',['get','h'],0.0628]];
+             const p=['+',['*',t/400,['+',0.6,['*',0.0089,['%',['get','h'],101]]]],['*',['get','h'],0.0628]];   // slower (user, 2026-09-25)
              const m2=['+',0.5,['*',0.25,['sin',p]],['*',0.25,['sin',['*',1.618,p]]]];
              map.setPaintProperty('obsdots','icon-halo-color',
                ['interpolate',['linear'],m2,0,'rgba(255,215,0,0.3)',1,'rgba(255,215,0,0.75)']);
              map.setPaintProperty('obsdots','icon-halo-width',['+',1.5,['*',3.2,m2]]);
-             map.setPaintProperty('obsdots','icon-color',
-               ['interpolate',['linear'],m2,0,'rgb(255,212,50)',1,'rgb(255,234,115)']);
+             map.setPaintProperty('obsdots','icon-color',   // wider sweep, dipping
+               // into ORANGE at the low end (user, 2026-09-25)
+               ['interpolate',['linear'],m2,0,'rgb(255,165,48)',0.5,'rgb(255,208,58)',1,'rgb(255,238,130)']);
            }
            // focused ecoregion/park outline SHIMMERS GOLD in the same breath (user, 2026-09-22)
            if(map.getLayer('focushl-glow')){
