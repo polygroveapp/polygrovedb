@@ -2112,10 +2112,16 @@ async function renderRangeMap(ids,sci,opts){
   // clicking the highlighted (hovered) ecoregion zooms into it (user, 2026-09-09)
   map.on('click',ev=>{
     // a PARK marker click opens that park's page (user, 2026-09-22)
-    try{ const pl=['parklbl','parkdot'].filter(l=>map.getLayer(l));
+    try{ const pl=['parklbl','parkdot','parkfillhit'].filter(l=>map.getLayer(l));
       const ph=pl.length?map.queryRenderedFeatures(ev.point,{layers:pl})[0]:null;
       if(ph&&ph.properties&&ph.properties.name){
-        const i=PARKS().findIndex(f2=>f2.properties.name===ph.properties.name);
+        const nm=ph.properties.name;
+        let i=PARKS().findIndex(f2=>f2.properties.name===nm);
+        // polygon interiors come from park_bounds, whose names can differ from
+        // the label points ("X National Park" vs "X") — normalized fallback
+        if(i<0){ const norm=s=>(s||'').toLowerCase().replace(/national park|national|park/g,'').trim();
+          const nb=norm(nm);
+          i=PARKS().findIndex(f2=>{const a=norm(f2.properties.name); return a&&nb&&(a===nb||a.includes(nb)||nb.includes(a));}); }
         // arriving FROM a map click: the new page snaps to the region, no flight
         // animation (user, 2026-09-25)
         if(i>=0){ window._noFly=true; showParkView(i); return; } } }catch(e){}
@@ -2513,11 +2519,16 @@ async function renderRangeMap(ids,sci,opts){
       });
       parkFC._bmarked=true;
     }
-    // ECOREGION pages hide the park layers, PARK pages hide the ecoregion
-    // dressing (user, 2026-09-22) — each page shows only its own subject
-    const hideParks=opts.focusEco!=null&&!opts.park;
+    // ecoregion pages show parks again, in the species-page BROWN (user,
+    // 2026-09-25 "park borders and names in brown for the ecoregions tab") —
+    // the brown is the non-park-page default in each layer's paint
+    const hideParks=false;
     if(!hideParks && map.getStyle() && boundsFC){
       map.addSource('parkbounds',{type:'geojson',data:boundsFC});
+      // invisible hit-target so clicking INSIDE a park's polygon opens it, not
+      // just its name/dot (user, 2026-09-25) — park AND ecoregion pages
+      if(opts.park||opts.focusEco!=null) map.addLayer({id:'parkfillhit',type:'fill',source:'parkbounds',
+        filter:['==',['get','mm'],1],paint:{'fill-color':'#000','fill-opacity':0.001}});
       map.addLayer({id:'parkline',type:'line',source:'parkbounds',
         // only boundaries that MATCHED a named park label draw — the NPS file also
         // carries battlefields/parkways/historic sites, which were rendering as
