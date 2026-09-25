@@ -270,6 +270,12 @@
   .maplegend label{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;color:var(--text);white-space:nowrap}
   .maplegend input{accent-color:#81C784;margin:0}
   .maplegend .sw{flex:none;width:15px;text-align:center;line-height:1}
+  /* observation-amount slider (user, 2026-09-25): bottom edge, between − and i */
+  .obsamt{position:absolute;bottom:10px;left:124px;right:46px;z-index:35;
+    display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;
+    background:rgba(14,21,18,.85);border:1px solid var(--line);backdrop-filter:blur(8px)}
+  .obsamt .xk{color:#ffe14d;font-weight:700;font-size:11px;line-height:1}
+  .obsamt input[type=range]{flex:1;width:auto;min-width:40px;accent-color:#ffe14d;margin:0;cursor:pointer}
 </style>
 </head>
 <body>
@@ -2527,9 +2533,10 @@ async function renderRangeMap(ids,sci,opts){
           // (~900 world / ~1800 / ~2800 / all by z5.5); for small decks the caps
           // exceed the cell count and nothing is hidden.
           // zoom MUST be the top-level step here — nested ['zoom'] silently kills filters
-          // ALL datapoints at every zoom, but world-scale size back to the original
-          // (user, 2026-09-25 "back to before the full blown version, with all the
-          // datapoints"): no culling, small-at-distance Xs
+          // amount shown at any distance = the ✕ SLIDER on the bottom edge (user,
+          // 2026-09-25); keep-rank q means sliding down keeps the densest cells.
+          // _obsAmt persists across page navigations; 1 = every datapoint
+          filter:(window._obsAmt??1)<1?['<',['get','q'],window._obsAmt]:['<',['get','q'],2],
           layout:{'icon-image':'xpt','icon-allow-overlap':true,'icon-ignore-placement':true,
             'icon-size':['interpolate',['exponential',1.5],['zoom'],   // world-scale size
               // back to original (user, 2026-09-25); still grows hard when diving
@@ -2548,6 +2555,12 @@ async function renderRangeMap(ids,sci,opts){
         for(const id of ['adminlbl','citydot','citylbl','parkdot','parklbl','ecosel','foclbl']) if(map.getLayer(id)) map.moveLayer(id);
         // hold the sightings back until the flight lands, so they arrive as you do
         setTimeout(()=>{ if(map.getLayer('obsdots')) map.setPaintProperty('obsdots','icon-opacity',0.92); }, 2100);
+        // ✕ amount slider, bottom edge between − and i (user, 2026-09-25)
+        const amtWrap=document.createElement('div'); amtWrap.className='obsamt';
+        amtWrap.innerHTML=`<span class="xk">✕</span><input type="range" min="2" max="100" value="${Math.round((window._obsAmt??1)*100)}" title="How many sightings show">`;
+        amtWrap.lastChild.oninput=e=>{ const v=+e.target.value/100; window._obsAmt=v;
+          if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', v<1?['<',['get','q'],v]:['<',['get','q'],2]); };
+        el.appendChild(amtWrap);
 
       }
     }
