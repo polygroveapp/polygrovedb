@@ -287,14 +287,20 @@
     display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:999px;overflow:hidden;
     background:rgba(14,21,18,.85);border:1px solid var(--line);backdrop-filter:blur(8px)}
   .obsamt .xk{color:#ffe14d;font-weight:700;font-size:11px;line-height:1}
-  /* month filter buttons (user, 2026-09-25): above the amount slider */
-  .obsmon{position:absolute;bottom:46px;left:124px;right:46px;z-index:35;height:26px;box-sizing:border-box;
-    display:flex;align-items:center;gap:1px;padding:2px 6px;border-radius:999px;overflow:hidden;
+  /* month filter bar (user, 2026-09-25, final home): the ENTIRE bottom edge,
+     below every other control — All Jan Feb ... Dec, horizontal */
+  .obsmon{position:absolute;bottom:8px;left:10px;right:10px;z-index:35;height:26px;box-sizing:border-box;
+    display:flex;align-items:center;gap:2px;padding:2px 8px;border-radius:999px;overflow:hidden;
     background:rgba(14,21,18,.85);border:1px solid var(--line);backdrop-filter:blur(8px)}
-  .obsmon button{flex:1;min-width:0;height:20px;background:none;border:none;border-radius:7px;
+  .obsmon button{flex:1;min-width:0;height:20px;background:none;border:none;border-radius:8px;
     color:var(--dim);font-size:9.5px;line-height:1;cursor:pointer;padding:0}
   .obsmon button:hover{color:var(--text)}
   .obsmon button.on{background:rgba(255,225,77,.16);color:#ffe14d;font-weight:700}
+  /* the month bar claims the bottom edge: lift every other bottom control */
+  .hasmon .maplibregl-ctrl-bottom-left{bottom:34px}
+  .hasmon .maplibregl-ctrl-bottom-right{bottom:34px}
+  .hasmon .obsamt{bottom:44px}
+  .hasmon .maplegend{bottom:78px}
   /* min-width:0 lets the input SHRINK with the pill — its intrinsic width was
      overflowing the rounded edge on narrow maps (user, 2026-09-25 "glitch").
      Full appearance reset: the GLOBAL input rule (border+padding+radius, line 74)
@@ -2676,7 +2682,8 @@ async function renderRangeMap(ids,sci,opts){
         // shards carry month bitmasks (hasMonths), so old data shows no dead row
         if(hasMonths){
           const monWrap=document.createElement('div'); monWrap.className='obsmon';
-          const MN=['All','J','F','M','A','M','J','J','A','S','O','N','D'];
+          el.classList.add('hasmon');   // lifts the other bottom controls above the bar
+          const MN=['All','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
           monWrap.innerHTML=MN.map((l,m)=>`<button data-m="${m}" class="${(window._obsMonth||0)===m?'on':''}" title="${m?['January','February','March','April','May','June','July','August','September','October','November','December'][m-1]:'All months'}">${l}</button>`).join('');
           monWrap.querySelectorAll('button').forEach(b=>b.onclick=()=>{
             window._obsMonth=+b.dataset.m;
