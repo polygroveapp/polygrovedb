@@ -275,11 +275,13 @@
   .maplegend input{accent-color:#81C784;margin:0;flex:none}
   .maplegend .sw{flex:none;width:15px;text-align:center;line-height:1}
   .maplegend label span:last-child{flex:1;text-align:left}
-  /* scrollbar ALWAYS visible + grey (user, 2026-09-25) */
-  .lg-body{overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#6a6f6a rgba(255,255,255,.07)}
-  .lg-body::-webkit-scrollbar{width:8px}
-  .lg-body::-webkit-scrollbar-track{background:rgba(255,255,255,.07);border-radius:4px}
-  .lg-body::-webkit-scrollbar-thumb{background:#6a6f6a;border-radius:4px}
+  /* scrollbar ALWAYS visible + grey (user, 2026-09-25): overlay-scrollbar
+     browsers ignore ALL css scrollbar styling, so we hide the native bar and
+     draw our own track+thumb (kept in sync by the scroll handler) */
+  .lg-body{overflow-y:scroll;scrollbar-width:none}
+  .lg-body::-webkit-scrollbar{display:none}
+  .lg-sb{position:absolute;right:4px;top:30px;bottom:10px;width:6px;border-radius:3px;background:rgba(255,255,255,.08)}
+  .lg-sbt{position:absolute;left:0;width:100%;border-radius:3px;background:#6a6f6a}
   /* observation-amount slider (user, 2026-09-25): bottom edge, between − and i */
   .obsamt{position:absolute;bottom:10px;left:124px;right:46px;z-index:35;height:30px;box-sizing:border-box;
     display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:999px;overflow:hidden;
@@ -1978,8 +1980,15 @@ async function renderRangeMap(ids,sci,opts){
   // the panel slides away to the right. Built lazily on open — layers arrive
   // async, so the list reflects whatever this page's map actually has by then.
   const lgPanel=document.createElement('div'); lgPanel.className='maplegend gone';
-  lgPanel.innerHTML='<div class="lg-body"></div>';
+  lgPanel.innerHTML='<div class="lg-body"></div><div class="lg-sb"><div class="lg-sbt"></div></div>';
   el.appendChild(lgPanel);
+  const lgSb=()=>{ const b=lgPanel.querySelector('.lg-body'), s=lgPanel.querySelector('.lg-sb'), t=lgPanel.querySelector('.lg-sbt');
+    if(!b||!s||!t) return;
+    const scrolls=b.scrollHeight>b.clientHeight+1; s.style.display=scrolls?'block':'none'; if(!scrolls) return;
+    const th=Math.max(18, s.clientHeight*b.clientHeight/b.scrollHeight);
+    t.style.height=th+'px';
+    t.style.top=((s.clientHeight-th)*(b.scrollTop/(b.scrollHeight-b.clientHeight)))+'px'; };
+  lgPanel.querySelector('.lg-body').addEventListener('scroll',lgSb);
   const LG=[   // [label, fallback color, swatch shape, layer ids] — LITERALLY
     // EVERYTHING on the map (user, 2026-09-24), fine-grained rows
     ['Observations','#ffe14d','x',['obsdots']],
@@ -2028,7 +2037,7 @@ async function renderRangeMap(ids,sci,opts){
   map.addControl({onAdd(m){const d=document.createElement('div');
       d.className='maplibregl-ctrl zoomctl';
       d.innerHTML='<button aria-label="Legend" title="Legend">▤</button>';
-      d.firstChild.onclick=()=>{ if(lgPanel.classList.contains('gone')){ lgBuild(); lgPanel.classList.remove('gone'); }
+      d.firstChild.onclick=()=>{ if(lgPanel.classList.contains('gone')){ lgBuild(); lgPanel.classList.remove('gone'); requestAnimationFrame(lgSb); }
         else lgPanel.classList.add('gone'); };
       return d;}, onRemove(){}}, 'top-right');   // right below ⛶
   window._map=map;   // debug/testing handle
