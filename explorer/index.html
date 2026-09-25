@@ -2533,9 +2533,9 @@ async function renderRangeMap(ids,sci,opts){
             4.5, ['<',['get','q'], Math.min(1, 2800/obsFeats.length)],
             5.5, true],
           layout:{'icon-image':'xpt','icon-allow-overlap':true,'icon-ignore-placement':true,
-            'icon-size':['interpolate',['exponential',1.5],['zoom'],   // world-scale unchanged;
-              // grows harder as you dive (user, 2026-09-24 "bigger when zoomed in")
-              0,['*',0.4,byCount], 3,['*',0.88,byCount], 6,['*',2.7,byCount], 9,['*',5,byCount]]},
+            'icon-size':['interpolate',['exponential',1.5],['zoom'],   // visible from
+              // world scale too (user, 2026-09-25 "see the xs from farther away")
+              0,['*',0.6,byCount], 3,['*',1.25,byCount], 6,['*',2.7,byCount], 9,['*',5,byCount]]},
           paint:{'icon-opacity':0,'icon-opacity-transition':{duration:700},
             'icon-color':'#ffe14d',   // crisp yellow core, like the eco border's #ffe14d line
             // the eco-border glow tech (user, 2026-09-24): wide soft #FFD700 aura
