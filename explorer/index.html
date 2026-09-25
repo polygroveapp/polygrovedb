@@ -1966,7 +1966,8 @@ async function renderRangeMap(ids,sci,opts){
     map.addSource('dem',{type:'raster-dem', encoding:'terrarium', tileSize:256, maxzoom:13,
       tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
       attribution:'terrain: Mapzen/AWS (SRTM, USGS)'});
-    map.setTerrain({source:'dem', exaggeration:5.1});   // dialed to 2/3 of the 2x bump (user, 2026-09-25)
+    // ⛰ toggle doubles the drama (user, 2026-09-25); choice persists across pages
+    map.setTerrain({source:'dem', exaggeration:window._mtnX?12:5.1});
     // hillshade makes the height READ — displaced flat colors still look flat
     // without light on the slopes (own source: terrain+hillshade can't share)
     map.addSource('demshade',{type:'raster-dem', encoding:'terrarium', tileSize:256, maxzoom:13,
@@ -1974,7 +1975,7 @@ async function renderRangeMap(ids,sci,opts){
     map.addLayer({id:'hillshade',type:'hillshade',source:'demshade',
       // shadows only, translucent highlights — shading a layer that now sits over
       // the green fill: opaque grey highlights would wash the color out
-      paint:{'hillshade-exaggeration':0.67,'hillshade-shadow-color':'#000000',   // 2/3 of the 2x punch (user, 2026-09-25)
+      paint:{'hillshade-exaggeration':window._mtnX?1:0.67,'hillshade-shadow-color':'#000000',   // 2/3 punch; full when ⛰ toggled (user, 2026-09-25)
              'hillshade-highlight-color':'rgba(255,255,255,0.09)','hillshade-accent-color':'rgba(0,0,0,0.33)'}},
       map.getLayer('ecoline')?'ecoline':undefined);
   }catch(e){ console.warn('terrain/contours', e); } });
@@ -2049,6 +2050,17 @@ async function renderRangeMap(ids,sci,opts){
       d.firstChild.onclick=()=>{ if(lgPanel.classList.contains('gone')){ lgBuild(); lgPanel.classList.remove('gone'); requestAnimationFrame(lgSb); }
         else lgPanel.classList.add('gone'); };
       return d;}, onRemove(){}}, 'top-right');   // right below ⛶
+  // ⛰ EXAGGERATE MOUNTAINS toggle (user, 2026-09-25): normal 5.1x vs 12x terrain
+  map.addControl({onAdd(m){const d=document.createElement('div');
+      d.className='maplibregl-ctrl zoomctl';
+      d.innerHTML='<button aria-label="Exaggerate mountains" title="Exaggerate mountains">⛰</button>';
+      const bt=d.firstChild;
+      const paint=()=>{ bt.style.color=window._mtnX?'#ffe14d':''; bt.style.borderColor=window._mtnX?'#ffe14d':''; };
+      paint();
+      bt.onclick=()=>{ window._mtnX=!window._mtnX; paint();
+        try{ map.setTerrain({source:'dem', exaggeration:window._mtnX?12:5.1});
+             if(map.getLayer('hillshade')) map.setPaintProperty('hillshade','hillshade-exaggeration',window._mtnX?1:0.67); }catch(e){} };
+      return d;}, onRemove(){}}, 'top-right');   // below the legend ▤
   window._map=map;   // debug/testing handle
   // PILL BOXES behind EVERY map name (user, 2026-09-09): grey-filled rounded chip
   // whose BORDER matches that name's color language. icon-text-fit stretches the
