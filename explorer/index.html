@@ -1954,7 +1954,7 @@ async function renderRangeMap(ids,sci,opts){
     map.addSource('dem',{type:'raster-dem', encoding:'terrarium', tileSize:256, maxzoom:13,
       tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
       attribution:'terrain: Mapzen/AWS (SRTM, USGS)'});
-    map.setTerrain({source:'dem', exaggeration:3.8});   // MORE drama requested (user, 2026-09-09; was 2.6)
+    map.setTerrain({source:'dem', exaggeration:7.6});   // 2x MORE drama again (user, 2026-09-25; was 3.8)
     // hillshade makes the height READ — displaced flat colors still look flat
     // without light on the slopes (own source: terrain+hillshade can't share)
     map.addSource('demshade',{type:'raster-dem', encoding:'terrarium', tileSize:256, maxzoom:13,
@@ -1962,8 +1962,8 @@ async function renderRangeMap(ids,sci,opts){
     map.addLayer({id:'hillshade',type:'hillshade',source:'demshade',
       // shadows only, translucent highlights — shading a layer that now sits over
       // the green fill: opaque grey highlights would wash the color out
-      paint:{'hillshade-exaggeration':0.55,'hillshade-shadow-color':'#000000',
-             'hillshade-highlight-color':'rgba(255,255,255,0.07)','hillshade-accent-color':'rgba(0,0,0,0.28)'}},
+      paint:{'hillshade-exaggeration':1,'hillshade-shadow-color':'#000000',   // 2x punch (user, 2026-09-25; was .55/.07/.28)
+             'hillshade-highlight-color':'rgba(255,255,255,0.14)','hillshade-accent-color':'rgba(0,0,0,0.5)'}},
       map.getLayer('ecoline')?'ecoline':undefined);
   }catch(e){ console.warn('terrain/contours', e); } });
   map.addControl({onAdd(m){const d=document.createElement('div');
