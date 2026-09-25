@@ -2011,7 +2011,7 @@ async function renderRangeMap(ids,sci,opts){
     ['Park names & dots','#c49a76','dot',['parklbl','parkdot']],
     ['Trails','#ff8c1a','line',['trails']],
     ['Trail names','#ff8c1a','txt',['traillbl']],
-    ['Peaks','#cfc9bb','tri',['peaklbl']],
+    ['Peaks','#cfc9bb','tri',['peaklbl','peaklbl-must']],
     ['Lakes','#3d6a8a','fill',['lakes']],
     ['Lake names','#9aa3ab','txt',['lakelbl']],
     ['City names & dots','#6f9ac8','dot',['citylbl','citydot']],
@@ -2259,6 +2259,18 @@ async function renderRangeMap(ids,sci,opts){
           paint:{'text-color':'#cfc9bb','text-halo-color':'#0d0d0d','text-halo-width':1.15,'text-opacity':0.93}},
           // MUST land AFTER the hillshade raster (symbols inserted before it never
           // place at all) and BEFORE obsdots (to win collision priority)
+          map.getLayer('obsdots')?'obsdots':(map.getLayer('traillbl')?'traillbl':undefined));
+        // must:1 peaks (manual additions like Half Dome) ALWAYS place — the
+        // Yosemite park label was collision-culling Half Dome (user, 2026-09-25)
+        map.addLayer({id:'peaklbl-must',type:'symbol',source:'peaks',minzoom:6.5,
+          filter:['==',['get','must'],1],
+          layout:{'icon-image':'peakpt','icon-size':0.85,
+                  'icon-allow-overlap':true,'icon-ignore-placement':true,
+                  'text-allow-overlap':true,'text-ignore-placement':true,
+                  'text-field':['get','name'],'text-font':['Noto Sans Regular'],
+                  'text-size':9.5,'text-max-width':8,
+                  'text-offset':[0,-0.9],'text-anchor':'bottom'},
+          paint:{'text-color':'#cfc9bb','text-halo-color':'#0d0d0d','text-halo-width':1.15,'text-opacity':0.93}},
           map.getLayer('obsdots')?'obsdots':(map.getLayer('traillbl')?'traillbl':undefined));
         // the async layers race: hillshade often arrives AFTER us, stranding this
         // layer in the pre-raster dead zone. NOT map.on('idle') — the shimmer
