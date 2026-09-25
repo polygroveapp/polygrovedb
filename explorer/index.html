@@ -1942,9 +1942,10 @@ async function renderRangeMap(ids,sci,opts){
   // armed at creation: any user gesture cancels the (late) card fly-in below
   let userMoved=false;
   for(const ev of ['wheel','mousedown','touchstart']) el.addEventListener(ev,()=>{userMoved=true;},{passive:true,capture:true});
-  const map=new maplibregl.Map({container:el, center:[12,22], zoom:0.25, maxZoom:10, doubleClickZoom:false,
-    // maxZoom 7.5: beyond this the simplified ecoregion polygons tear into black
-    // shards and the 1km observation cells outrun their own precision
+  const map=new maplibregl.Map({container:el, center:[12,22], zoom:0.25, maxZoom:13, doubleClickZoom:false,
+    // maxZoom 13 (user, 2026-09-25 "zoom in more"; was 10): the terrain tiles
+    // top out at 13 too. The simplified ecoregion polygons and 1km obs cells
+    // outrun their precision up here — visible, priced in
     // compact: credits collapse to an ⓘ the reader can open, instead of sitting
     // expanded across the bottom of every map
     attributionControl:{compact:true,customAttribution:'RESOLVE Ecoregions 2017 (CC-BY 4.0) · dots: GBIF occurrences (CC0/CC-BY) · cities: Natural Earth (PD) · parks: Wikidata (CC0)'},
