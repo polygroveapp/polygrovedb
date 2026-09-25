@@ -41,15 +41,48 @@ coarse AS (
 SELECT * FROM fine UNION ALL SELECT * FROM coarse ORDER BY sci, n DESC, cx, cy""").fetchall()
 print(f"{len(rows):,} cells for the deck  ({time.time()-t0:.0f}s)", flush=True)
 
+# %% [markdown]
+# Month bitmasks (user, 2026-09-25: map month buttons): join the shipped cells to
+# the per-cell month scan. Bit m-1 set = records in month m. The raw ptsm table is
+# uncompacted (the standalone GROUP BY OOMed) — the semi-join here shrinks the
+# aggregation input to just the shipped cells, so it fits easily.
+
+# %%
+masks={}
+if os.path.exists("../../data/occ_points_month.duckdb"):
+    con.sql("SET preserve_insertion_order=false;")
+    con.sql("ATTACH '../../data/occ_points_month.duckdb' AS om (READ_ONLY);")
+    con.sql("CREATE TEMP TABLE ship(sci VARCHAR, cx INTEGER, cy INTEGER)")
+    con.executemany("INSERT INTO ship VALUES (?,?,?)", [(r[0],int(r[1]),int(r[2])) for r in rows])
+    # fine cells match exactly; coarse fallback cells (0.1-deg, idx*10) match the
+    # month scan rolled up with floor (NOT integer division: negatives differ)
+    mrows=con.sql("""
+      WITH shipk AS (SELECT norm(sci) k, sci, cx, cy FROM ship),
+      fine AS (
+        SELECT s.sci, s.cx, s.cy, sum(DISTINCT (1<<(p.month-1))) mask
+        FROM om.ptsm p JOIN shipk s ON s.k=p.k AND s.cx=p.cx AND s.cy=p.cy
+        WHERE p.month BETWEEN 1 AND 12 GROUP BY 1,2,3),
+      coarse AS (
+        SELECT s.sci, s.cx, s.cy, sum(DISTINCT (1<<(p.month-1))) mask
+        FROM om.ptsm p JOIN shipk s
+          ON s.k=p.k AND s.cx=(floor(p.cx/10.0)*10)::INT AND s.cy=(floor(p.cy/10.0)*10)::INT
+        WHERE p.month BETWEEN 1 AND 12 AND (s.cx%10=0 AND s.cy%10=0)
+        GROUP BY 1,2,3)
+      SELECT sci,cx,cy,max(mask) FROM (SELECT * FROM fine UNION ALL SELECT * FROM coarse) GROUP BY 1,2,3""").fetchall()
+    masks={(r[0],r[1],r[2]):int(r[3]) for r in mrows}
+    print(f"month masks for {len(masks):,}/{len(rows):,} cells  ({time.time()-t0:.0f}s)", flush=True)
+
 def djb2(s):
     h=5381
     for ch in s: h=((h*33)+ord(ch))&0xffffffff
     return h%256
 shards=defaultdict(dict)
 for sci,cx,cy,n in rows:
-    shards[djb2(sci)].setdefault(sci,[]).append([int(cx),int(cy),int(n)])
+    cell=[int(cx),int(cy),int(n)]
+    m=masks.get((sci,int(cx),int(cy)))
+    if m: cell.append(m)
+    shards[djb2(sci)].setdefault(sci,[]).append(cell)
 outdir="../../explorer/data/obs"; os.makedirs(outdir,exist_ok=True)
 for k,d in shards.items():
     json.dump(d, open(f"{outdir}/{k}.json","w"), separators=(',',':'))
-import subprocess
 print(f"wrote {len(shards)} shards  ({time.time()-t0:.0f}s)")

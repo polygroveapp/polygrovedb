@@ -11,6 +11,8 @@
 import duckdb, time
 t0=time.time()
 con = duckdb.connect("../../data/occ_points_month.duckdb")
+# the first run was SIGKILLed (OOM) at 5,775/9,705 parts — cap the appetite
+con.sql("SET memory_limit='6GB'; SET threads=4;")
 con.sql("INSTALL httpfs; LOAD httpfs; SET s3_region='us-east-1';")
 con.sql("ATTACH '../../polygrove.duckdb' AS pg (READ_ONLY);")
 con.sql(r"""CREATE OR REPLACE MACRO norm(s) AS
