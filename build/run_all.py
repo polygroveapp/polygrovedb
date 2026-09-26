@@ -30,7 +30,8 @@ CHAIN = [
     # spatial layers BEFORE trait sources: some source notebooks' analysis cells
     # join species_ecoregions (caught by the clean-rebuild test)
     ("20_derive/resolve_rejoin.py",        "occurrences×RESOLVE license-filtered + GARD reptiles (LONG: S3 + spatial)"),
-    ("20_derive/phylacine.py",             "PHYLACINE mammal ranges → ecoregions (LONG: 5,831 rasters)"),
+    ("20_derive/phylacine.py",             "PHYLACINE mammal ranges → ecoregions + pure mammal_ranges (LONG: 5,831 rasters)"),
+    ("20_derive/gard_ranges.py",           "pure GARD reptile_ranges (spatial join; range filter input)"),
     ("20_derive/ecoregion_area.py",        "ecoregion areas (density tiebreak for primary biome)"),
     ("20_derive/plant_lifeform.py",        "WCVP growth forms -> plant_lifeform (Tree/Shrub/Herb/... deck groups)"),
     ("10_sources/avonet.py",               "birds: AVONET"),
@@ -48,6 +49,7 @@ CHAIN = [
     ("10_sources/traits_wide.py",          "WIDE ingest: every usable column of every source → traits_long (question discovery)"),
     # occurrence_grid_full.py (3h S3 scan) refreshes data/occurrence_ecoregions_full.parquet;
     # the parquet is a versioned derived artifact, so the chain consumes it directly:
+    ("20_derive/species_ecoregions_rebuild.py", "species_ecoregions from CLEAN parts: mammal_ranges ∪ reptile_ranges ∪ sightings-only scan"),
     ("20_derive/occurrence_integrate.py",  "merge FULL occurrence run into species_ecoregions"),
     ("20_derive/species_popularity.py",    "observation counts per species (from occ grid)"),
     ("30_output/fetch_wikidata_fame.py",   "global fame = Wikidata sitelinks for deck species (cached; network for new ids)"),
