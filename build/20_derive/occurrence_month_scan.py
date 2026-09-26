@@ -41,7 +41,9 @@ for i in range(0, len(todo), BATCH):
                     FROM read_parquet({blist})
                     WHERE species IS NOT NULL AND month IS NOT NULL
                       AND decimallatitude IS NOT NULL AND decimallongitude IS NOT NULL
-                      AND license IN ('CC0_1_0','CC_BY_4_0')) o
+                      AND license IN ('CC0_1_0','CC_BY_4_0')
+                      -- sightings only, same as occurrence_grid_full.py (2026-09-26)
+                      AND basisofrecord IN ('HUMAN_OBSERVATION','MACHINE_OBSERVATION','OBSERVATION','OCCURRENCE')) o
               JOIN cell2eco c ON c.cx=o.cx AND c.cy=o.cy
               GROUP BY 1,2,3;""")
             con.executemany("INSERT OR IGNORE INTO parts_done VALUES (?)", [(p,) for p in batch])

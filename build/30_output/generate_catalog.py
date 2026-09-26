@@ -288,20 +288,54 @@ BIOME = as_map("""SELECT species_id, eco_name FROM (
   JOIN ecoregion_area a ON a.ECO_ID = e.ECO_ID)
   WHERE rn = 1""")
 # per-card range = its ecoregion ids (top 60 by weight caps the map payload;
-# beyond that a range is visually saturated anyway)
+# beyond that a range is visually saturated anyway).
+# MEMBERSHIP FLOOR (user, 2026-09-26 — "are there really lions in Alaska?"):
+# a single stray record doesn't put a species in a deck (MIN_RECS=2). NOT higher,
+# and NO share-of-records rule: GBIF is so undersampled in Africa that a 1% rule
+# threw the Stone-curlew and the Elephant out of the Sahel, and the African Bush
+# Elephant's real Sahel presence is 2 records. Counts can't tell a zoo from a
+# habitat anyway — captives are a MAMMAL problem ("there aren't really zoos for
+# insects, and trees in a zoo are still part of the ecosystem") and are handled by
+# the PHYLACINE range filter below. Ranked on PURE observation counts (obs_eco),
+# not the mixed species_ecoregions weights; expert ranges (PHYLACINE/GARD) stay
+# the fallback for species with no observations at all.
+MIN_RECS, MIN_SHARE = 2, 0.0
+# MAMMAL RANGE FILTER (part 2): a mammal's observed ecoregion counts only if it lies
+# inside its PHYLACINE 1.2 CURRENT range (mammal_ranges, written by
+# 20_derive/phylacine.py — NOT species_ecoregions, which occurrence_integrate.py
+# tops up with observations, zoo sightings included). Outside the range = a zoo, an
+# escapee or a stray: European zoo photos are 13% of every Lion record on GBIF, so
+# no share-of-records override can be trusted. Mammals PHYLACINE doesn't map keep
+# their observations (nothing to filter against). Only mammals: birds migrate (both
+# decks are true), and nobody keeps insects in zoos.
+con.sql("""CREATE OR REPLACE TEMP TABLE mam_range AS
+  SELECT species_id, ecoregion_id FROM mammal_ranges;""")
+con.sql("""CREATE OR REPLACE TEMP TABLE mam_mapped AS
+  SELECT DISTINCT species_id FROM mammal_ranges;""")
 ECOS = {}
 # outer ORDER BY is load-bearing: without it the parallel scan returns rows in arbitrary
 # order and the per-card list (which IS the card's ranked range) reshuffles between runs.
-# ECOW carries each ecoregion's SHARE of the species' records (per-mille): the map fills
-# core range solid and marginal range faint instead of asserting binary membership —
-# an Asian plant's 0.5%-of-records naturalized US foothold no longer lights up like home
-# (user, 2026-08-25, Achyranthes bidentata).
-for sid, eco, _rn in con.sql("""SELECT species_id, ecoregion_id, rn FROM (
+for sid, eco, _rn in con.sql(f"""SELECT species_id, ecoregion_id, rn FROM (
     SELECT species_id, ecoregion_id,
-           row_number() OVER (PARTITION BY species_id ORDER BY occurrence_count DESC, ecoregion_id) rn
-    FROM species_ecoregions WHERE species_id IN (SELECT species_id FROM catalog))
+           row_number() OVER (PARTITION BY species_id ORDER BY w DESC, ecoregion_id) rn
+    FROM (
+      SELECT o.species_id, o.ecoregion_id, o.recs AS w
+      FROM (SELECT species_id, ecoregion_id, recs,
+                   recs * 1.0 / sum(recs) OVER (PARTITION BY species_id) AS frac
+            FROM obs_eco) o
+      JOIN species s ON s.species_id = o.species_id
+      WHERE o.recs >= {MIN_RECS} AND o.frac >= {MIN_SHARE}
+        AND (s.class <> 'Mammalia'
+             OR o.species_id NOT IN (SELECT species_id FROM mam_mapped)
+             OR (o.species_id, o.ecoregion_id) IN (SELECT species_id, ecoregion_id FROM mam_range))
+      UNION ALL   -- fallback: expert-range weights, only where no observations exist
+      SELECT se.species_id, se.ecoregion_id, se.occurrence_count FROM species_ecoregions se
+      WHERE se.species_id IN (SELECT species_id FROM catalog)
+        AND se.species_id NOT IN (SELECT species_id FROM obs_eco)))
   WHERE rn<=60 ORDER BY species_id, rn""").fetchall():
     ECOS.setdefault(sid, []).append(eco)
+print("ecoregion memberships:", sum(len(v) for v in ECOS.values()), "pairs across", len(ECOS), "species",
+      f"(threshold >={MIN_RECS} recs & >={MIN_SHARE:.0%} of the species' records)")
 cat_ids = [r[0] for r in con.sql("SELECT species_id FROM catalog").fetchall()]
 catset = set(cat_ids)
 CARDABLE = set(r[0] for r in con.sql("""SELECT DISTINCT species_id FROM (

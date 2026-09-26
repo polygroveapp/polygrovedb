@@ -39,6 +39,9 @@ for i in range(0,len(todo),BATCH):
               WHERE o.species IS NOT NULL AND o.decimallatitude IS NOT NULL AND o.decimallongitude IS NOT NULL
                 AND o.month IS NOT NULL
                 AND o.license IN ('CC0_1_0','CC_BY_4_0')
+                -- sightings only, same as occurrence_grid_full.py (2026-09-26): no
+                -- fossils, museum specimens, samples or citations on the map
+                AND o.basisofrecord IN ('HUMAN_OBSERVATION','MACHINE_OBSERVATION','OBSERVATION','OCCURRENCE')
                 AND norm(o.species) IN (SELECT k FROM deck_names)
               GROUP BY 1,2,3,4""")
             con.executemany("INSERT OR IGNORE INTO parts_done VALUES (?)", [(p,) for p in batch])

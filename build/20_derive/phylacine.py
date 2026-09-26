@@ -43,6 +43,14 @@ for i,f in enumerate(RASTERS):
 print(f"processed → {len(recs):,} (species,ecoregion) rows  ({time.time()-t0:.0f}s)", flush=True)
 
 con.register("me", pd.DataFrame(recs, columns=["sci","eco","cnt"]))
+# the PURE range, kept apart (2026-09-26): species_ecoregions gets topped up with
+# observations later (occurrence_integrate.py) — zoo sightings included — so the
+# catalog's mammal range filter reads THIS table, never species_ecoregions.
+con.sql("""CREATE OR REPLACE TABLE mammal_ranges AS
+  SELECT n.species_id, m.eco AS ecoregion_id, m.cnt AS cells FROM me m
+  JOIN name2sid n ON n.norm_name=norm(m.sci)
+  JOIN species s ON s.species_id=n.species_id AND s.class='Mammalia';""")
+print("mammal_ranges:", con.sql("SELECT count(*), count(DISTINCT species_id) FROM mammal_ranges").fetchone(), flush=True)
 con.sql("DELETE FROM species_ecoregions WHERE species_id IN (SELECT species_id FROM species WHERE class='Mammalia');")
 con.sql("""INSERT INTO species_ecoregions (species_id, ecoregion_id, occurrence_count)
   SELECT n.species_id, m.eco, m.cnt FROM me m JOIN name2sid n ON n.norm_name=norm(m.sci)
