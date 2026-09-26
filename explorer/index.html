@@ -196,6 +196,9 @@
   .face.front{position:absolute;inset:0;display:flex;flex-direction:column;background:#1a1a1a;border-radius:14px}
   .dc-site{text-align:center;color:#555555;font-size:11px;letter-spacing:.1em;padding:2px 0 7px;display:flex;justify-content:space-between}
   .dc-site .mid{flex:1;text-align:center}
+  /* the demo's photo field: near-black with a radial accent glow behind the hex
+     (user, 2026-09-26), full-bleed to the card edges */
+  .hexglow{flex:1;display:flex;align-items:center;justify-content:center;margin:0 -16px;min-height:190px}
   .bighex{width:148px;height:167px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;margin:auto}
   .bighex .in{width:136px;height:154px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:#111111;display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:11px;text-align:center;padding:0 20px}
   .maplibregl-ctrl-attrib{background:rgba(14,21,18,.7)!important;color:var(--dim)!important;font-size:10px}
@@ -1555,11 +1558,12 @@ function speciesCardHTML(c){   // THE card — shared by the species page and th
     </div>
     <div class="face front">
       <div class="dc-site"><span>⚑</span><span class="mid">polygrove.io</span><span>☆</span></div>
-      <div class="bighex" style="background:${tc}"><div class="in">photo — Wikipedia lead image at runtime</div></div>
-      <div style="border-top:2px solid ${tc};margin:10px 0 7px"></div>
+      <div class="hexglow" style="background:radial-gradient(ellipse at center, ${tc}22, #111111 70%)"><div class="bighex" style="background:${tc}"><div class="in">photo — Wikipedia lead image at runtime</div></div></div>
+      <div style="border-top:2px solid ${tc};margin:0 -16px 7px"></div>
       <div class="dc-name" style="font-size:18px">${c.name}</div>
       <div class="dc-sci">${c.sci}</div>
       <div style="font-size:12.5px;margin:6px 0 10px"><b style="color:${tc}">${c.trophic||'?'}</b>${fdot} <span style="color:#888888">· ${c.group}</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,.05);margin:0 -16px 10px"></div><!-- demo's faint section line (user, 2026-09-26) -->
       <div class="dc-note cardlead" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
       <div class="dc-pill" style="margin-top:auto">Tap for details</div>
     </div>
