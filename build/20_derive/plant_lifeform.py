@@ -27,8 +27,8 @@ con.sql("""CREATE OR REPLACE TEMP MACRO lifecat(lf) AS
        WHEN lf LIKE '%shrub%' THEN 'Shrub'
        WHEN lf LIKE '%geophyte%' THEN 'Geophyte'   -- own category (user, 2026-09-09): bulbs/tubers/rhizomes
        -- Perennial Herb = FULLY perennial only (user, 2026-09-09); ANY annual/
-       -- biennial mention ('annual or perennial' etc) goes to Annual/Biennial
-       WHEN lf LIKE '%annual%' OR lf LIKE '%biennial%' THEN 'Annual/Biennial Herb'
+       -- biennial mention ('annual or perennial' etc) goes to Bi/Annual
+       WHEN lf LIKE '%annual%' OR lf LIKE '%biennial%' THEN 'Bi/Annual Herb'
        WHEN lf LIKE '%perennial%' THEN 'Perennial Herb'
        ELSE 'Plant' END""")
 
