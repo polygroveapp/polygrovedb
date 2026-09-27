@@ -319,6 +319,9 @@ for sid, eco, _rn in con.sql(f"""SELECT species_id, ecoregion_id, rn FROM (
     SELECT species_id, ecoregion_id,
            row_number() OVER (PARTITION BY species_id ORDER BY w DESC, ecoregion_id) rn
     FROM (
+      -- one row per (species, ecoregion): an observation inside a mammal's range
+      -- appears in both branches below; keep the stronger weight
+      SELECT species_id, ecoregion_id, max(w) AS w FROM (
       SELECT o.species_id, o.ecoregion_id, o.recs AS w
       FROM (SELECT species_id, ecoregion_id, recs,
                    recs * 1.0 / sum(recs) OVER (PARTITION BY species_id) AS frac
@@ -328,10 +331,20 @@ for sid, eco, _rn in con.sql(f"""SELECT species_id, ecoregion_id, rn FROM (
         AND (s.class <> 'Mammalia'
              OR o.species_id NOT IN (SELECT species_id FROM mam_mapped)
              OR (o.species_id, o.ecoregion_id) IN (SELECT species_id, ecoregion_id FROM mam_range))
+      UNION ALL   -- mapped mammals: the PHYLACINE range is the FLOOR of membership
+      -- (2026-09-27): the Elephant's only Sahel records were museum specimens, so
+      -- sightings-only observation left it out of a deck its expert range puts it
+      -- squarely in. Range cells rank below observation counts, so observed
+      -- ecoregions still lead the card's list; the floor just never drops out.
+      SELECT mr.species_id, mr.ecoregion_id, mr.cells * 0.001 AS w
+      FROM mammal_ranges mr
+      WHERE mr.species_id IN (SELECT species_id FROM catalog)
+        AND mr.species_id IN (SELECT species_id FROM obs_eco)
       UNION ALL   -- fallback: expert-range weights, only where no observations exist
       SELECT se.species_id, se.ecoregion_id, se.occurrence_count FROM species_ecoregions se
       WHERE se.species_id IN (SELECT species_id FROM catalog)
-        AND se.species_id NOT IN (SELECT species_id FROM obs_eco)))
+        AND se.species_id NOT IN (SELECT species_id FROM obs_eco)
+      ) GROUP BY species_id, ecoregion_id))
   WHERE rn<=60 ORDER BY species_id, rn""").fetchall():
     ECOS.setdefault(sid, []).append(eco)
 print("ecoregion memberships:", sum(len(v) for v in ECOS.values()), "pairs across", len(ECOS), "species",
