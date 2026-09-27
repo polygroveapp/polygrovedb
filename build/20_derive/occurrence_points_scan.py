@@ -34,6 +34,10 @@ for i in range(0,len(todo),BATCH):
               FROM read_parquet({blist}) o
               WHERE o.species IS NOT NULL AND o.decimallatitude IS NOT NULL AND o.decimallongitude IS NOT NULL
                 AND o.license IN ('CC0_1_0','CC_BY_4_0')
+                -- SIGHTINGS ONLY (2026-09-27), same as the other three scans: this file
+                -- draws the map's Xs, and it was the LAST place zoo/fossil/museum
+                -- records survived — the Lion's Albuquerque cell was the ABQ BioPark
+                AND o.basisofrecord IN ('HUMAN_OBSERVATION','MACHINE_OBSERVATION','OBSERVATION','OCCURRENCE')
                 AND norm(o.species) IN (SELECT k FROM deck_names)
               GROUP BY 1,2,3""")
             con.executemany("INSERT OR IGNORE INTO parts_done VALUES (?)", [(p,) for p in batch])

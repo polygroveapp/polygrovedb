@@ -47,6 +47,9 @@ CHAIN = [
     ("10_sources/fish_traits_cc.py",       "CC fish traits: Beukhof (CC-BY) + FishTraits (CC0) + Parravicini (MIT/CC-BY) — the FishBase replacement"),
     ("10_sources/diet_categories.py",      "categorical diet (Elton shares + TetrapodTraits presence) for Q4 fallback"),
     ("10_sources/traits_wide.py",          "WIDE ingest: every usable column of every source → traits_long (question discovery)"),
+    # occurrence_points_scan.py (S3 scan, ~2.5h) refreshes data/deck_obs_points.parquet —
+    # the 1 km cells the map's Xs draw; ALL FOUR scans must carry the same
+    # sightings-only basisofrecord filter (2026-09-27);
     # occurrence_grid_full.py (3h S3 scan) refreshes data/occurrence_ecoregions_full.parquet;
     # the parquet is a versioned derived artifact, so the chain consumes it directly:
     ("20_derive/species_ecoregions_rebuild.py", "species_ecoregions from CLEAN parts: mammal_ranges ∪ reptile_ranges ∪ sightings-only scan"),
