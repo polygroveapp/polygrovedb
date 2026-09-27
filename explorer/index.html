@@ -1919,17 +1919,27 @@ function getLabels(){
     .then(arr=>{ window._parkFC=arr[1]; return arr; });   // the Parks tab browses this
   return _labels;
 }
+// shard caches EXPIRE (2026-09-27): a tab left open across a redeploy kept
+// serving the old obs shard from memory (a Lion X in Colorado the CDN no longer
+// had) — card-to-card navigation never refetched. Re-fetch any shard older
+// than the CDN's own one-hour window so a live tab heals itself.
+const SHARD_TTL=60*60*1000;
+function _shard(cache,url,key){
+  const hit=cache[key];
+  if(hit&&Date.now()-hit.at<SHARD_TTL) return hit.p;
+  const p=fetch(url,{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}));
+  cache[key]={p,at:Date.now()};
+  return p;
+}
 const _rangeCache={};
 async function getRange(sci){                       // [[ecoregion_id, permille], ...] — NO cutoff
   const k=djb2(sci);
-  _rangeCache[k] ||= fetch(`data/range/${k}.json`,{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}));
-  return (await _rangeCache[k])[sci]||[];
+  return (await _shard(_rangeCache,`data/range/${k}.json`,k))[sci]||[];
 }
 const _obsCache={};
 async function getObs(sci){
   const k=djb2(sci);
-  _obsCache[k] ||= fetch(`data/obs/${k}.json`,{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}));
-  return (await _obsCache[k])[sci]||[];
+  return (await _shard(_obsCache,`data/obs/${k}.json`,k))[sci]||[];
 }
 async function renderRangeMap(ids,sci,opts){
   // opts (user, 2026-09-22 — ONE universal map for species/eco/park pages):
