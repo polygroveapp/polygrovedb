@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Polygrove — pick your ecoregion</title>
+<!-- THE APP'S ECOREGION PICKER (2026-09-28): the explorer's Ecoregions-page map,
+     verbatim in look — black land, deep-blue water, terrain relief + hillshade,
+     thin green ecoregion borders, the chosen region filled green with a glowing
+     green outline, green ecoregion names — served as a standalone page the phone
+     app embeds in a WebView (MapLibre Native can't run in Expo Go). Talks to the
+     app over window.ReactNativeWebView.postMessage:
+       app → page: {type:'state', current, collected:[eid…]}  (sets glow + gold)
+       page → app: {type:'ready'} · {type:'pick', eid, name, bbox}
+     Same data files and fonts as the explorer, from this same origin. -->
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<script src="vendor/maplibre-gl.js"></script>
+<style>
+  html,body{margin:0;height:100%;background:#0b1a29;overflow:hidden;font-family:-apple-system,system-ui,sans-serif}
+  #map{position:absolute;inset:0}
+  .maplibregl-ctrl-attrib{display:none}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const RN = window.ReactNativeWebView;
+const send = (m) => { try { RN ? RN.postMessage(JSON.stringify(m)) : console.log('msg', m); } catch (e) {} };
+
+const map = new maplibregl.Map({
+  container: 'map', center: [12, 22], zoom: 0.6, maxZoom: 13, doubleClickZoom: false,
+  attributionControl: false, pitchEnabled: false, dragRotate: false, touchPitch: false,
+  style: { version: 8, glyphs: 'fonts/{fontstack}/{range}.pbf', sources: {},
+           layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1a29' } }] },
+});
+map.touchZoomRotate.disableRotation();
+
+let current = null, collected = [], ready = false, pendingState = null, GEO = null;
+const TERRAIN = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+
+map.on('load', async () => {
+  const [geo, lakes, labels] = await Promise.all([
+    fetch('data/eco_simple.geojson', { cache: 'no-cache' }).then(r => r.json()),
+    fetch('data/lakes.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+    fetch('data/admin_labels.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+  ]);
+  GEO = geo;
+  map.addSource('eco', { type: 'geojson', data: geo });
+  // the explorer's Ecoregions-page stack, in order
+  map.addLayer({ id: 'land', type: 'fill', source: 'eco', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
+  map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
+  map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
+    paint: { 'color-relief-opacity': 0.7,
+      'color-relief-color': ['interpolate', ['linear'], ['elevation'],
+        -6000, '#0e1f2e', -1500, '#14293c', -100, '#1b384d', 0, '#26402d',
+        300, '#2f4a33', 800, '#48603c', 1400, '#6b6f46', 2100, '#786740',
+        2900, '#665244', 3800, '#6e675e', 4800, '#98978f', 6500, '#c9c9c4'] } });
+  map.addSource('demshade', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
+  map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'demshade',
+    paint: { 'hillshade-exaggeration': 0.67, 'hillshade-shadow-color': '#000000',
+             'hillshade-highlight-color': 'rgba(255,255,255,0.09)', 'hillshade-accent-color': 'rgba(0,0,0,0.33)' } });
+  if (lakes) {
+    map.addSource('lakes', { type: 'geojson', data: lakes });
+    map.addLayer({ id: 'lakes', type: 'fill', source: 'lakes', paint: { 'fill-color': '#1d4266', 'fill-opacity': 0.85, 'fill-outline-color': '#2f5e8c' } });
+  }
+  // every ecoregion outlined thin green (dashed, as on the Ecoregions page)
+  map.addLayer({ id: 'ecoline', type: 'line', source: 'eco',
+    paint: { 'line-color': '#81C784', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 5, 0.8, 7.5, 1.2],
+             'line-opacity': 0.6, 'line-dasharray': [1.6, 1.9] } });
+  // ecoregions you hold cards in: gold (the app's rule, 2026-09-26)
+  map.addLayer({ id: 'gold', type: 'line', source: 'eco', filter: ['in', ['get', 'eco'], ['literal', []]],
+    paint: { 'line-color': '#FFD700', 'line-width': 1.8, 'line-opacity': 0.9 } });
+  // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
+  map.addLayer({ id: 'selfill', type: 'fill', source: 'eco', filter: ['==', ['get', 'eco'], -1],
+    paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0.45 } });
+  map.addLayer({ id: 'selglow', type: 'line', source: 'eco', filter: ['==', ['get', 'eco'], -1],
+    paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
+  map.addLayer({ id: 'selline', type: 'line', source: 'eco', filter: ['==', ['get', 'eco'], -1],
+    paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 1 } });
+  // green ecoregion names, placed on the polygons
+  map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
+    layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 2.4, 9, 6, 12], 'text-max-width': 9, 'text-padding': 6 },
+    paint: { 'text-color': '#81C784', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.2, 'text-opacity': 0.9 } });
+  if (labels) {
+    map.addSource('admin', { type: 'geojson', data: labels });
+    map.addLayer({ id: 'adminlbl', type: 'symbol', source: 'admin', minzoom: 1.5, maxzoom: 5,
+      filter: ['==', ['get', 'lvl'], 0],
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 9.5, 'text-transform': 'uppercase', 'text-letter-spacing': 0.2 },
+      paint: { 'text-color': '#8a8f8a', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1, 'text-opacity': 0.7 } });
+  }
+  ready = true;
+  if (pendingState) applyState(pendingState);
+  send({ type: 'ready' });
+});
+
+function applyState(s) {
+  if (!ready) { pendingState = s; return; }
+  if (Array.isArray(s.collected)) {
+    collected = s.collected;
+    map.setFilter('gold', ['in', ['get', 'eco'], ['literal', collected]]);
+  }
+  if (s.current !== undefined) setSelected(s.current, !!s.fly);
+}
+function setSelected(eid, fly) {
+  current = eid == null ? null : eid;
+  const f = ['==', ['get', 'eco'], current == null ? -1 : current];
+  for (const id of ['selfill', 'selglow', 'selline']) map.setFilter(id, f);
+  if (fly && current != null) {
+    const b = bboxOf(current);
+    if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, maxZoom: 6.5, duration: 1200 });
+  }
+}
+function bboxOf(eid) {
+  // our own parsed copy — MapLibre's source._data is not the feature collection
+  if (!GEO) return null;
+  let w = 180, s = 90, e = -180, n = -90, hit = false;
+  for (const f of GEO.features) {
+    if (f.properties.eco !== eid) continue; hit = true;
+    const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const p of polys) for (const [x, y] of p[0]) { if (x < w) w = x; if (x > e) e = x; if (y < s) s = y; if (y > n) n = y; }
+  }
+  return hit ? [w, s, e, n] : null;
+}
+
+map.on('click', ev => {
+  let f; try { f = map.queryRenderedFeatures(ev.point, { layers: ['land'] })[0]; } catch (e) { return; }
+  if (!f) return;
+  const eid = f.properties.eco, name = f.properties.name;
+  setSelected(eid, false);
+  send({ type: 'pick', eid, name, bbox: bboxOf(eid) });
+});
+
+// messages from the app (iOS delivers to window, Android to document)
+const onMsg = ev => { try { applyState(JSON.parse(ev.data)); } catch (e) {} };
+window.addEventListener('message', onMsg);
+document.addEventListener('message', onMsg);
+window.polygroveSetState = applyState;   // injectJavaScript entry point
+</script>
+</body>
+</html>
