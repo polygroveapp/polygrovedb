@@ -10,8 +10,12 @@
      green outline, green ecoregion names — served as a standalone page the phone
      app embeds in a WebView (MapLibre Native can't run in Expo Go). Talks to the
      app over window.ReactNativeWebView.postMessage:
-       app → page: {type:'state', current, collected:[eid…]}  (sets glow + gold)
-       page → app: {type:'ready'} · {type:'pick', eid, name, bbox}
+       app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}
+       page → app: {type:'ready'} · {type:'center', eid|null, name, bbox}
+     PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
+     under the pin is the selection (green) and is reported on every moveend.
+     `pad` is the app's chrome (header / preview sheet) in CSS px, so the pin
+     sits in the middle of the VISIBLE map and fly-to centres there too.
      Same data files and fonts as the explorer, from this same origin. -->
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <script src="vendor/maplibre-gl.js"></script>
@@ -36,6 +40,7 @@ const map = new maplibregl.Map({
 map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
+let PAD = { top: 0, bottom: 0 };
 const TERRAIN = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
 map.on('load', async () => {
@@ -92,24 +97,55 @@ map.on('load', async () => {
   ready = true;
   if (pendingState) applyState(pendingState);
   send({ type: 'ready' });
+  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; highlightPin(); }); });
+  // report at moveend AND once the tiles for the new view have rendered —
+  // right after a fly-to the region under the pin often isn't drawn yet, and
+  // queryRenderedFeatures only sees what's drawn
+  map.on('moveend', () => { report(); map.once('idle', report); });
+  map.once('idle', report);
 });
+
+// the pin: centre of the visible map (screen minus the app's chrome)
+let raf = 0;
+const pinPoint = () => { const c = map.getContainer(); return [c.clientWidth / 2, (PAD.top + (c.clientHeight - PAD.bottom)) / 2]; };
+function regionAtPin() {
+  try { return map.queryRenderedFeatures(pinPoint(), { layers: ['land'] })[0] || null; } catch (e) { return null; }
+}
+function highlightPin() {
+  const f = regionAtPin();
+  setSelected(f ? f.properties.eco : null);
+}
+let lastReported;
+function report() {
+  const f = regionAtPin(), eid = f ? f.properties.eco : null;
+  setSelected(eid);
+  if (eid === lastReported) return;
+  lastReported = eid;
+  send(f ? { type: 'center', eid, name: f.properties.name, bbox: bboxOf(eid) } : { type: 'center', eid: null });
+}
 
 function applyState(s) {
   if (!ready) { pendingState = s; return; }
+  if (s.pad) PAD = { top: +s.pad.top || 0, bottom: +s.pad.bottom || 0 };
   if (Array.isArray(s.collected)) {
     collected = s.collected;
     map.setFilter('gold', ['in', ['get', 'eco'], ['literal', collected]]);
   }
-  if (s.current !== undefined) setSelected(s.current, !!s.fly);
+  if (s.fly && s.current != null) flyTo(s.current);
+  else if (s.pad) highlightPin();
 }
-function setSelected(eid, fly) {
+function flyTo(eid) {
+  const b = bboxOf(eid);
+  if (!b) return;
+  // padding = the app's chrome, so the region is centred on the pin
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]],
+    { padding: { top: PAD.top + 30, bottom: PAD.bottom + 30, left: 30, right: 30 }, maxZoom: 6.5, duration: 1200 });
+}
+function setSelected(eid) {
+  if (eid === current) return;
   current = eid == null ? null : eid;
   const f = ['==', ['get', 'eco'], current == null ? -1 : current];
   for (const id of ['selfill', 'selglow', 'selline']) map.setFilter(id, f);
-  if (fly && current != null) {
-    const b = bboxOf(current);
-    if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, maxZoom: 6.5, duration: 1200 });
-  }
 }
 function bboxOf(eid) {
   // our own parsed copy — MapLibre's source._data is not the feature collection
@@ -123,19 +159,19 @@ function bboxOf(eid) {
   return hit ? [w, s, e, n] : null;
 }
 
+// a tap slides the tapped spot under the pin (moveend then reports it)
 map.on('click', ev => {
-  let f; try { f = map.queryRenderedFeatures(ev.point, { layers: ['land'] })[0]; } catch (e) { return; }
-  if (!f) return;
-  const eid = f.properties.eco, name = f.properties.name;
-  setSelected(eid, false);
-  send({ type: 'pick', eid, name, bbox: bboxOf(eid) });
+  const c = map.getContainer(), p = pinPoint();
+  map.easeTo({ center: ev.lngLat, offset: [0, p[1] - c.clientHeight / 2], duration: 500 });
 });
 
 // messages from the app (iOS delivers to window, Android to document)
 const onMsg = ev => { try { applyState(JSON.parse(ev.data)); } catch (e) {} };
 window.addEventListener('message', onMsg);
 document.addEventListener('message', onMsg);
-window.polygroveSetState = applyState;   // injectJavaScript entry point
+window.polygroveSetState = applyState;   // injectJavaScript entry points
+// the app's + / − buttons: zoom around the pin so what's under it stays put
+window.polygroveZoom = d => { if (ready) map.easeTo({ zoom: map.getZoom() + d, around: map.unproject(pinPoint()), duration: 300 }); };
 </script>
 </body>
 </html>
