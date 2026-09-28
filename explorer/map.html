@@ -10,7 +10,7 @@
      green outline, green ecoregion names — served as a standalone page the phone
      app embeds in a WebView (MapLibre Native can't run in Expo Go). Talks to the
      app over window.ReactNativeWebView.postMessage:
-       app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}
+       app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}  (collected = visited → strong green)
        page → app: {type:'ready'} · {type:'center', eid|null, name, bbox}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
@@ -72,9 +72,10 @@ map.on('load', async () => {
   map.addLayer({ id: 'ecoline', type: 'line', source: 'eco',
     paint: { 'line-color': '#81C784', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 5, 0.8, 7.5, 1.2],
              'line-opacity': 0.6, 'line-dasharray': [1.6, 1.9] } });
-  // ecoregions you hold cards in: gold (the app's rule, 2026-09-26)
-  map.addLayer({ id: 'gold', type: 'line', source: 'eco', filter: ['in', ['get', 'eco'], ['literal', []]],
-    paint: { 'line-color': '#FFD700', 'line-width': 1.8, 'line-opacity': 0.9 } });
+  // ecoregions you've been to (hold cards in): a stronger, solid green
+  // outline (user, 2026-09-28 — was gold)
+  map.addLayer({ id: 'visited', type: 'line', source: 'eco', filter: ['in', ['get', 'eco'], ['literal', []]],
+    paint: { 'line-color': '#4CAF50', 'line-width': 2, 'line-opacity': 0.95 } });
   // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
   map.addLayer({ id: 'selfill', type: 'fill', source: 'eco', filter: ['==', ['get', 'eco'], -1],
     paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0.45 } });
@@ -129,7 +130,7 @@ function applyState(s) {
   if (s.pad) PAD = { top: +s.pad.top || 0, bottom: +s.pad.bottom || 0 };
   if (Array.isArray(s.collected)) {
     collected = s.collected;
-    map.setFilter('gold', ['in', ['get', 'eco'], ['literal', collected]]);
+    map.setFilter('visited', ['in', ['get', 'eco'], ['literal', collected]]);
   }
   if (s.fly && s.current != null) flyTo(s.current);
   else if (s.pad) highlightPin();
