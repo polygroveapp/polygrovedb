@@ -21,7 +21,7 @@ out={}
 for eid,name in names.items():
     k=str(eid); e={"name":name}
     if eid in bboxes: e["bbox"]=bboxes[eid]
-    if k in leads: e["lead"]=leads[k]["lead"]
+    if k in leads: e["lead"]=leads[k]["lead"]; e["wiki"]=leads[k]["title"]   # article title → the phone links to Wikipedia (2026-09-28)
     p=photos.get(k)
     if p: e["photo"]={"thumb":p.get("thumb") or p.get("url"),"by":p.get("by",""),"lic":p.get("license","")}
     out[k]=e
