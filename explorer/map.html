@@ -30,10 +30,15 @@
 <div id="map"></div>
 <script>
 const RN = window.ReactNativeWebView;
+// MINI MODE (user, 2026-09-28: "place on the map" on the home page): ?mini=EID
+// renders the region's place on the globe — non-interactive, fitted to the
+// region, no pin/labels chatter — for a small WebView on the phone's home
+const MINI = (() => { const m = /[?&]mini=(\d+)/.exec(location.search); return m ? +m[1] : null; })();
 const send = (m) => { try { RN ? RN.postMessage(JSON.stringify(m)) : console.log('msg', m); } catch (e) {} };
 
 const map = new maplibregl.Map({
   container: 'map', center: [12, 22], zoom: 0.6, maxZoom: 13, doubleClickZoom: false,
+  interactive: MINI == null,
   attributionControl: false, pitchEnabled: false, dragRotate: false, touchPitch: false,
   style: { version: 8, glyphs: 'fonts/{fontstack}/{range}.pbf', sources: {},
            layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1a29' } }] },
@@ -138,14 +143,21 @@ map.on('load', async () => {
   };
   map.on('zoomend', loadTrails); loadTrails();
   ready = true;
+  if (MINI != null) {
+    // the site's minimap: just the region, green, in continental context
+    for (const id of ['ecolbl', 'parkdot', 'parklbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    setSelected(MINI);
+    const b = bboxOf(MINI);
+    if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 28, duration: 0, maxZoom: 3.6 });
+    return;
+  }
   if (pendingState) applyState(pendingState);
   send({ type: 'ready' });
   map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; highlightPin(); }); });
   // report at moveend AND once the tiles for the new view have rendered —
   // right after a fly-to the region under the pin often isn't drawn yet, and
   // queryRenderedFeatures only sees what's drawn
-  map.on('moveend', () => { report(); map.once('idle', report); });
-  map.once('idle', report);
+  if (MINI == null) { map.on('moveend', () => { report(); map.once('idle', report); }); map.once('idle', report); }
 });
 
 // the pin: centre of the visible map (screen minus the app's chrome)
