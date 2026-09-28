@@ -16,7 +16,8 @@
      under the pin is the selection (green) and is reported on every moveend.
      `pad` is the app's chrome (header / preview sheet) in CSS px, so the pin
      sits in the middle of the VISIBLE map and fly-to centres there too.
-     Same data files and fonts as the explorer, from this same origin. -->
+     Parks (brown dots + names) and NPS trails (orange, lazy at z≥5.5) as on
+     the explorer (user, 2026-09-28). Same data files and fonts, same origin. -->
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <script src="vendor/maplibre-gl.js"></script>
 <style>
@@ -44,10 +45,11 @@ let PAD = { top: 0, bottom: 0 };
 const TERRAIN = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
 map.on('load', async () => {
-  const [geo, lakes, labels] = await Promise.all([
+  const [geo, lakes, labels, parks] = await Promise.all([
     fetch('data/eco_simple.geojson', { cache: 'no-cache' }).then(r => r.json()),
     fetch('data/lakes.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('data/admin_labels.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+    fetch('data/parks.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
   ]);
   GEO = geo;
   map.addSource('eco', { type: 'geojson', data: geo });
@@ -88,6 +90,25 @@ map.on('load', async () => {
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
               'text-size': ['interpolate', ['linear'], ['zoom'], 2.4, 9, 6, 12], 'text-max-width': 9, 'text-padding': 6 },
     paint: { 'text-color': '#81C784', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.2, 'text-opacity': 0.9 } });
+  // PARKS (user, 2026-09-28): the explorer's park markers — brown dot + name,
+  // fame-tiered so Yellowstone shows at world zoom and the county reserve
+  // appears as you arrive
+  if (parks) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 8;
+    const g = cv.getContext('2d'); g.fillStyle = '#c49a76'; g.beginPath(); g.arc(4, 4, 3, 0, 7); g.fill();
+    map.addImage('parkpt', g.getImageData(0, 0, 8, 8), { pixelRatio: 2 });
+    map.addSource('parks', { type: 'geojson', data: parks });
+    const tier = ['step', ['zoom'], ['>=', ['coalesce', ['get', 'fame'], 0], 45], 3,
+                  ['>=', ['coalesce', ['get', 'fame'], 0], 20], 4.6, true];
+    map.addLayer({ id: 'parkdot', type: 'symbol', source: 'parks', minzoom: 0.8, filter: tier,
+      layout: { 'icon-image': 'parkpt', 'symbol-sort-key': ['coalesce', ['get', 'fame'], 0] } });
+    map.addLayer({ id: 'parklbl', type: 'symbol', source: 'parks', minzoom: 0.8, filter: tier,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
+                'text-size': ['interpolate', ['linear'], ['zoom'], 1, 8.5, 4, 10, 7, 11.5],
+                'symbol-sort-key': ['coalesce', ['get', 'fame'], 0],
+                'text-offset': [0, 0.75], 'text-anchor': 'top', 'text-max-width': 9, 'text-padding': 4 },
+      paint: { 'text-color': '#c49a76', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.2 } });
+  }
   if (labels) {
     map.addSource('admin', { type: 'geojson', data: labels });
     map.addLayer({ id: 'adminlbl', type: 'symbol', source: 'admin', minzoom: 1.5, maxzoom: 5,
@@ -95,6 +116,27 @@ map.on('load', async () => {
       layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 9.5, 'text-transform': 'uppercase', 'text-letter-spacing': 0.2 },
       paint: { 'text-color': '#8a8f8a', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1, 'text-opacity': 0.7 } });
   }
+  // TRAILS (user, 2026-09-28): NPS Public Trails, orange dashed, lazy-loaded
+  // (5 MB) the first time the map is zoomed in far enough to read them
+  const loadTrails = () => {
+    if (map.getSource('trails') || map.getZoom() < 5.5) return;
+    map.off('zoomend', loadTrails);
+    fetch('data/trails.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(t => {
+      if (!t || map.getSource('trails')) return;
+      map.addSource('trails', { type: 'geojson', data: t });
+      map.addLayer({ id: 'trails', type: 'line', source: 'trails', minzoom: 5.5,
+        paint: { 'line-color': '#ff8c1a', 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.6, 9, 1.4, 12, 2.2],
+                 'line-opacity': 0.95,
+                 'line-dasharray': ['step', ['zoom'], ['literal', [7, 11]], 7, ['literal', [4.5, 6.5]],
+                   8.5, ['literal', [3, 4.5]], 10, ['literal', [2.4, 3.6]], 11.5, ['literal', [2, 3]]] } },
+        'selglow');
+      map.addLayer({ id: 'traillbl', type: 'symbol', source: 'trails', minzoom: 8.8, filter: ['!=', ['get', 'name'], ''],
+        layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
+                  'text-size': 9, 'text-padding': 6, 'text-max-width': 8, 'text-offset': [0, 0.8], 'text-anchor': 'top' },
+        paint: { 'text-color': '#ffa040', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.1, 'text-opacity': 0.9 } });
+    }).catch(() => {});
+  };
+  map.on('zoomend', loadTrails); loadTrails();
   ready = true;
   if (pendingState) applyState(pendingState);
   send({ type: 'ready' });

@@ -2493,13 +2493,15 @@ async function renderRangeMap(ids,sci,opts){
     const [cityFC,parkFC]=await getLabels();
     if(map.getStyle() && cityFC){
       map.addSource('cities',{type:'geojson',data:cityFC});
+      // CITIES OFF BY DEFAULT (user, 2026-09-28) — still a legend row, so a
+      // click brings names + dots back on this map
       map.addLayer({id:'citylbl',type:'symbol',source:'cities',minzoom:0.8,
         // explicit tiers: megacities at world zoom, more as you close in — deterministic,
         // unlike sort-key placement (cross-tile stability let Omaha keep beating New York)
         filter:['step',['zoom'],
                 ['>=',['*',['get','pop'],['case',['==',['get','cap'],1],3,1]],2200000], 2.4,
                 ['>=',['*',['get','pop'],['case',['==',['get','cap'],1],3,1]],1000000], 4.0, true],
-        layout:{'icon-image':'citypt','text-field':['get','name'],'text-font':['Noto Sans Regular'],
+        layout:{'visibility':'none','icon-image':'citypt','text-field':['get','name'],'text-font':['Noto Sans Regular'],
                 'text-size':['interpolate',['linear'],['zoom'],1,7,4,8,7,9],
                 'symbol-sort-key':['*',['get','pop'],['case',['==',['get','cap'],1],3,1]],
                 'text-offset':[0,-0.55],'text-anchor':'bottom','text-max-width':8,'text-padding':6},
@@ -2508,7 +2510,7 @@ async function renderRangeMap(ids,sci,opts){
       // the DOT gets its own layer so it survives the pill swap
       map.addLayer({id:'citydot',type:'symbol',source:'cities',minzoom:0.8,
         filter:map.getFilter('citylbl'),
-        layout:{'icon-image':'citypt','icon-allow-overlap':false,
+        layout:{'visibility':'none','icon-image':'citypt','icon-allow-overlap':false,
                 'symbol-sort-key':['*',['get','pop'],['case',['==',['get','cap'],1],3,1]]}});
     }
     // state + country borders: dotted blue (user, 2026-09-09), Natural Earth PD
