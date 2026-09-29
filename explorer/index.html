@@ -2600,11 +2600,12 @@ async function renderRangeMap(ids,sci,opts){
         // PARK pages draw the other parks' boundaries GREEN dotted — only the
         // highlighted park is yellow/shimmering (user, 2026-09-25; was all-yellow);
         // species pages keep the brown dashed cartographic mark (user, 2026-09-22)
+        // SOLID lines (user, 2026-09-29; were dashed/dotted) — dashes now
+        // belong to ecoregion borders and trails only
         paint:opts.park?{'line-color':'#81C784','line-width':['interpolate',['linear'],['zoom'],1,0.5,4,1.1,7,1.8,10,2.4],
-               'line-dasharray':[2.2,2],   // dotted except the highlighted park (user, 2026-09-22)
                'line-opacity':['interpolate',['linear'],['zoom'],1,0.55,4,0.85]}
              :{'line-color':'#c49a76','line-width':['interpolate',['linear'],['zoom'],1,0.4,4,0.9,7,1.6,10,2.2],
-               'line-dasharray':[2.4,2],'line-opacity':['interpolate',['linear'],['zoom'],1,0.5,4,0.8]}},
+               'line-opacity':['interpolate',['linear'],['zoom'],1,0.5,4,0.8]}},
         map.getLayer('citylbl')?'citylbl':undefined);
     }
     if(!hideParks && map.getStyle() && parkFC){

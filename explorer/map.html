@@ -99,14 +99,36 @@ map.on('load', async () => {
       .catch(() => { detail = false; });
   };
   map.on('zoomend', loadDetail);
-  // PARK BOUNDARIES in the explorer's brown dashes (user, 2026-09-29): the
-  // 470 NPS polygons, fetched after first paint so they never delay the map
+  // PARK BOUNDARIES in the explorer's brown, as SOLID lines (user,
+  // 2026-09-29): the NPS polygons that matched a named park, fetched after
+  // first paint so they never delay the map
   if (MINI == null) fetch('data/park_bounds.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(pb => {
     if (!pb || map.getSource('parkbounds')) return;
+    // the NPS file also carries battlefields, parkways and historic sites: only
+    // a boundary whose name matches a park label sitting inside (or near) it
+    // draws — the explorer's rule, recomputed here (mm = matched)
+    if (parks) {
+      const pnorm = n => (n || '').toLowerCase()
+        .replace(/ (national|memorial|state|provincial) (park complex|park reserve|park and preserve|park|preserve|monument|reserve|recreation area|battlefield|historical park|historic site|seashore|lakeshore|river|parkway)s?$/, '')
+        .replace(/ national parks?$/, '').trim();
+      const byName = new Map();
+      for (const f of pb.features) {
+        let w = 180, s0 = 90, e = -180, n = -90;
+        const walk = cs => { for (const c of cs) Array.isArray(c[0]) ? walk(c) : (w = Math.min(w, c[0]), e = Math.max(e, c[0]), s0 = Math.min(s0, c[1]), n = Math.max(n, c[1])); };
+        if (f.geometry && f.geometry.coordinates) walk(f.geometry.coordinates);
+        const k = pnorm(f.properties.name);
+        (byName.get(k) || byName.set(k, []).get(k)).push({ box: [w - 1.5, s0 - 1.5, e + 1.5, n + 1.5], f });
+      }
+      for (const f of parks.features) {
+        const [x, y] = f.geometry.coordinates;
+        for (const c of byName.get(pnorm(f.properties.name)) || [])
+          if (x >= c.box[0] && x <= c.box[2] && y >= c.box[1] && y <= c.box[3]) c.f.properties.mm = 1;
+      }
+    }
     map.addSource('parkbounds', { type: 'geojson', data: pb });
-    map.addLayer({ id: 'parkline', type: 'line', source: 'parkbounds',
+    map.addLayer({ id: 'parkline', type: 'line', source: 'parkbounds', filter: ['==', ['get', 'mm'], 1],
       paint: { 'line-color': '#c49a76', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 4, 0.9, 7, 1.6, 10, 2.2],
-               'line-dasharray': [2.4, 2], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 4, 0.8] } },
+               'line-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 4, 0.8] } },
       map.getLayer('selglow') ? 'selglow' : undefined);
   }).catch(() => {});
   // every ecoregion outlined thin green (dashed, as on the Ecoregions page)
