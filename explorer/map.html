@@ -11,6 +11,7 @@
      app embeds in a WebView (MapLibre Native can't run in Expo Go). Talks to the
      app over window.ReactNativeWebView.postMessage:
        app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}  (collected = visited → strong green)
+                   + camp (your ecoregion → gold border) · completed:[eid…] (finished decks → gold inside)
        page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
@@ -52,6 +53,7 @@ const map = new maplibregl.Map({
 map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
+let camp = null, completed = [];   // your camp (gold border) · finished decks (gold inside)
 let PAD = { top: 0, bottom: 0 };
 const TERRAIN = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
@@ -156,12 +158,22 @@ map.on('load', async () => {
   twin('visited', { type: 'line', layout: ROUND, filter: ['in', ['get', 'eco'], ['literal', []]],
     paint: { 'line-color': '#4CAF50', 'line-width': 2, 'line-opacity': 0.95 } });
   // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
+  // COMPLETED ecoregions — every card journaled — are painted GOLD inside
+  // (user, 2026-09-29), under the pin's green so the selection still reads
+  twin('donefill', { type: 'fill', filter: ['in', ['get', 'eco'], ['literal', []]],
+    paint: { 'fill-color': '#FFD700', 'fill-opacity': 0.34 } });
   twin('selfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
     paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0.45 } });
   twin('selglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
   twin('selline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 1 } });
+  // YOUR CAMP — the ecoregion you are in — is bordered in GOLD (user,
+  // 2026-09-29), drawn over the pin's green outline so it never disappears
+  twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
+    paint: { 'line-color': '#FFD700', 'line-width': 8, 'line-blur': 6, 'line-opacity': 0.5 } });
+  twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
+    paint: { 'line-color': '#ffe14d', 'line-width': 2.2, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
   map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
@@ -317,10 +329,10 @@ function applyState(s) {
     // the camera's centre IS the pin: every move, zoom and tilt pivots there
     map.setPadding({ top: PAD.top, bottom: PAD.bottom, left: 0, right: 0 });
   }
-  if (Array.isArray(s.collected)) {
-    collected = s.collected;
-    applyFilters();
-  }
+  if (Array.isArray(s.collected)) collected = s.collected;
+  if (Array.isArray(s.completed)) completed = s.completed;
+  if (s.camp !== undefined) camp = s.camp;
+  applyFilters();
   if (s.fly && s.current != null) flyTo(s.current);
   else if (s.pad) report();   // the pin moved with the padding: re-read what's under it
 }
@@ -346,6 +358,8 @@ function applyFilters() {
   if (map.getLayer('ecoline')) map.setFilter('ecoline', notHD);
   for (const id of ['selfill', 'selglow', 'selline']) put(id, sel);
   put('visited', vis);
+  put('donefill', ['in', ['get', 'eco'], ['literal', completed]]);
+  for (const id of ['campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
 }
 // load the high-detail outline of everything on screen, once zoomed in
 const hdBusy = new Set();
