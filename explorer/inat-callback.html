@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Polygrove — returning to the app</title>
+<!-- iNATURALIST SIGN-IN, the way back (2026-09-29). iNaturalist sends the
+     player here after they approve Polygrove; this page hands the one-time
+     code straight to the app and keeps nothing. It exists so ONE web address
+     can be registered with iNaturalist, whatever phone or build the app runs
+     on. The app's address travels in `state` (nonce~base64url(address)) and is
+     only honoured when it is the app's own scheme — this page cannot be used
+     to send anyone anywhere else. The code is useless without the verifier
+     that never leaves the phone (PKCE). -->
+<style>
+  html,body{margin:0;height:100%;background:#0a0f0a;color:#f5f0e8;font-family:-apple-system,system-ui,sans-serif}
+  main{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+  h1{font-size:20px;margin:0;color:#4CAF50} p{margin:0;color:#aaa;font-size:14px;line-height:1.5;max-width:320px}
+  a{display:none;margin-top:8px;padding:12px 26px;border-radius:24px;background:#2E7D32;color:#f5f0e8;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Polygrove</h1>
+  <p id="msg">Returning to the app…</p>
+  <a id="go">Open Polygrove</a>
+</main>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search), msg = document.getElementById('msg'), go = document.getElementById('go');
+  var state = q.get('state') || '', target = '';
+  try {
+    var b = (state.split('~')[1] || '').replace(/-/g, '+').replace(/_/g, '/');
+    target = decodeURIComponent(escape(atob(b + '==='.slice((b.length + 3) % 4))));
+  } catch (e) {}
+  // the app's own addresses only: the shipped app's scheme, or Expo Go while developing
+  if (!/^(polygroveapp:\/\/|exp:\/\/)[^\s]*$/.test(target)) {
+    msg.textContent = 'This page finishes signing in to iNaturalist from the Polygrove app. Open the app and try again.';
+    return;
+  }
+  var out = new URLSearchParams();
+  ['code', 'state', 'error', 'error_description'].forEach(function (k) { if (q.get(k)) out.set(k, q.get(k)); });
+  var url = target + (target.indexOf('?') < 0 ? '?' : '&') + out.toString();
+  go.href = url; go.style.display = 'inline-block';
+  msg.textContent = q.get('error') ? 'Sign-in was cancelled. Returning to the app…' : 'Signed in. Returning to the app…';
+  location.replace(url);
+})();
+</script>
+</body>
+</html>

@@ -67,6 +67,7 @@ CHAIN = [
     ("30_output/export_park_obs.py",      "observation counts: parks (deck obs cells in-bounds) + ecoregions -> explorer"),
     ("30_output/export_park_species.py",  "park states (NE admin-1) + per-park deck species -> park_species.json"),
     ("30_output/export_photos.py",         "photos.json: card id → Wikimedia CDN thumb for the eco All view (cached; network for new cards)"),
+    ("30_output/export_photo_framing.py",  "framing.json: each card photo framed on its subject (Apple Vision; photos cached in data/card_photos)"),
     ("30_output/audit.py",                 "coverage audit (optional, reporting only)"),
 ]
 

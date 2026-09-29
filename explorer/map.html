@@ -11,7 +11,7 @@
      app embeds in a WebView (MapLibre Native can't run in Expo Go). Talks to the
      app over window.ReactNativeWebView.postMessage:
        app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}  (collected = visited → strong green)
-                   + camp (your ecoregion → gold border) · completed:[eid…] (finished decks → gold inside)
+                   + camp (your ecoregion → brown border) · completed:[eid…] (finished decks → gold inside)
        page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
@@ -168,12 +168,13 @@ map.on('load', async () => {
     paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
   twin('selline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 1 } });
-  // YOUR CAMP — the ecoregion you are in — is bordered in GOLD (user,
-  // 2026-09-29), drawn over the pin's green outline so it never disappears
+  // YOUR CAMP — the ecoregion you are in — is bordered in the app's BROWN,
+  // the colour of "Where do you want to camp?" (user, 2026-09-29; gold for an
+  // hour), drawn over the pin's green outline so it never disappears
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#FFD700', 'line-width': 8, 'line-blur': 6, 'line-opacity': 0.5 } });
+    paint: { 'line-color': '#8B5035', 'line-width': 8, 'line-blur': 6, 'line-opacity': 0.6 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#ffe14d', 'line-width': 2.2, 'line-opacity': 1 } });
+    paint: { 'line-color': '#b0694a', 'line-width': 2.4, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
   map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
