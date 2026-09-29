@@ -1967,9 +1967,10 @@ function pageMap(create){
   let real=window._realMap;
   const fresh=!real;
   if(fresh){ real=window._realMap=create(); real.once('load',()=>{ real._didLoad=true; }); }
-  // every page opens from the same camera a new map had (world view, flat,
-  // north-up) and moves from there — not from wherever the last page left it
-  else { try{ real.stop(); real.jumpTo({center:[12,22], zoom:0.25, pitch:0, bearing:0}); }catch(e){} }
+  // the camera is NOT reset between pages (user, 2026-09-29: "i like the map
+  // starting location going from the previous place to the new one"): each
+  // page's own fly-in starts from wherever the last page left the map
+  else { try{ real.stop(); }catch(e){} }
   const page={stale:false, layers:[], sources:[], handlers:[], controls:[], wrapped:new Map(), added:new Set()};
   const end=()=>{ if(page.stale) return; page.stale=true;
     try{ real.stop(); }catch(e){}
