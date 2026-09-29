@@ -2112,6 +2112,7 @@ async function renderRangeMap(ids,sci,opts){
     ['Range fill','#4CAF50','fill',['range']],
     ['Highlighted region','#ffe14d','fill',['focusfill','focusfillp','focushl','focushl-glow','parkfoc']],
     ['Region name','#ffe14d','txt',['foclbl','ecosel']],
+    ['Previous region','#4CAF50','line',['prevhl','prevhl-glow']],
     ['Ecoregion borders','#81C784','line',['ecoline']],
     ['Hover / selection glow','#81C784','line',['ecohl','ecohl-glow','selhl','selhl-glow']],
     ['Park boundaries','#c49a76','line',['parkline']],
@@ -2434,6 +2435,17 @@ async function renderRangeMap(ids,sci,opts){
     // UNIVERSAL MAP focus (user, 2026-09-22): eco pages fill their region
     // YELLOW with a shimmering gold outline; park pages shimmer the park's
     // real boundary (470 NPS polygons) or a gold ring at its point
+    // THE PLACE YOU CAME FROM (user, 2026-09-29): as the map travels to a new
+    // page, the previous page's ecoregion keeps its border — in GREEN — and
+    // the new one takes the gold. Drawn under the gold, so gold wins a shared edge.
+    const prevEco=window._lastFocusEco;
+    window._lastFocusEco=opts.focusEco!=null?opts.focusEco:null;
+    if(prevEco!=null&&prevEco!==opts.focusEco){
+      map.addLayer({id:'prevhl-glow',type:'line',source:'eco',filter:['==',['get','eco'],prevEco],
+        paint:{'line-color':'#4CAF50','line-width':7,'line-blur':6,'line-opacity':0.45}});
+      map.addLayer({id:'prevhl',type:'line',source:'eco',filter:['==',['get','eco'],prevEco],
+        paint:{'line-color':'#7fe087','line-width':1.8,'line-opacity':0.95}});
+    }
     if(opts.focusEco!=null&&!opts.park){
       // interior YELLOW FILL removed (user, 2026-09-25 "try not painting in the
       // borders") — the highlighted region is its shimmering border alone now
@@ -2572,12 +2584,20 @@ async function renderRangeMap(ids,sci,opts){
     // (userMoved is armed at map creation, before the fetches).
     // a page reached by clicking its region on a map SNAPS there instead of
     // flying (user, 2026-09-25) — you were already looking at that spot
-    const _dur=window._noFly?0:2400; window._noFly=false;
+    // THE FARTHER, THE SLOWER (user, 2026-09-29: "it's a far distance make it
+    // slower as well"): the map now starts from the previous page's place, so
+    // a flight can cross the world — 2.4s for a hop next door, up to 7.5s for
+    // the far side of the planet (38ms per degree travelled)
+    const _noFly=window._noFly; window._noFly=false;
+    const flightMs=(lng,lat)=>{ if(_noFly) return 0;
+      const c=map.getCenter(); let dx=Math.abs(c.lng-lng)%360; if(dx>180) dx=360-dx;
+      return Math.round(Math.min(7500, 2400+Math.hypot(dx,c.lat-lat)*38)); };
     if(opts.park){ const p2=opts.park, d2=2.2;
-      if(!userMoved) map.fitBounds([[p2.lng-d2,p2.lat-d2],[p2.lng+d2,p2.lat+d2]],{padding:30,duration:_dur,curve:1.5,essential:true});
+      if(!userMoved) map.fitBounds([[p2.lng-d2,p2.lat-d2],[p2.lng+d2,p2.lat+d2]],{padding:30,duration:flightMs(p2.lng,p2.lat),curve:1.5,essential:true});
     } else if(opts.focusEco!=null&&!bnds){ const b2=ECOBBOX[opts.focusEco];
-      if(b2&&!userMoved) map.fitBounds([[b2[0],b2[1]],[b2[2],b2[3]]],{padding:40,maxZoom:6.5,duration:_dur,curve:1.5,essential:true});
-    } else if(bnds && !userMoved) map.fitBounds(bnds,{padding:34,maxZoom:8,duration:_dur?2800:0,curve:1.6,essential:true});
+      if(b2&&!userMoved) map.fitBounds([[b2[0],b2[1]],[b2[2],b2[3]]],{padding:40,maxZoom:6.5,duration:flightMs((b2[0]+b2[2])/2,(b2[1]+b2[3])/2),curve:1.5,essential:true});
+    } else if(bnds && !userMoved){ const ms=flightMs((bnds[0][0]+bnds[1][0])/2,(bnds[0][1]+bnds[1][1])/2);
+      map.fitBounds(bnds,{padding:34,maxZoom:8,duration:ms?ms+400:0,curve:1.6,essential:true}); }
     // golden observation dots: 0.1-degree cells where this species was actually recorded
     // context labels (user, 2026-09-08): major cities + national parks (each country's
     // own equivalent, via Wikidata) so a range means something on the ground
