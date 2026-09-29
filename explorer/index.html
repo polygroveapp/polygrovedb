@@ -2224,7 +2224,7 @@ async function renderRangeMap(ids,sci,opts){
     const mkIcon=(draw,sz)=>{const cv=document.createElement('canvas');cv.width=cv.height=sz;
         draw(cv.getContext('2d'),sz); return cv.getContext('2d').getImageData(0,0,sz,sz);};
     if(!map.hasImage('citypt')) map.addImage('citypt', mkIcon((g,z)=>{g.fillStyle='#3f6fa8';   // darker city blue (user, 2026-09-09)
-        g.beginPath(); g.arc(z/2,z/2,z/2-1,0,7); g.fill();},12), {pixelRatio:2});
+        g.fillRect(2,2,z-4,z-4);},12), {pixelRatio:2});   // SQUARE, the cartographic city mark (user, 2026-09-29; was a dot)
     if(!map.hasImage('parkpt')) map.addImage('parkpt', mkIcon((g,z)=>{g.fillStyle='#c49a76';
         g.beginPath(); g.arc(z/2,z/2,z/2-1,0,7); g.fill();},8), {pixelRatio:2});
     if(!map.hasImage('parkpty')) map.addImage('parkpty', mkIcon((g,z)=>{g.fillStyle='#ffe14d';   // yellow: the HIGHLIGHTED park only (user, 2026-09-25)

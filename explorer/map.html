@@ -37,26 +37,29 @@ const MINI = (() => { const m = /[?&]mini=(\d+)/.exec(location.search); return m
 const send = (m) => { try { RN ? RN.postMessage(JSON.stringify(m)) : console.log('msg', m); } catch (e) {} };
 
 const map = new maplibregl.Map({
-  container: 'map', center: [12, 22], zoom: 0.6, maxZoom: 13, doubleClickZoom: false,
+  // minZoom 1.3: further out the whole world fits the screen's height and
+  // MapLibre then refuses to pan vertically — the map could only slide
+  // sideways (user, 2026-09-29, opening with no camp chosen)
+  container: 'map', center: [12, 22], zoom: 1.5, minZoom: MINI == null ? 1.3 : 0, maxZoom: 13, doubleClickZoom: false,
   interactive: MINI == null,
   attributionControl: false, pitchEnabled: false, dragRotate: false, touchPitch: false,
   style: { version: 8, glyphs: 'fonts/{fontstack}/{range}.pbf', sources: {},
            layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1a29' } }] },
 });
-// two-finger rotate is ON (user, 2026-09-29): the phone's compass shows the
-// bearing, spins the map when dragged, and resets north when tapped
-if (MINI != null) map.touchZoomRotate.disableRotation();
+// north-up only: the compass was removed the day it was added (user, 2026-09-29)
+map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
 let PAD = { top: 0, bottom: 0 };
 const TERRAIN = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
 map.on('load', async () => {
-  const [geo, lakes, labels, parks] = await Promise.all([
+  const [geo, lakes, labels, parks, cities] = await Promise.all([
     fetch('data/eco_simple.geojson', { cache: 'no-cache' }).then(r => r.json()),
     fetch('data/lakes.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('data/admin_labels.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('data/parks.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+    fetch('data/cities.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
   ]);
   GEO = geo;
   map.addSource('eco', { type: 'geojson', data: geo });
@@ -74,9 +77,38 @@ map.on('load', async () => {
     paint: { 'hillshade-exaggeration': 0.67, 'hillshade-shadow-color': '#000000',
              'hillshade-highlight-color': 'rgba(255,255,255,0.09)', 'hillshade-accent-color': 'rgba(0,0,0,0.33)' } });
   if (lakes) {
+    // a = the lake's bounding-box area in square degrees: its size class for naming
+    for (const f of lakes.features) {
+      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+      let w = 180, s0 = 90, e = -180, n = -90;
+      for (const p of polys) for (const [x, y] of p[0]) { if (x < w) w = x; if (x > e) e = x; if (y < s0) s0 = y; if (y > n) n = y; }
+      f.properties.a = Math.round((e - w) * (n - s0) * 100) / 100;
+    }
     map.addSource('lakes', { type: 'geojson', data: lakes });
     map.addLayer({ id: 'lakes', type: 'fill', source: 'lakes', paint: { 'fill-color': '#1d4266', 'fill-opacity': 0.85, 'fill-outline-color': '#2f5e8c' } });
   }
+  // DETAILED BORDERS once zoomed in (2026-09-29): the first-paint geometry is
+  // ~60k vertices; past z3.2 the ~450k-vertex file replaces it. Both are
+  // topologically simplified, so neighbours share their borders exactly.
+  let detail = false;
+  const loadDetail = () => {
+    if (detail || MINI != null || map.getZoom() < 3.2) return;
+    detail = true; map.off('zoomend', loadDetail);
+    fetch('data/eco_detail.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && map.getSource('eco')) map.getSource('eco').setData(d); else detail = false; })
+      .catch(() => { detail = false; });
+  };
+  map.on('zoomend', loadDetail);
+  // PARK BOUNDARIES in the explorer's brown dashes (user, 2026-09-29): the
+  // 470 NPS polygons, fetched after first paint so they never delay the map
+  if (MINI == null) fetch('data/park_bounds.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(pb => {
+    if (!pb || map.getSource('parkbounds')) return;
+    map.addSource('parkbounds', { type: 'geojson', data: pb });
+    map.addLayer({ id: 'parkline', type: 'line', source: 'parkbounds',
+      paint: { 'line-color': '#c49a76', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 4, 0.9, 7, 1.6, 10, 2.2],
+               'line-dasharray': [2.4, 2], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.5, 4, 0.8] } },
+      map.getLayer('selglow') ? 'selglow' : undefined);
+  }).catch(() => {});
   // every ecoregion outlined thin green (dashed, as on the Ecoregions page)
   map.addLayer({ id: 'ecoline', type: 'line', source: 'eco',
     paint: { 'line-color': '#81C784', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 5, 0.8, 7.5, 1.2],
@@ -105,17 +137,61 @@ map.on('load', async () => {
     const g = cv.getContext('2d'); g.fillStyle = '#c49a76'; g.beginPath(); g.arc(4, 4, 3, 0, 7); g.fill();
     map.addImage('parkpt', g.getImageData(0, 0, 8, 8), { pixelRatio: 2 });
     map.addSource('parks', { type: 'geojson', data: parks });
-    const tier = ['step', ['zoom'], ['>=', ['coalesce', ['get', 'fame'], 0], 45], 3,
-                  ['>=', ['coalesce', ['get', 'fame'], 0], 20], 4.6, true];
-    map.addLayer({ id: 'parkdot', type: 'symbol', source: 'parks', minzoom: 0.8, filter: tier,
-      layout: { 'icon-image': 'parkpt', 'symbol-sort-key': ['coalesce', ['get', 'fame'], 0] } });
-    map.addLayer({ id: 'parklbl', type: 'symbol', source: 'parks', minzoom: 0.8, filter: tier,
+    // AS MANY PARK NAMES AS FIT (user, 2026-09-29): no fame tiers — every
+    // park competes at every zoom and the collision engine keeps whatever
+    // fits, the famous first (lowest sort key is placed first). Tight padding
+    // and four candidate anchors let more names land.
+    const famous = ['-', 0, ['coalesce', ['get', 'fame'], 0]];
+    map.addLayer({ id: 'parkdot', type: 'symbol', source: 'parks', minzoom: 0.8,
+      layout: { 'icon-image': 'parkpt', 'icon-padding': 0, 'symbol-sort-key': famous } });
+    map.addLayer({ id: 'parklbl', type: 'symbol', source: 'parks', minzoom: 0.8,
       layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
-                'text-size': ['interpolate', ['linear'], ['zoom'], 1, 8.5, 4, 10, 7, 11.5],
-                'symbol-sort-key': ['coalesce', ['get', 'fame'], 0],
-                'text-offset': [0, 0.75], 'text-anchor': 'top', 'text-max-width': 9, 'text-padding': 4 },
+                'text-size': ['interpolate', ['linear'], ['zoom'], 1, 8, 4, 9.5, 7, 11],
+                'symbol-sort-key': famous,
+                'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.55,
+                'text-max-width': 8, 'text-padding': 1 },
       paint: { 'text-color': '#c49a76', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.2 } });
   }
+  // THE OCEANS (user, 2026-09-29): big, spaced-out names in water blue, world
+  // zoom to mid zoom; large oceans get a name in each half
+  if (MINI == null) {
+    const oc = [['Pacific Ocean', -150, 25], ['Pacific Ocean', -125, -28], ['Pacific Ocean', 165, 12],
+      ['Atlantic Ocean', -40, 30], ['Atlantic Ocean', -18, -25], ['Indian Ocean', 78, -22],
+      ['Arctic Ocean', -150, 78], ['Arctic Ocean', 40, 82], ['Southern Ocean', 20, -62], ['Southern Ocean', -130, -64], ['Southern Ocean', 110, -60]];
+    map.addSource('oceans', { type: 'geojson', data: { type: 'FeatureCollection', features: oc.map(([name, x, y]) =>
+      ({ type: 'Feature', geometry: { type: 'Point', coordinates: [x, y] }, properties: { name } })) } });
+    map.addLayer({ id: 'oceanlbl', type: 'symbol', source: 'oceans', maxzoom: 6,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-transform': 'uppercase',
+                'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 15], 'text-letter-spacing': 0.35,
+                'text-max-width': 6, 'text-padding': 2 },
+      paint: { 'text-color': '#6d95bd', 'text-halo-color': '#0b1a29', 'text-halo-width': 1.2, 'text-opacity': 0.85 } });
+  }
+  // MAJOR CITIES with a SQUARE mark, in GREY (user, 2026-09-29; blue now
+  // belongs to the lakes), the explorer's tiers: megacities at world zoom, 1M+ by z2.4, the rest by z4
+  if (cities && MINI == null) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 12;
+    const g = cv.getContext('2d'); g.fillStyle = '#8a8f8a'; g.fillRect(2, 2, 8, 8);
+    map.addImage('citypt', g.getImageData(0, 0, 12, 12), { pixelRatio: 2 });
+    map.addSource('cities', { type: 'geojson', data: cities });
+    const weight = ['*', ['get', 'pop'], ['case', ['==', ['get', 'cap'], 1], 3, 1]];
+    const tier = ['step', ['zoom'], ['>=', weight, 2200000], 2.4, ['>=', weight, 1000000], 4.0, true];
+    map.addLayer({ id: 'citylbl', type: 'symbol', source: 'cities', minzoom: 0.8, filter: tier,
+      layout: { 'icon-image': 'citypt', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
+                'text-size': ['interpolate', ['linear'], ['zoom'], 1, 7.5, 4, 8.5, 7, 10],
+                'symbol-sort-key': ['-', 0, weight],
+                'text-offset': [0, -0.55], 'text-anchor': 'bottom', 'text-max-width': 8, 'text-padding': 3 },
+      paint: { 'text-color': '#a3a8a3', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.25 } });
+  }
+  // lake names in BLUE, and FEWER of them (user, 2026-09-29): a lake is named
+  // only once it is big enough on screen for the zoom — the great lakes from
+  // z2.5, mid-sized by z5, everything drawn by z7 — with room around each name
+  if (lakes) map.addLayer({ id: 'lakelbl', type: 'symbol', source: 'lakes', minzoom: 2.5,
+    filter: ['all', ['!=', ['get', 'name'], ''],
+      ['step', ['zoom'], ['>=', ['get', 'a'], 6], 4, ['>=', ['get', 'a'], 1.2], 5, ['>=', ['get', 'a'], 0.25], 7, true]],
+    layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 3, 7.5, 7, 10.5], 'text-max-width': 7, 'text-padding': 10,
+              'symbol-sort-key': ['-', 0, ['get', 'a']] },
+    paint: { 'text-color': '#6ea8e0', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.1, 'text-opacity': 0.95 } });
   if (labels) {
     map.addSource('admin', { type: 'geojson', data: labels });
     map.addLayer({ id: 'adminlbl', type: 'symbol', source: 'admin', minzoom: 1.5, maxzoom: 5,
@@ -147,7 +223,7 @@ map.on('load', async () => {
   ready = true;
   if (MINI != null) {
     // the site's minimap: just the region, green, in continental context
-    for (const id of ['ecolbl', 'parkdot', 'parklbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    for (const id of ['ecolbl', 'parkdot', 'parklbl', 'lakelbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
     setSelected(MINI);
     const b = bboxOf(MINI);
     if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 28, duration: 0, maxZoom: 3.6 });
