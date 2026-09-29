@@ -1941,36 +1941,121 @@ async function getObs(sci){
   const k=djb2(sci);
   return (await _shard(_obsCache,`data/obs/${k}.json`,k))[sci]||[];
 }
+// ── ONE MAP, KEPT ALIVE (user, 2026-09-29: "have the map always loaded") ──
+// Every page used to build a new MapLibre map: re-index the 10 MB ecoregion
+// file, re-fetch terrain, re-place every label. Now there is ONE real map for
+// the life of the tab. Each page gets a thin WRAPPER around it (a Proxy) and
+// keeps using it exactly as before; the wrapper
+//   · skips sources that already exist (the heavy ones are kept between pages),
+//   · remembers the layers, page-only sources, listeners and controls this
+//     page added, so ending the page removes exactly those,
+//   · goes inert once the page is over — a late fetch from the previous page
+//     sees a "removed" map (getStyle() undefined) and adds nothing.
+// `wrapper.remove()` ends the PAGE; the real map lives on and its container
+// is moved into the next page's #rangemap placeholder.
+const MAP_KEEP=new Set(['eco','dem','demshade','demtint','lakes','adminb','adminlbls','cities','parks','peaks','trails','parkbounds']);
+function adoptMapContainer(placeholder){
+  const real=window._realMap; if(!real) return placeholder;
+  const c=real.getContainer();
+  if(c===placeholder) return c;
+  c.style.cssText=placeholder.style.cssText;       // each page sizes its map its own way
+  placeholder.replaceWith(c);
+  try{ real.resize(); }catch(e){}
+  return c;
+}
+function pageMap(create){
+  let real=window._realMap;
+  const fresh=!real;
+  if(fresh){ real=window._realMap=create(); real.once('load',()=>{ real._didLoad=true; }); }
+  // every page opens from the same camera a new map had (world view, flat,
+  // north-up) and moves from there — not from wherever the last page left it
+  else { try{ real.stop(); real.jumpTo({center:[12,22], zoom:0.25, pitch:0, bearing:0}); }catch(e){} }
+  const page={stale:false, layers:[], sources:[], handlers:[], controls:[], wrapped:new Map(), added:new Set()};
+  const end=()=>{ if(page.stale) return; page.stale=true;
+    try{ real.stop(); }catch(e){}
+    for(const [ev,layer,w,kind] of page.handlers){ try{ layer?real.off(ev,layer,w):real.off(ev,w); }catch(e){} }
+    // the page's own buttons: their onRemove is empty, so the node is removed here
+    for(const {c,node} of page.controls){ try{ real.removeControl(c); }catch(e){} try{ node()?.remove(); }catch(e){} }
+    for(const id of page.layers.slice().reverse()){ try{ if(real.getLayer(id)) real.removeLayer(id); }catch(e){} }
+    for(const id of page.sources){ try{ if(real.getSource(id)) real.removeSource(id); }catch(e){} }
+    // what the page hung on the container itself (legend, tooltip, sliders)
+    for(const ch of [...real.getContainer().children]) if(!/(^|\s)maplibregl-/.test(ch.className||'')) ch.remove();
+  };
+  const wrap=new Proxy(real,{ get(t,prop){
+    if(prop==='remove') return end;
+    if(prop==='_real') return t;
+    const v=t[prop];
+    if(typeof v!=='function') return v;
+    switch(prop){
+      case 'getStyle': return ()=>page.stale?undefined:t.getStyle();
+      case 'getContainer': return ()=>t.getContainer();
+      // to the page the map starts EMPTY: a kept source "exists" only once this
+      // page has added it — so code written as "if(getSource(x)) return" still
+      // goes on to add its layers
+      case 'getSource': return id=>(page.stale||!page.added.has(id))?undefined:t.getSource(id);
+      case 'addSource': return (id,def)=>{ if(page.stale) return wrap;
+        page.added.add(id);
+        if(t.getSource(id)) return wrap;
+        t.addSource(id,def); if(!MAP_KEEP.has(id)) page.sources.push(id); return wrap; };
+      case 'addLayer': return (def,before)=>{ if(page.stale) return wrap;
+        if(t.getLayer(def.id)) t.removeLayer(def.id);
+        t.addLayer(def,(before&&t.getLayer(before))?before:undefined); page.layers.push(def.id); return wrap; };
+      case 'addImage': return (id,...a)=>{ if(!page.stale&&!t.hasImage(id)) t.addImage(id,...a); };
+      case 'addControl': return (c,pos)=>{ if(page.stale) return wrap;
+        let node=null; const onAdd=c.onAdd.bind(c); c.onAdd=m=>(node=onAdd(m));
+        t.addControl(c,pos); page.controls.push({c,node:()=>node}); return wrap; };
+      case 'on': case 'once': return (ev,a,b)=>{ if(page.stale) return wrap;
+        const layer=typeof a==='string'?a:null, fn=layer?b:a;
+        if(ev==='load'&&t._didLoad){ setTimeout(()=>{ if(!page.stale) fn({target:wrap,type:'load'}); },0); return wrap; }
+        const w=(...args)=>{ if(!page.stale) return fn(...args); };
+        page.wrapped.set(fn,w); page.handlers.push([ev,layer,w]);
+        layer?t[prop](ev,layer,w):t[prop](ev,w); return wrap; };
+      case 'off': return (ev,a,b)=>{ const layer=typeof a==='string'?a:null, fn=layer?b:a, w=page.wrapped.get(fn)||fn;
+        try{ layer?t.off(ev,layer,w):t.off(ev,w); }catch(e){} return wrap; };
+      default: return (...args)=>page.stale?undefined:v.apply(t,args);
+    } } });
+  return wrap;
+}
 async function renderRangeMap(ids,sci,opts){
   // opts (user, 2026-09-22 — ONE universal map for species/eco/park pages):
   //   focusEco: ecoregion id — fills YELLOW with a SHIMMERING GOLD outline
   //   park: {lng,lat,name} — gold-shimmers its boundary polygon (or a gold
   //         ring at its point) and the camera opens on the park
   opts=opts||{};
-  const el=document.getElementById('rangemap'); if(!el||!window.maplibregl||!ECOGEO) return;
+  let el=document.getElementById('rangemap'); if(!el||!window.maplibregl||!ECOGEO) return;
+  // two pages can be in flight at once (the router renders twice on load, and
+  // a fast click overtakes a slow fetch): only the LATEST call may touch the map
+  const token=window._mapToken=(window._mapToken||0)+1;
   if(opts.focusEco!=null||opts.park){ _habItems=[]; _habSci=null; _habTotal=null; }   // hover tip must not show the LAST species' record shares
-  // tear down the PREVIOUS map — leaked instances keep their render/pulse loops
-  // alive against a dead style and error-loop forever (found pre-deploy, 2026-09-22)
+  // end the PREVIOUS PAGE — its wrapper goes inert and takes its layers,
+  // listeners and render/pulse loops with it (a leaked page error-looped
+  // forever, found pre-deploy 2026-09-22). The real map stays (see pageMap).
   if(window._map){ try{ window._map.remove(); }catch(e){} window._map=null; }
   // EVERY ecoregion this species was recorded in, opacity by share of records — no top-N
   // cutoff, so a naturalized foothold reads faint and a core range reads solid, and
   // islands with real dots are no longer unfilled land (user, 2026-08-25).
   const fill=await getRange(sci||'');
+  if(token!==window._mapToken) return;   // a newer page started while this one waited
+  if(window._map){ try{ window._map.remove(); }catch(e){} window._map=null; }   // …and one that finished meanwhile is ended
+  el=document.getElementById('rangemap')||el;
   if(fill.length) ids=fill.map(f=>f[0]);
   if(!ids.length&&opts.focusEco==null&&!opts.park){ el.innerHTML='<div class="placeholder" style="padding:20px">no range data</div>'; return; }
   // the ecoregion layer IS the basemap: all land in faint outline, this species'
   // ecoregions filled — no external tile service, fully self-contained.
   // armed at creation: any user gesture cancels the (late) card fly-in below
   let userMoved=false;
-  for(const ev of ['wheel','mousedown','touchstart']) el.addEventListener(ev,()=>{userMoved=true;},{passive:true,capture:true});
-  const map=new maplibregl.Map({container:el, center:[12,22], zoom:0.25, maxZoom:13, doubleClickZoom:false,
+  el=adoptMapContainer(el);   // the living map moves into this page's slot
+  if(el._pgMoved) for(const ev of ['wheel','mousedown','touchstart']) el.removeEventListener(ev,el._pgMoved,{capture:true});
+  el._pgMoved=()=>{userMoved=true;};
+  for(const ev of ['wheel','mousedown','touchstart']) el.addEventListener(ev,el._pgMoved,{passive:true,capture:true});
+  const map=pageMap(()=>new maplibregl.Map({container:el, center:[12,22], zoom:0.25, maxZoom:13, doubleClickZoom:false,
     // maxZoom 13 (user, 2026-09-25 "zoom in more"; was 10): the terrain tiles
     // top out at 13 too. The simplified ecoregion polygons and 1km obs cells
     // outrun their precision up here — visible, priced in
     // compact: credits collapse to an ⓘ the reader can open, instead of sitting
     // expanded across the bottom of every map
     attributionControl:{compact:true,customAttribution:'RESOLVE Ecoregions 2017 (CC-BY 4.0) · dots: GBIF occurrences (CC0/CC-BY) · cities: Natural Earth (PD) · parks: Wikidata (CC0)'},
-    style:{version:8, glyphs:'fonts/{fontstack}/{range}.pbf', sources:{}, layers:[{id:'bg',type:'background',paint:{'background-color':'#0d0d0d'}}]}});
+    style:{version:8, glyphs:'fonts/{fontstack}/{range}.pbf', sources:{}, layers:[{id:'bg',type:'background',paint:{'background-color':'#0d0d0d'}}]}}));
   // compass dial first (leftmost), then the zoom buttons: ▲ + −
   map.addControl(new maplibregl.NavigationControl({showZoom:false, visualizePitch:true}), 'bottom-left');
   // zoom buttons, bottom-left, + to the left of −
