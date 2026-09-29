@@ -2,7 +2,7 @@
 // Apple's Vision, on this Mac, no downloads: the foreground-subject mask
 // ("lift subject from background") gives the subject's bounding box; photos
 // where nothing lifts fall back to attention saliency (what draws the eye).
-// usage: swift focal.swift <dir of .jpg> > boxes.jsonl
+// usage: swift focal.swift <dir of .jpg | list.txt> > boxes.jsonl
 // one JSON line per photo: {file, w, h, box:[x,y,w,h] (fractions, origin TOP-left), how,
 //   grid: G*G characters, row by row from the top — '1' where the subject is}
 // The GRID is what framing is judged by: a bounding box's corners are mostly
@@ -11,8 +11,19 @@ import Foundation
 import Vision
 import CoreImage
 
-let dir = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "."
-let files = (try? FileManager.default.contentsOfDirectory(atPath: dir))?.filter { $0.hasSuffix(".jpg") }.sorted() ?? []
+// the argument is a directory of .jpg, or a .txt listing one photo path per line
+// (the full run splits the deck into lists and analyses them side by side)
+let arg = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "."
+var dir = arg
+var files: [String]
+if arg.hasSuffix(".txt"), let txt = try? String(contentsOfFile: arg, encoding: .utf8) {
+  let paths = txt.split(separator: "\n").map(String.init).filter { !$0.isEmpty }
+  dir = (paths.first.map { ($0 as NSString).deletingLastPathComponent }) ?? "."
+  files = paths.map { ($0 as NSString).lastPathComponent }
+} else {
+  files = (try? FileManager.default.contentsOfDirectory(atPath: dir))?.filter { $0.hasSuffix(".jpg") }.sorted() ?? []
+}
+setvbuf(stdout, nil, _IOLBF, 0)
 
 let G = 48
 // bounding box of the non-zero pixels of a one-channel mask, as fractions

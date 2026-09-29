@@ -67,57 +67,16 @@ open(boxes_path, "w").write(res.stdout)
 boxes = {json.loads(l)["file"][:-4]: json.loads(l) for l in res.stdout.splitlines() if l.strip()}
 print(f"{len(boxes)} photos analysed ({time.time()-t0:.0f}s)")
 
-# %% the card's hexagon: pointy-top, 188 x 214 inside its border (HexPhoto 200x226, border 6)
+# %% how each photo could sit in the card's hexagon
 import numpy as np
-HW, HH = 188.0, 214.0
-KEEP = 0.97           # "in frame" = at least this much of the SUBJECT ITSELF is inside the hexagon
-INSET = 0.96          # …measured against a hexagon 4% smaller, so nothing sits on the border
-MAX_SHRINK = 0.20     # beyond this the photo gets too small to be worth it
-G = 48
-
-def kept(pts, w, h, rel, ox, oy):
-    """share of the subject's points that land inside the (inset) hexagon"""
-    cover = max(HW / w, HH / h); s = cover * rel
-    x = np.abs(ox + pts[:, 0] * w * s); y = np.abs(oy + pts[:, 1] * h * s)
-    hw, hh = HW * INSET, HH * INSET
-    return float(np.mean((x <= hw / 2) & (y <= hh / 2 - x * hh / (2 * hw))))
-
-def offsets(w, h, rel):
-    """every way the photo can sit: it keeps covering the hexagon where it is
-    big enough to, and is centred in a dimension where it is not"""
-    cover = max(HW / w, HH / h); dw, dh = w * cover * rel, h * cover * rel
-    xs = [-(dw / 2)] if dw <= HW else list(np.linspace(-(dw - HW / 2), -HW / 2, 21))
-    ys = [-(dh / 2)] if dh <= HH else list(np.linspace(-(dh - HH / 2), -HH / 2, 21))
-    return [(ox, oy) for ox in xs for oy in ys], dw, dh
-
-def best_at(pts, w, h, rel):
-    offs, dw, dh = offsets(w, h, rel)
-    # most of the subject kept; among equals, the one nearest today's centre crop
-    return max(((kept(pts, w, h, rel, ox, oy), -(abs(ox + dw / 2) + abs(oy + dh / 2)), ox, oy) for ox, oy in offs))
+from framing_geom import HW, HH, KEEP, classify
 
 report = []
 for cid in have:
     b = boxes.get(cid)
     if not b: continue
-    w, h = b["w"], b["h"]
-    g = np.array([c == "1" for c in b["grid"]]).reshape(G, G)
-    ys, xs = np.nonzero(g)
-    if len(xs) == 0: continue
-    pts = np.stack([(xs + 0.5) / G, (ys + 0.5) / G], axis=1)
-    cover = max(HW / w, HH / h)
-    today = kept(pts, w, h, 1.0, -w * cover / 2, -h * cover / 2)
-    k1, _, ox1, oy1 = best_at(pts, w, h, 1.0)
-    if today >= KEEP: kind, rel, ox, oy, k = "ok", 1.0, -w * cover / 2, -h * cover / 2, today
-    elif k1 >= KEEP: kind, rel, ox, oy, k = "slide", 1.0, ox1, oy1, k1
-    else:
-        kind = "far"; rel, ox, oy, k = 1.0, ox1, oy1, k1          # if nothing works: the best slide
-        for step in range(1, int(MAX_SHRINK * 100) + 1):
-            r = 1.0 - step / 100
-            kk, _, oxx, oyy = best_at(pts, w, h, r)
-            if kk >= KEEP: kind, rel, ox, oy, k = "zoom", r, oxx, oyy, kk; break
-    report.append({"id": cid, "group": cards[cid]["group"], "w": w, "h": h, "box": b["box"], "how": b["how"], "kind": kind,
-                   "today": round(today, 3), "kept": round(k, 3), "scale": rel, "ox": ox, "oy": oy,
-                   "fills": round(float(np.mean(g)), 3)})
+    r = classify(b["w"], b["h"], b["grid"])
+    if r: report.append({"id": cid, "group": cards[cid]["group"], "w": b["w"], "h": b["h"], "box": b["box"], "how": b["how"], **r})
 json.dump(report, open(os.path.join(OUT, "report.json"), "w"), indent=1)
 
 n = len(report); c = collections.Counter(r["kind"] for r in report)

@@ -448,6 +448,8 @@ async function boot(){
     fetch('data/eco_meta.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({}))]);
   // card-id → Wikimedia CDN thumb, baked at build time; non-blocking, optional
   fetch('data/photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{window._ecoPhotos=j;}).catch(()=>{window._ecoPhotos={};});
+  // how each card photo sits in its hexagon (export_photo_framing.py)
+  fetch('data/framing.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{window._framing=j;}).catch(()=>{window._framing={};});
   META=meta; SEAS=seas; AUDIO=aud; ECOMETA=ecometa;
   for(const [eid,e] of Object.entries(ecometa||{}))          // simplified geojson nulls some
     if(e.bbox && !ECOBBOX[eid]) ECOBBOX[eid]=e.bbox;         // polygons; DB bboxes fill the gaps
@@ -761,6 +763,28 @@ function _wikiImg(sci,altName){   // shared fetcher: focal card AND food-web nod
   })();
   return _wimgCache[sci];
 }
+// PAINT A HEXAGON PHOTO (2026-09-29). A centre crop cut the subject on four
+// cards in five; framing.json says how each photo should sit instead —
+// [aspect, scale, cx, cy]: the photo's width/height, its size relative to
+// filling the hexagon, and where its centre goes (fractions of the hexagon).
+// A slid photo still fills the hexagon. One that had to shrink sits on a
+// blurred, darkened copy of itself with its exposed edges feathered in.
+function paintHex(el,url,cardId){
+  el.textContent='';
+  const fr=(window._framing||{})[cardId];
+  const iw=el.clientWidth||parseFloat(getComputedStyle(el).width)||0, ih=el.clientHeight||parseFloat(getComputedStyle(el).height)||0;
+  if(!fr||!iw||!ih){ el.style.background=`#111 url("${url}") center/cover no-repeat`; return; }
+  const [a,z,cx,cy]=fr, cover=Math.max(iw/a,ih), dw=a*cover*z, dh=cover*z;
+  const x=iw/2+cx*iw-dw/2, y=ih/2+cy*ih-dh/2;
+  if(z>=0.999){ el.style.background=`#111 url("${url}") ${x.toFixed(1)}px ${y.toFixed(1)}px / ${dw.toFixed(1)}px ${dh.toFixed(1)}px no-repeat`; return; }
+  el.style.background='#111'; el.style.position='relative'; el.style.overflow='hidden';
+  const f=Math.max(3,ih*0.07), L=x>0.5, R=x+dw<iw-0.5, T=y>0.5, B=y+dh<ih-0.5;
+  const grad=(dir,a1,a2,len)=>`linear-gradient(${dir},${a1?'transparent':'#000'} 0,#000 ${f}px,#000 ${(len-f).toFixed(1)}px,${a2?'transparent':'#000'} 100%)`;
+  const m=`${grad('to right',L,R,dw)},${grad('to bottom',T,B,dh)}`;
+  el.innerHTML=`<span style="position:absolute;inset:-15%;background:url('${url}') center/cover no-repeat;filter:blur(${Math.max(3,iw*0.05).toFixed(1)}px) brightness(.62)"></span>`
+    +`<span style="position:absolute;left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${dw.toFixed(1)}px;height:${dh.toFixed(1)}px;background:url('${url}') center/100% 100% no-repeat;`
+    +`-webkit-mask-image:${m};mask-image:${m};-webkit-mask-composite:source-in;mask-composite:intersect"></span>`;
+}
 async function loadSpeciesPhoto(c){
   const token=c.sci;
   const img=await _wikiImg(c.sci, c.name);
@@ -768,8 +792,7 @@ async function loadSpeciesPhoto(c){
   let cur=byId[sel]||bySci[sel]; if(!img || !cur || cur.sci!==token) return;
   // (the big header photo below the title was REMOVED — user, 2026-09-09; the
   // card's hexes are now the photo surface)
-  document.querySelectorAll('.bighex .in, .dc-hex .in').forEach(el=>{
-    el.style.background=`#111 url("${img.small}") center/cover no-repeat`; el.textContent=''; });
+  document.querySelectorAll('.bighex .in, .dc-hex .in').forEach(el=>paintHex(el,img.small,cur.id));
   // fetch the CONNECTED species' photos too (deck cards only — the summary
   // endpoint needs a resolvable title), then repaint the graph once with all of
   // them in place (user, 2026-09-09: nodes carry photos, not just the focal hex)
@@ -1061,7 +1084,7 @@ function ecoCardHTML(c){   // the species-page card, gently scaled down (user, 2
 }
 async function fillCardBits(el,c){   // photo + lead sentence for a card rendered OUTSIDE the species page
   const img=_wimgDone[c.sci]||await _wikiImg(c.sci,c.name);
-  if(img&&el.isConnected) el.querySelectorAll('.bighex .in,.dc-hex .in').forEach(x=>{x.style.background=`#111 url('${img.small}') center/cover no-repeat`; x.textContent='';});
+  if(img&&el.isConnected) el.querySelectorAll('.bighex .in,.dc-hex .in').forEach(x=>paintHex(x,img.small,c.id));
   try{ const sh=djb2(c.sci);
     _shardCache[sh] ||= fetch(`data/dossier/${sh}.json`,{cache:'no-cache'}).then(r=>r.json());
     const facts=(await _shardCache[sh])[c.sci]||[];
