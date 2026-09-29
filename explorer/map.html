@@ -11,7 +11,7 @@
      app embeds in a WebView (MapLibre Native can't run in Expo Go). Talks to the
      app over window.ReactNativeWebView.postMessage:
        app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}  (collected = visited → strong green)
-       page → app: {type:'ready'} · {type:'center', eid|null, name, bbox}
+       page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
      `pad` is the app's chrome (header / preview sheet) in CSS px, so the pin
@@ -43,7 +43,9 @@ const map = new maplibregl.Map({
   style: { version: 8, glyphs: 'fonts/{fontstack}/{range}.pbf', sources: {},
            layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1a29' } }] },
 });
-map.touchZoomRotate.disableRotation();
+// two-finger rotate is ON (user, 2026-09-29): the phone's compass shows the
+// bearing, spins the map when dragged, and resets north when tapped
+if (MINI != null) map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
 let PAD = { top: 0, bottom: 0 };
@@ -187,7 +189,7 @@ function applyState(s) {
     map.setFilter('visited', ['in', ['get', 'eco'], ['literal', collected]]);
   }
   if (s.fly && s.current != null) flyTo(s.current);
-  else if (s.pad) highlightPin();
+  else if (s.pad) report();   // the pin moved with the padding: re-read what's under it
 }
 function flyTo(eid) {
   const b = bboxOf(eid);
@@ -226,6 +228,14 @@ window.addEventListener('message', onMsg);
 document.addEventListener('message', onMsg);
 window.polygroveSetState = applyState;   // injectJavaScript entry points
 // the app's + / − buttons: zoom around the pin so what's under it stays put
+// the app's compass: set the bearing (degrees, around the pin); the page
+// reports its bearing back on every rotate so the needle follows the map
+window.polygroveBearing = (deg, animate) => { if (!ready) return;
+  const o = { bearing: deg, around: map.unproject(pinPoint()) };
+  if (animate) map.easeTo(Object.assign(o, { duration: 350 })); else map.jumpTo(o); };
+let _lastBearing = null;
+map.on('rotate', () => { const b = Math.round(map.getBearing() * 10) / 10;
+  if (b !== _lastBearing) { _lastBearing = b; send({ type: 'bearing', deg: b }); } });
 window.polygroveZoom = d => { if (ready) map.easeTo({ zoom: map.getZoom() + d, around: map.unproject(pinPoint()), duration: 300 }); };
 </script>
 </body>
