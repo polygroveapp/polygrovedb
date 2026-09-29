@@ -42,6 +42,8 @@ const map = new maplibregl.Map({
   // sideways (user, 2026-09-29, opening with no camp chosen)
   container: 'map', center: [12, 22], zoom: 1.5, minZoom: MINI == null ? 1.3 : 0, maxZoom: 13, doubleClickZoom: false,
   interactive: MINI == null,
+  // mini mode keeps its pixels so it can hand the app a snapshot (below)
+  canvasContextAttributes: MINI != null ? { preserveDrawingBuffer: true } : undefined,
   attributionControl: false, pitchEnabled: false, dragRotate: false, touchPitch: false, maxPitch: 60,
   style: { version: 8, glyphs: 'fonts/{fontstack}/{range}.pbf', sources: {},
            layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1a29' } }] },
@@ -255,6 +257,11 @@ map.on('load', async () => {
     setSelected(MINI);
     const b = bboxOf(MINI);
     if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 28, duration: 0, maxZoom: 3.6 });
+    // ALWAYS LOADED on the Camp page (user, 2026-09-29): once everything has
+    // drawn, the page sends a JPEG of itself; the app keeps it per ecoregion
+    // and shows the picture instantly from then on, online or off
+    const snap = () => { try { send({ type: 'snapshot', eid: MINI, data: map.getCanvas().toDataURL('image/jpeg', 0.82) }); } catch (e) {} };
+    map.once('idle', () => setTimeout(snap, 400));
     return;
   }
   if (pendingState) applyState(pendingState);
