@@ -6,6 +6,8 @@
 # lead2 = the article's SECOND sentence (user, 2026-09-29: "have the ecoregion
 # sentence be the second sentence on the wikipedia page") — the first is nearly
 # always the definition ("X is a … ecoregion in …"), the second says something.
+# ecology = the first sentence of the article's "Ecology" section, preferred
+# over both when the article has one.
 
 # %%
 import duckdb, bz2, re, html, json, time
@@ -37,6 +39,35 @@ def get_wikitext(title,hops=0):
         t=m.group(1).strip(); return get_wikitext(t[:1].upper()+t[1:],hops+1)
     return wt,title
 CONVERT_RE=re.compile(r"\{\{(?:convert|cvt)\s*\|\s*([^|}]+)\s*\|\s*([^|}]+)[^}]*\}\}", re.I)
+def section_text(wt, names):
+    """the wikitext under the first heading whose title is one of `names` (any level)"""
+    for m in re.finditer(r"(?m)^(=+)\s*(.*?)\s*\1\s*$", wt):
+        if m.group(2).strip().lower() in names:
+            rest=wt[m.end():]
+            nxt=re.search(r"(?m)^=+[^=\n].*?=+\s*$", rest)
+            return rest[:nxt.start()] if nxt else rest
+    return None
+def clean_sentences(body, n):
+    body=CONVERT_RE.sub(r"\1 \2",body)
+    body=re.sub(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>","",body,flags=re.DOTALL)
+    body=re.sub(r"(?m)^\s*\[\[(File|Image):[^\n]*$","",body)
+    text=mw.parse(body).strip_code()
+    out=[]
+    for s in re.split(r"(?<=[.!?])\s+",text.strip()):
+        s=re.sub(r"\s+"," ",s).strip()
+        s=re.sub(r"\(\s*[;,]\s*","(",s); s=re.sub(r"\(\s*\)","",s)
+        if len(s.split())<6 or not s[:1].isupper(): continue
+        if "|" in s or "{" in s or "}" in s or s.lower().startswith(("thumb","main article","see also")): continue
+        out.append(s)
+        if len(out)>=n: break
+    return out
+def ecology_sentence(wt):
+    """the first sentence of the article's Ecology section, when it has one
+    (user, 2026-09-29: "if they have an ecology tab use that sentence")"""
+    if not wt: return None
+    sec=section_text(wt, {"ecology"})
+    ss=clean_sentences(sec,1) if sec else []
+    return ss[0] if ss else None
 def lead_sentences(wt, n=2):
     """the first n clean sentences of the article's lead section"""
     if not wt: return []
@@ -60,6 +91,8 @@ for i,(eid,name) in enumerate(ecos):
     if ss:
         out[str(eid)]={"lead":ss[0],"title":resolved}
         if len(ss)>1: out[str(eid)]["lead2"]=ss[1]
+        eco_s=ecology_sentence(wt)
+        if eco_s: out[str(eid)]["ecology"]=eco_s
     if (i+1)%150==0: print(f"  {i+1}/{len(ecos)} · {len(out)} with leads · {(time.time()-t0)/60:.1f}m", flush=True)
 json.dump(out, open("../../data/ecoregion_leads.json","w"))
-print(f"DONE: {len(out)}/{len(ecos)} ecoregions have a lead sentence, {sum(1 for v in out.values() if 'lead2' in v)} a second  ({(time.time()-t0)/60:.1f}m)", flush=True)
+print(f"DONE: {len(out)}/{len(ecos)} ecoregions have a lead sentence, {sum(1 for v in out.values() if 'lead2' in v)} a second, {sum(1 for v in out.values() if 'ecology' in v)} an Ecology sentence  ({(time.time()-t0)/60:.1f}m)", flush=True)

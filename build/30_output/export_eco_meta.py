@@ -21,9 +21,10 @@ out={}
 for eid,name in names.items():
     k=str(eid); e={"name":name}
     if eid in bboxes: e["bbox"]=bboxes[eid]
-    # the SECOND sentence when the article has one (user, 2026-09-29) — the
-    # first is the definition; `wiki` = article title, for the link
-    if k in leads: e["lead"]=leads[k].get("lead2") or leads[k]["lead"]; e["wiki"]=leads[k]["title"]
+    # the article's FIRST sentence — kept simple (user, 2026-09-29, after trying
+    # the second sentence and the Ecology section's; the extractor still records
+    # lead2 and ecology should that change); `wiki` = article title, for the link
+    if k in leads: e["lead"]=leads[k]["lead"]; e["wiki"]=leads[k]["title"]
     p=photos.get(k)
     if p: e["photo"]={"thumb":p.get("thumb") or p.get("url"),"by":p.get("by",""),"lic":p.get("license","")}
     out[k]=e
