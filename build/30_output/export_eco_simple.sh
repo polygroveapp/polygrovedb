@@ -10,6 +10,7 @@
 # once — so neighbours always coincide. Two tiers:
 #   eco_simple.geojson  ~60k vertices  first paint, world zoom, the mini map
 #   eco_detail.geojson  ~300k vertices lazy-loaded by map.html once zoomed in
+#   eco_hd/<id>.json    30% of raw, per ecoregion, loaded for what's on screen past z5.5
 set -e
 cd "$(dirname "$0")"
 RAW=../../data/ecoregions_raw.geojson
@@ -40,3 +41,12 @@ build() {   # build <percent> <precision> <name>
 build 2% 0.001 eco_detail
 build 0.4% 0.01 eco_simple
 ls -la "$OUT/eco_detail.geojson" "$OUT/eco_simple.geojson"
+# HIGH DETAIL, one file per ecoregion (2026-09-29: "be accurate"): 30% of the
+# raw vertices at ~10 m precision, still topological, so the coast is the
+# coast and bay islands stay inside their region. map.html loads the files of
+# whatever is on screen once zoomed past 5.5. ~850 files, ~80 MB, max ~2 MB.
+mkdir -p "$OUT/eco_hd"
+npx -y -p mapshaper mapshaper-xl 14gb "$RAW" snap -target type=polygon -filter 'eco != 0' -clip bbox=-180,-85,180,85 \
+  -simplify 30% keep-shapes -clean -split eco \
+  -o precision=0.0001 format=geojson extension=json "$OUT/eco_hd/"
+ls "$OUT/eco_hd" | wc -l; du -sh "$OUT/eco_hd"

@@ -67,6 +67,14 @@ map.on('load', async () => {
   map.addSource('eco', { type: 'geojson', data: geo });
   // the explorer's Ecoregions-page stack, in order
   map.addLayer({ id: 'land', type: 'fill', source: 'eco', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
+  // HIGH DETAIL (user, 2026-09-29: "the ecoregions don't fit the map exactly
+  // … be accurate"): once zoomed in, every ecoregion on screen is replaced by
+  // its own high-detail outline (data/eco_hd/<id>.json, 30% of RESOLVE's raw
+  // vertices, shared borders intact, bay islands included). They live in a
+  // second source with twin layers; a region that has its HD twin is filtered
+  // out of the low-detail layers.
+  map.addSource('ecohd', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({ id: 'land_hd', type: 'fill', source: 'ecohd', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
   map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
   map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
     paint: { 'color-relief-opacity': 0.7,
@@ -101,6 +109,8 @@ map.on('load', async () => {
       .catch(() => { detail = false; });
   };
   map.on('zoomend', loadDetail);
+  map.on('moveend', loadHD);
+  map.on('idle', loadHD);   // and once the new view has actually drawn — a jump lands before its tiles do
   // PARK BOUNDARIES in the explorer's brown, as SOLID lines (user,
   // 2026-09-29): the NPS polygons that matched a named park, fetched after
   // first paint so they never delay the map
@@ -134,19 +144,23 @@ map.on('load', async () => {
       map.getLayer('selglow') ? 'selglow' : undefined);
   }).catch(() => {});
   // every ecoregion outlined thin green (dashed, as on the Ecoregions page)
-  map.addLayer({ id: 'ecoline', type: 'line', source: 'eco',
+  // every line is drawn with ROUND joins and caps (user, 2026-09-29: "smooth
+  // out the edges a bit"); each layer has an HD twin on the ecohd source
+  const ROUND = { 'line-join': 'round', 'line-cap': 'round' };
+  const twin = (id, def) => { map.addLayer(Object.assign({ id, source: 'eco' }, def)); map.addLayer(Object.assign({ id: id + '_hd', source: 'ecohd' }, def)); };
+  twin('ecoline', { type: 'line', layout: ROUND,
     paint: { 'line-color': '#81C784', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 5, 0.8, 7.5, 1.2],
              'line-opacity': 0.6, 'line-dasharray': [1.6, 1.9] } });
   // ecoregions you've been to (hold cards in): a stronger, solid green
   // outline (user, 2026-09-28 — was gold)
-  map.addLayer({ id: 'visited', type: 'line', source: 'eco', filter: ['in', ['get', 'eco'], ['literal', []]],
+  twin('visited', { type: 'line', layout: ROUND, filter: ['in', ['get', 'eco'], ['literal', []]],
     paint: { 'line-color': '#4CAF50', 'line-width': 2, 'line-opacity': 0.95 } });
   // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
-  map.addLayer({ id: 'selfill', type: 'fill', source: 'eco', filter: ['==', ['get', 'eco'], -1],
+  twin('selfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
     paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0.45 } });
-  map.addLayer({ id: 'selglow', type: 'line', source: 'eco', filter: ['==', ['get', 'eco'], -1],
+  twin('selglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
-  map.addLayer({ id: 'selline', type: 'line', source: 'eco', filter: ['==', ['get', 'eco'], -1],
+  twin('selline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
   map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
@@ -190,11 +204,13 @@ map.on('load', async () => {
                 'text-max-width': 6, 'text-padding': 2 },
       paint: { 'text-color': '#6d95bd', 'text-halo-color': '#0b1a29', 'text-halo-width': 1.2, 'text-opacity': 0.85 } });
   }
-  // MAJOR CITIES with a SQUARE mark, in GREY (user, 2026-09-29: tried blue
-  // and black, "grey looked good"), the explorer's tiers: megacities at world zoom, 1M+ by z2.4, the rest by z4
+  // MAJOR CITIES with a SQUARE mark: BLACK inside, GREY border — name and
+  // square alike (user, 2026-09-29, after blue, black-on-white and all-grey),
+  // the explorer's tiers: megacities at world zoom, 1M+ by z2.4, the rest by z4
   if (cities && MINI == null) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 12;
-    const g = cv.getContext('2d'); g.fillStyle = '#8a8f8a'; g.fillRect(2, 2, 8, 8);
+    const g = cv.getContext('2d'); g.fillStyle = '#8a8f8a'; g.fillRect(1, 1, 10, 10);
+    g.fillStyle = '#000000'; g.fillRect(2.5, 2.5, 7, 7);
     map.addImage('citypt', g.getImageData(0, 0, 12, 12), { pixelRatio: 2 });
     map.addSource('cities', { type: 'geojson', data: cities });
     const weight = ['*', ['get', 'pop'], ['case', ['==', ['get', 'cap'], 1], 3, 1]];
@@ -204,7 +220,7 @@ map.on('load', async () => {
                 'text-size': ['interpolate', ['linear'], ['zoom'], 1, 7.5, 4, 8.5, 7, 10],
                 'symbol-sort-key': ['-', 0, weight],
                 'text-offset': [0, -0.55], 'text-anchor': 'bottom', 'text-max-width': 8, 'text-padding': 3 },
-      paint: { 'text-color': '#a3a8a3', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.25 } });
+      paint: { 'text-color': '#000000', 'text-halo-color': '#8a8f8a', 'text-halo-width': 1.3 } });
   }
   // lake names in BLUE, and FEWER of them (user, 2026-09-29): a lake is named
   // only once it is big enough on screen for the zoom — the great lakes from
@@ -277,7 +293,7 @@ map.on('load', async () => {
 let raf = 0;
 const pinPoint = () => { const c = map.getContainer(); return [c.clientWidth / 2, (PAD.top + (c.clientHeight - PAD.bottom)) / 2]; };
 function regionAtPin() {
-  try { return map.queryRenderedFeatures(pinPoint(), { layers: ['land'] })[0] || null; } catch (e) { return null; }
+  try { return map.queryRenderedFeatures(pinPoint(), { layers: ['land_hd', 'land'] })[0] || null; } catch (e) { return null; }
 }
 function highlightPin() {
   const f = regionAtPin();
@@ -302,7 +318,7 @@ function applyState(s) {
   }
   if (Array.isArray(s.collected)) {
     collected = s.collected;
-    map.setFilter('visited', ['in', ['get', 'eco'], ['literal', collected]]);
+    applyFilters();
   }
   if (s.fly && s.current != null) flyTo(s.current);
   else if (s.pad) report();   // the pin moved with the padding: re-read what's under it
@@ -316,8 +332,56 @@ function flyTo(eid) {
 function setSelected(eid) {
   if (eid === current) return;
   current = eid == null ? null : eid;
-  const f = ['==', ['get', 'eco'], current == null ? -1 : current];
-  for (const id of ['selfill', 'selglow', 'selline']) map.setFilter(id, f);
+  applyFilters();
+}
+// every ecoregion layer's filter, in one place: the low-detail layer skips
+// regions that have their high-detail twin loaded
+const HD = new Map();            // eco id → its high-detail feature
+function applyFilters() {
+  const hd = ['literal', [...HD.keys()]], notHD = ['!', ['in', ['get', 'eco'], hd]];
+  const sel = ['==', ['get', 'eco'], current == null ? -1 : current], vis = ['in', ['get', 'eco'], ['literal', collected]];
+  const put = (id, f) => { if (map.getLayer(id)) map.setFilter(id, ['all', f, notHD]); if (map.getLayer(id + '_hd')) map.setFilter(id + '_hd', f); };
+  if (map.getLayer('land')) map.setFilter('land', notHD);
+  if (map.getLayer('ecoline')) map.setFilter('ecoline', notHD);
+  for (const id of ['selfill', 'selglow', 'selline']) put(id, sel);
+  put('visited', vis);
+}
+// load the high-detail outline of everything on screen, once zoomed in
+const hdBusy = new Set();
+function loadHD() {
+  if (MINI != null || !ready || map.getZoom() < 5.5) return;
+  let ids = [];
+  try { ids = [...new Set(map.queryRenderedFeatures({ layers: ['land'] }).map(f => f.properties.eco))]; } catch (e) { return; }
+  // nothing under the pin? The coarse outline may simply have lost this spot
+  // (a bay island, a sliver of coast): also try the regions whose bounding
+  // box holds the pin, smallest first — the detailed outline decides
+  if (!regionAtPin()) {
+    const c = map.unproject(pinPoint());
+    ids = ids.concat(boxesAt(c.lng, c.lat).slice(0, 4));
+  }
+  ids = [...new Set(ids)].filter(e => !HD.has(e) && !hdBusy.has(e)).slice(0, 14);
+  if (!ids.length) return;
+  ids.forEach(e => hdBusy.add(e));
+  Promise.all(ids.map(e => fetch('data/eco_hd/' + e + '.json').then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(fc => { const f = fc && (fc.features ? fc.features[0] : fc); if (f && f.geometry) { f.properties = Object.assign({}, f.properties, { eco: e }); HD.set(e, f); } })))
+    .then(() => {
+      ids.forEach(e => hdBusy.delete(e));
+      if (HD.size > 70) for (const k of [...HD.keys()].slice(0, HD.size - 70)) HD.delete(k);   // oldest out
+      map.getSource('ecohd').setData({ type: 'FeatureCollection', features: [...HD.values()] });
+      applyFilters();
+      map.once('idle', () => { report(); loadHD(); });   // the rest of the screen, if it was more than one batch
+    });
+}
+// regions whose bounding box contains a point, smallest box first
+function boxesAt(x, y) {
+  if (!GEO) return [];
+  const seen = new Map();
+  for (const f of GEO.features) {
+    const e = f.properties.eco; if (seen.has(e)) continue;
+    const b = bboxOf(e); seen.set(e, b);
+  }
+  return [...seen].filter(([, b]) => b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])
+    .sort((p, q) => (p[1][2] - p[1][0]) * (p[1][3] - p[1][1]) - (q[1][2] - q[1][0]) * (q[1][3] - q[1][1])).map(([e]) => e);
 }
 function bboxOf(eid) {
   // our own parsed copy — MapLibre's source._data is not the feature collection

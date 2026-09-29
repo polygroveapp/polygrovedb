@@ -2035,7 +2035,7 @@ async function renderRangeMap(ids,sci,opts){
     ['Peaks','#cfc9bb','tri',['peaklbl','peaklbl-must']],
     ['Lakes','#3d6a8a','fill',['lakes']],
     ['Lake names','#6ea8e0','txt',['lakelbl']],
-    ['City names & squares','#a3a8a3','dot',['citylbl','citydot']],
+    ['City names & squares','#8a8f8a','dot',['citylbl','citydot']],
     ['Country borders','#8a8f8a','line',['adminlines']],
     ['State borders','#8a8f8a','line',['adminlines-st']],
     ['Country & state names','#8a8f8a','txt',['adminlbl']],
@@ -2223,8 +2223,9 @@ async function renderRangeMap(ids,sci,opts){
     // protected area (true boundary polygons aren't open data at this scale).
     const mkIcon=(draw,sz)=>{const cv=document.createElement('canvas');cv.width=cv.height=sz;
         draw(cv.getContext('2d'),sz); return cv.getContext('2d').getImageData(0,0,sz,sz);};
-    if(!map.hasImage('citypt')) map.addImage('citypt', mkIcon((g,z)=>{g.fillStyle='#8a8f8a';   // GREY square (user, 2026-09-29; was a blue dot, briefly black)
-        g.fillRect(2,2,z-4,z-4);},12), {pixelRatio:2});
+    if(!map.hasImage('citypt')) map.addImage('citypt', mkIcon((g,z)=>{   // BLACK square, GREY border (user, 2026-09-29; was a blue dot)
+        g.fillStyle='#8a8f8a'; g.fillRect(1,1,z-2,z-2);
+        g.fillStyle='#000000'; g.fillRect(2.5,2.5,z-5,z-5);},12), {pixelRatio:2});
     if(!map.hasImage('parkpt')) map.addImage('parkpt', mkIcon((g,z)=>{g.fillStyle='#c49a76';
         g.beginPath(); g.arc(z/2,z/2,z/2-1,0,7); g.fill();},8), {pixelRatio:2});
     if(!map.hasImage('parkpty')) map.addImage('parkpty', mkIcon((g,z)=>{g.fillStyle='#ffe14d';   // yellow: the HIGHLIGHTED park only (user, 2026-09-25)
@@ -2509,7 +2510,7 @@ async function renderRangeMap(ids,sci,opts){
                 'text-size':['interpolate',['linear'],['zoom'],1,7,4,8,7,9],
                 'symbol-sort-key':['*',['get','pop'],['case',['==',['get','cap'],1],3,1]],
                 'text-offset':[0,-0.55],'text-anchor':'bottom','text-max-width':8,'text-padding':6},
-        paint:{'text-color':'#a3a8a3','text-halo-color':'#0d0d0d','text-halo-width':1.25}});   // GREY names (user, 2026-09-29: "grey looked good"; were blue, briefly black)
+        paint:{'text-color':'#000000','text-halo-color':'#8a8f8a','text-halo-width':1.3}});   // BLACK names with a GREY border (user, 2026-09-29; were blue)
       _addPill('citypill','#6f9ac8'); _pillify('citylbl','citypill');
       // the DOT gets its own layer so it survives the pill swap
       map.addLayer({id:'citydot',type:'symbol',source:'cities',minzoom:0.8,
