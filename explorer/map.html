@@ -337,17 +337,23 @@ function report() {
 
 function applyState(s) {
   if (!ready) { pendingState = s; return; }
+  let padChanged = false;
   if (s.pad) {
-    PAD = { top: +s.pad.top || 0, bottom: +s.pad.bottom || 0 };
-    // the camera's centre IS the pin: every move, zoom and tilt pivots there
-    map.setPadding({ top: PAD.top, bottom: PAD.bottom, left: 0, right: 0 });
+    const np = { top: +s.pad.top || 0, bottom: +s.pad.bottom || 0 };
+    padChanged = np.top !== PAD.top || np.bottom !== PAD.bottom;
+    PAD = np;
+    // the camera's centre IS the pin: every move, zoom and tilt pivots there.
+    // ONLY when it changed: setPadding is a camera move, and a camera move
+    // cancels a flight in progress — re-applying it on every state update
+    // stopped the map flying to your camp on launch (found 2026-09-29)
+    if (padChanged) map.setPadding({ top: PAD.top, bottom: PAD.bottom, left: 0, right: 0 });
   }
   if (Array.isArray(s.collected)) collected = s.collected;
   if (Array.isArray(s.completed)) completed = s.completed;
   if (s.camp !== undefined) camp = s.camp;
   applyFilters();
   if (s.fly && s.current != null) flyTo(s.current);
-  else if (s.pad) report();   // the pin moved with the padding: re-read what's under it
+  else if (padChanged) report();   // the pin moved with the padding: re-read what's under it
 }
 function flyTo(eid) {
   const b = bboxOf(eid);
