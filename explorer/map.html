@@ -53,7 +53,8 @@ const map = new maplibregl.Map({
 map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
-let camp = null, completed = [];   // your camp (gold border) · finished decks (gold inside)
+let camp = null, completed = [];   // your camp (brown border) · mastered decks (gold border + inside)
+let progress = {};                 // eco id → 0..1, how far its deck is mastered (visited fill: dark → bright green → gold)
 let PAD = { top: 0, bottom: 0 };
 const TERRAIN = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
@@ -167,23 +168,37 @@ map.on('load', async () => {
   twin('visited', { type: 'line', layout: ROUND, filter: ['in', ['get', 'eco'], ['literal', []]],
     paint: { 'line-color': '#4CAF50', 'line-width': 2, 'line-opacity': 0.95 } });
   // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
-  // COMPLETED ecoregions — every card journaled — are painted GOLD inside
-  // (user, 2026-09-29), under the pin's green so the selection still reads
-  twin('donefill', { type: 'fill', filter: ['in', ['get', 'eco'], ['literal', []]],
-    paint: { 'fill-color': '#FFD700', 'fill-opacity': 0.34 } });
+  // MASTERY PAINT (user, 2026-09-30, "the green to light green to gold is
+  // the fill on the inside"): an ecoregion you've been to is painted inside
+  // from a dark green (nothing mastered) to a bright green (nearly all) and
+  // GOLD once every card in its deck is mastered — under the pin's green so
+  // the selection still reads. (Was: gold inside once every card was
+  // journaled, 2026-09-29.)
+  twin('visitfill', { type: 'fill', filter: ['in', ['get', 'eco'], ['literal', []]],
+    paint: { 'fill-color': '#1e5a24', 'fill-opacity': 0.42 } });
+  // CROSSFADE (user, 2026-09-30: "have the changing green fill fade in and
+  // out to make it smoother"): the region the pin just left keeps its own
+  // set of layers (psel*) fading out while the new one fades in
+  twin('pselfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
+    paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0 } });
+  twin('pselglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
+    paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0 } });
+  twin('pselline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
+    paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 0 } });
   twin('selfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
     paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0.45 } });
   twin('selglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
   twin('selline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 1 } });
-  // YOUR CAMP — the ecoregion you are in — is bordered in the app's BROWN,
-  // the colour of "Where do you want to camp?" (user, 2026-09-29; gold for an
-  // hour), drawn over the pin's green outline so it never disappears
+  // YOUR CAMP — the ecoregion you are in — is bordered in a glowing bright
+  // GREEN (user, 2026-09-30: "only the ecoregion you're in highlighted
+  // green, don't use the brown"; brown from 2026-09-29, gold for an hour
+  // before that), drawn over the pin's outline so it never disappears
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#8B5035', 'line-width': 8, 'line-blur': 6, 'line-opacity': 0.6 } });
+    paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#b0694a', 'line-width': 2.4, 'line-opacity': 1 } });
+    paint: { 'line-color': '#b6f2b9', 'line-width': 2.4, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
   map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
@@ -372,8 +387,17 @@ function settle() {
 }
 let idleQueued = false;   // tilt fires moveend many times a second: one idle follow-up at a time
 let lastReported;
+// NO FLICKER (user, 2026-09-30: "don't make it so sensitive"): along a border
+// the pin's read can alternate every frame. A different region only takes
+// over once it has been under the pin for 140ms straight (a fling across a
+// region still reads it — a beat is a handful of frames).
+let candidate, candidateSince = 0;
+const STEADY_MS = 140;
 function report() {
   const f = regionAtPin(), eid = f ? f.properties.eco : null;
+  if (eid !== candidate) { candidate = eid; candidateSince = performance.now(); if (eid !== current) setTimeout(report, STEADY_MS + 10); }
+  if (eid === current && eid === lastReported) return;
+  if (performance.now() - candidateSince < STEADY_MS) return;
   setSelected(eid);
   if (eid === lastReported) return;
   lastReported = eid;
@@ -395,6 +419,7 @@ function applyState(s) {
   }
   if (Array.isArray(s.collected)) collected = s.collected;
   if (Array.isArray(s.completed)) completed = s.completed;
+  if (s.progress && typeof s.progress === 'object') progress = s.progress;
   if (s.camp !== undefined) camp = s.camp;
   applyFilters();
   if (s.fly && s.current != null) flyTo(s.current);
@@ -406,10 +431,28 @@ function flyTo(eid) {
   // padding = the app's chrome, so the region is centred on the pin
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 30, maxZoom: 6.5, duration: 1200 });   // on top of the map's own padding
 }
+let prevSel = null, fadeRaf = 0;
+const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
 function setSelected(eid) {
   if (eid === current) return;
+  prevSel = current;
   current = eid == null ? null : eid;
   applyFilters();
+  // fade: the old region's layers 1 → 0, the new region's 0 → 1, over 320ms
+  const t0 = performance.now(), D = 650;   // "fade in slower" (user, 2026-09-30; was 320)
+  if (fadeRaf) cancelAnimationFrame(fadeRaf);
+  const step = () => {
+    const t = Math.min(1, (performance.now() - t0) / D), e = t * (2 - t);   // ease-out
+    setSelOpacity('sel', e); setSelOpacity('psel', 1 - e);
+    if (t < 1) fadeRaf = requestAnimationFrame(step); else { fadeRaf = 0; prevSel = null; applyFilters(); }
+  };
+  step();
+}
+function setSelOpacity(prefix, k) {
+  const set = (id, prop, v) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, v); if (map.getLayer(id + '_hd')) map.setPaintProperty(id + '_hd', prop, v); };
+  set(prefix + 'fill', 'fill-opacity', SEL_OPACITY.fill * k);
+  set(prefix + 'glow', 'line-opacity', SEL_OPACITY.glow * k);
+  set(prefix + 'line', 'line-opacity', SEL_OPACITY.line * k);
 }
 // every ecoregion layer's filter, in one place: the low-detail layer skips
 // regions that have their high-detail twin loaded
@@ -421,8 +464,19 @@ function applyFilters() {
   if (map.getLayer('land')) map.setFilter('land', notHD);
   if (map.getLayer('ecoline')) map.setFilter('ecoline', notHD);
   for (const id of ['selfill', 'selglow', 'selline']) put(id, sel);
+  const psel = ['==', ['get', 'eco'], prevSel == null ? -1 : prevSel];
+  for (const id of ['pselfill', 'pselglow', 'pselline']) put(id, psel);
   put('visited', vis);
-  put('donefill', ['in', ['get', 'eco'], ['literal', completed]]);
+  put('visitfill', vis);
+  // MASTERY COLOURS (user, 2026-09-30): each visited region's inside goes
+  // from a dark green (nothing mastered) to a bright green (nearly all), and
+  // GOLD once the whole deck is mastered — one 'match' expression, mixed here
+  const mix = (t) => { const a = [0x1e, 0x5a, 0x24], b = [0x6e, 0xff, 0x62];   // dark → bright green
+    return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * Math.max(0, Math.min(1, t))).toString(16).padStart(2, '0')).join(''); };
+  const pairs = [];
+  for (const e of collected) { const p = progress[e] || 0; pairs.push(+e, p >= 1 || completed.includes(+e) ? '#FFD700' : mix(p)); }
+  const color = pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0);
+  for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', color);
   for (const id of ['campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
 }
 // load the high-detail outline of everything on screen, once zoomed in
