@@ -439,7 +439,7 @@ function setSelected(eid) {
   current = eid == null ? null : eid;
   applyFilters();
   // fade: the old region's layers 1 → 0, the new region's 0 → 1, over 320ms
-  const t0 = performance.now(), D = 650;   // "fade in slower" (user, 2026-09-30; was 320)
+  const t0 = performance.now(), D = 490;   // 320 → "slower" 650 → "25% faster" (user, 2026-09-30)
   if (fadeRaf) cancelAnimationFrame(fadeRaf);
   const step = () => {
     const t = Math.min(1, (performance.now() - t0) / D), e = t * (2 - t);   // ease-out
