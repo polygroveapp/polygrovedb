@@ -196,7 +196,10 @@ map.on('load', async () => {
   // green, don't use the brown"; brown from 2026-09-29, gold for an hour
   // before that), drawn over the pin's outline so it never disappears
   // …and the glow is YELLOW (user, 2026-09-30, minutes after green): the
-  // title's yellow, a pale yellow line over it
+  // title's yellow, a pale yellow line over it — and GOLD INSIDE, PULSING
+  // (user, 2026-09-30): the fill breathes between faint and warm, ~2.4s
+  twin('campfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
+    paint: { 'fill-color': '#FFD700', 'fill-opacity': 0.2 } });
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#ffe14d', 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
@@ -417,7 +420,13 @@ function applyState(s) {
     // ONLY when it changed: setPadding is a camera move, and a camera move
     // cancels a flight in progress — re-applying it on every state update
     // stopped the map flying to your camp on launch (found 2026-09-29)
-    if (padChanged) map.setPadding({ top: PAD.top, bottom: PAD.bottom, left: 0, right: 0 });
+    if (padChanged) {
+      map.setPadding({ top: PAD.top, bottom: PAD.bottom, left: 0, right: 0 });
+      // …and if that just cut a flight short (the app's first state can land
+      // before its layout has settled), fly again to the same place — found
+      // 2026-09-30: launches that stopped one ecoregion east of camp
+      if (flyTarget != null && performance.now() < flyUntil && !s.fly) flyTo(flyTarget);
+    }
   }
   if (Array.isArray(s.collected)) collected = s.collected;
   if (Array.isArray(s.completed)) completed = s.completed;
@@ -427,9 +436,11 @@ function applyState(s) {
   if (s.fly && s.current != null) flyTo(s.current);
   else if (padChanged) report();   // the pin moved with the padding: re-read what's under it
 }
+let flyTarget = null, flyUntil = 0;
 function flyTo(eid) {
   const b = bboxOf(eid);
   if (!b) return;
+  flyTarget = eid; flyUntil = performance.now() + 1600;
   // padding = the app's chrome, so the region is centred on the pin
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 30, maxZoom: 6.5, duration: 1200 });   // on top of the map's own padding
 }
@@ -462,14 +473,18 @@ const HD = new Map();            // eco id → its high-detail feature
 function applyFilters() {
   const hd = ['literal', [...HD.keys()]], notHD = ['!', ['in', ['get', 'eco'], hd]];
   const sel = ['==', ['get', 'eco'], current == null ? -1 : current], vis = ['in', ['get', 'eco'], ['literal', collected]];
+  // the camp's gold pulses to TRANSPARENT, not to green (user, 2026-09-30):
+  // neither the visited fill nor the pin's selection fill draws under it
+  const notCamp = ['!=', ['get', 'eco'], camp == null ? -1 : camp];
   const put = (id, f) => { if (map.getLayer(id)) map.setFilter(id, ['all', f, notHD]); if (map.getLayer(id + '_hd')) map.setFilter(id + '_hd', f); };
   if (map.getLayer('land')) map.setFilter('land', notHD);
   if (map.getLayer('ecoline')) map.setFilter('ecoline', notHD);
-  for (const id of ['selfill', 'selglow', 'selline']) put(id, sel);
+  put('selfill', ['all', sel, notCamp]);
+  for (const id of ['selglow', 'selline']) put(id, sel);
   const psel = ['==', ['get', 'eco'], prevSel == null ? -1 : prevSel];
   for (const id of ['pselfill', 'pselglow', 'pselline']) put(id, psel);
   put('visited', vis);
-  put('visitfill', vis);
+  put('visitfill', ['all', vis, notCamp]);
   // MASTERY COLOURS (user, 2026-09-30): each visited region's inside goes
   // from a dark green (nothing mastered) to a bright green (nearly all), and
   // GOLD once the whole deck is mastered — one 'match' expression, mixed here
@@ -479,7 +494,22 @@ function applyFilters() {
   for (const e of collected) { const p = progress[e] || 0; pairs.push(+e, p >= 1 || completed.includes(+e) ? '#FFD700' : mix(p)); }
   const color = pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0);
   for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', color);
-  for (const id of ['campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
+  for (const id of ['campfill', 'campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
+  pulseCamp();
+}
+// the camp's gold fill breathes: 0.12 → 0.36 and back on a 2.4s sine, updated
+// every other frame (a paint change is cheap, but no need for 60 a second)
+let pulseRaf = 0, pulseTick = 0;
+function pulseCamp() {
+  if (camp == null || MINI != null) { if (pulseRaf) cancelAnimationFrame(pulseRaf); pulseRaf = 0; return; }
+  if (pulseRaf) return;
+  const step = () => {
+    pulseRaf = requestAnimationFrame(step);
+    if (pulseTick++ & 1) return;
+    const k = 0.24 + 0.12 * Math.sin((performance.now() / 2400) * 2 * Math.PI);
+    for (const id of ['campfill', 'campfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', k);
+  };
+  step();
 }
 // load the high-detail outline of everything on screen, once zoomed in
 const hdBusy = new Set();
