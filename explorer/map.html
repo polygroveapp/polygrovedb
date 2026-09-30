@@ -142,8 +142,11 @@ map.on('load', async () => {
       for (const f of parks.features) {
         const [x, y] = f.geometry.coordinates;
         for (const c of byName.get(pnorm(f.properties.name)) || [])
-          if (x >= c.box[0] && x <= c.box[2] && y >= c.box[1] && y <= c.box[3]) c.f.properties.mm = 1;
+          if (x >= c.box[0] && x <= c.box[2] && y >= c.box[1] && y <= c.box[3]) { c.f.properties.mm = 1; f.properties.hb = 1; }
       }
+      // a park with a border needs no dot in the middle (user, 2026-09-30) —
+      // the website's rule (hb = has boundary); the name tucks in closer
+      if (map.getSource('parks')) map.getSource('parks').setData(parks);
     }
     map.addSource('parkbounds', { type: 'geojson', data: pb });
     map.addLayer({ id: 'parkline', type: 'line', source: 'parkbounds', filter: ['==', ['get', 'mm'], 1],
@@ -199,13 +202,14 @@ map.on('load', async () => {
     // fits, the famous first (lowest sort key is placed first). Tight padding
     // and four candidate anchors let more names land.
     const famous = ['-', 0, ['coalesce', ['get', 'fame'], 0]];
-    map.addLayer({ id: 'parkdot', type: 'symbol', source: 'parks', minzoom: 0.8,
+    map.addLayer({ id: 'parkdot', type: 'symbol', source: 'parks', minzoom: 0.8, filter: ['!=', ['get', 'hb'], 1],
       layout: { 'icon-image': 'parkpt', 'icon-padding': 0, 'symbol-sort-key': famous } });
     map.addLayer({ id: 'parklbl', type: 'symbol', source: 'parks', minzoom: 0.8,
       layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
                 'text-size': ['interpolate', ['linear'], ['zoom'], 1, 8, 4, 9.5, 7, 11],
                 'symbol-sort-key': famous,
-                'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 0.55,
+                'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+                'text-radial-offset': ['case', ['==', ['get', 'hb'], 1], 0.15, 0.55],
                 'text-max-width': 8, 'text-padding': 1 },
       paint: { 'text-color': '#c49a76', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.2 } });
   }
