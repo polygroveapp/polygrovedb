@@ -195,10 +195,12 @@ map.on('load', async () => {
   // GREEN (user, 2026-09-30: "only the ecoregion you're in highlighted
   // green, don't use the brown"; brown from 2026-09-29, gold for an hour
   // before that), drawn over the pin's outline so it never disappears
+  // …and the glow is YELLOW (user, 2026-09-30, minutes after green): the
+  // title's yellow, a pale yellow line over it
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
+    paint: { 'line-color': '#ffe14d', 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#b6f2b9', 'line-width': 2.4, 'line-opacity': 1 } });
+    paint: { 'line-color': '#fff3a6', 'line-width': 2.4, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
   map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
