@@ -69,6 +69,12 @@ map.on('load', async () => {
   map.addSource('eco', { type: 'geojson', data: geo });
   // the explorer's Ecoregions-page stack, in order
   map.addLayer({ id: 'land', type: 'fill', source: 'eco', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
+  // PICKING LAYER (2026-09-30): invisible, never filtered. The visible 'land'
+  // hides every region whose high-detail twin is loaded, and there is a moment
+  // between that filter and the twin actually drawing when the pin sat over
+  // nothing — on a phone whose tilt keeps the map from ever going idle, that
+  // moment could stick. The pick asks the HD layer first, then this one.
+  map.addLayer({ id: 'land_pick', type: 'fill', source: 'eco', paint: { 'fill-color': '#000000', 'fill-opacity': 0 } });
   // HIGH DETAIL (user, 2026-09-29: "the ecoregions don't fit the map exactly
   // … be accurate"): once zoomed in, every ecoregion on screen is replaced by
   // its own high-detail outline (data/eco_hd/<id>.json, 30% of RESOLVE's raw
@@ -314,18 +320,38 @@ map.on('load', async () => {
   // report at moveend AND once the tiles for the new view have rendered —
   // right after a fly-to the region under the pin often isn't drawn yet, and
   // queryRenderedFeatures only sees what's drawn
-  if (MINI == null) { map.on('moveend', () => { report(); if (!idleQueued) { idleQueued = true; map.once('idle', () => { idleQueued = false; report(); }); } }); map.once('idle', report); }
+  if (MINI == null) {
+    map.on('moveend', settle);
+    map.once('idle', report);
+    // the HD twins arrive from a worker: report again the moment they're drawn
+    map.on('sourcedata', e => { if (e.sourceId === 'ecohd' && e.isSourceLoaded) report(); });
+  }
 });
 
 // the pin: centre of the visible map (screen minus the app's chrome)
 let raf = 0;
 const pinPoint = () => { const c = map.getContainer(); return [c.clientWidth / 2, (PAD.top + (c.clientHeight - PAD.bottom)) / 2]; };
 function regionAtPin() {
-  try { return map.queryRenderedFeatures(pinPoint(), { layers: ['land_hd', 'land'] })[0] || null; } catch (e) { return null; }
+  try {
+    const pt = pinPoint();
+    return map.queryRenderedFeatures(pt, { layers: ['land_hd'] })[0] || map.queryRenderedFeatures(pt, { layers: ['land_pick'] })[0] || null;
+  } catch (e) { return null; }
 }
 function highlightPin() {
   const f = regionAtPin();
   setSelected(f ? f.properties.eco : null);
+}
+// after a move: report now, and again as the new view's tiles land. Timers,
+// not only 'idle' — on a phone the motion tilt moves the camera many times a
+// second, so the map can go a long while without ever being idle. report()
+// dedupes, so the extra looks are free.
+let settleTimers = [];
+function settle() {
+  report();
+  if (settleTimers.length) return;
+  settleTimers = [250, 700, 1500, 3000].map(ms => setTimeout(report, ms));
+  setTimeout(() => { settleTimers = []; }, 3000);
+  if (!idleQueued) { idleQueued = true; map.once('idle', () => { idleQueued = false; report(); }); }
 }
 let idleQueued = false;   // tilt fires moveend many times a second: one idle follow-up at a time
 let lastReported;
@@ -405,7 +431,10 @@ function loadHD() {
       if (HD.size > 70) for (const k of [...HD.keys()].slice(0, HD.size - 70)) HD.delete(k);   // oldest out
       map.getSource('ecohd').setData({ type: 'FeatureCollection', features: [...HD.values()] });
       applyFilters();
-      map.once('idle', () => { report(); loadHD(); });   // the rest of the screen, if it was more than one batch
+      settle();
+      // the rest of the screen, if it was more than one batch — a timer too,
+      // since 'idle' may never come while the phone is tilting the map
+      map.once('idle', loadHD); setTimeout(loadHD, 1200);
     });
 }
 // regions whose bounding box contains a point, smallest box first
