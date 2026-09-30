@@ -308,7 +308,9 @@ map.on('load', async () => {
   }
   if (pendingState) applyState(pendingState);
   send({ type: 'ready' });
-  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; highlightPin(); }); });
+  // the sheet follows the pin WHILE the map moves (2026-09-30): report() dedupes,
+  // so a pan that stays in one region sends nothing extra
+  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; MINI == null ? report() : highlightPin(); }); });
   // report at moveend AND once the tiles for the new view have rendered —
   // right after a fly-to the region under the pin often isn't drawn yet, and
   // queryRenderedFeatures only sees what's drawn
