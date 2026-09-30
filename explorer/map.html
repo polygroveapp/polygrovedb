@@ -12,7 +12,7 @@
      app over window.ReactNativeWebView.postMessage:
        app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}  (collected = visited → strong green)
                    + camp (your ecoregion → brown border) · completed:[eid…] (finished decks → gold inside)
-       page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg}
+       page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg} · {type:'pan', dx, dy}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
      `pad` is the app's chrome (header / preview sheet) in CSS px, so the pin
@@ -320,7 +320,7 @@ map.on('load', async () => {
   send({ type: 'ready' });
   // the sheet follows the pin WHILE the map moves (2026-09-30): report() dedupes,
   // so a pan that stays in one region sends nothing extra
-  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; MINI == null ? report() : highlightPin(); }); });
+  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (MINI == null) { report(); sendPan(); } else highlightPin(); }); });
   // report at moveend AND once the tiles for the new view have rendered —
   // right after a fly-to the region under the pin often isn't drawn yet, and
   // queryRenderedFeatures only sees what's drawn
@@ -332,6 +332,19 @@ map.on('load', async () => {
   }
 });
 
+// HOW FAR THE WORLD SLID UNDER THE PIN this frame, in screen pixels (user,
+// 2026-09-30: the pin leans against the drag like a thing stuck in the
+// ground) — where last frame's centre sits now, relative to the centre
+let lastCenter = null;
+function sendPan() {
+  const c = map.getCenter();
+  if (lastCenter) {
+    const p = map.project(lastCenter), o = map.project(c);
+    const dx = p.x - o.x, dy = p.y - o.y;
+    if (Math.abs(dx) + Math.abs(dy) > 0.2) send({ type: 'pan', dx: +dx.toFixed(1), dy: +dy.toFixed(1) });
+  }
+  lastCenter = c;
+}
 // the pin: centre of the visible map (screen minus the app's chrome)
 let raf = 0;
 const pinPoint = () => { const c = map.getContainer(); return [c.clientWidth / 2, (PAD.top + (c.clientHeight - PAD.bottom)) / 2]; };
