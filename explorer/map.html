@@ -632,7 +632,10 @@ window.polygroveSetMarks = (pts) => {
   if (!ready) { pendingMarks = pts; return; }
   const fc = { type: 'FeatureCollection', features: (Array.isArray(pts) ? pts : [])
     .filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]))
-    .map(p => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [p[0], p[1]] } })) };
+    // a third number says whether iNaturalist's community has CONFIRMED the
+    // sighting (1, or absent) or it is still waiting (0) — waiting ones are
+    // drawn GREEN (user, 2026-10-05), confirmed ones yellow
+    .map(p => ({ type: 'Feature', properties: { ok: p[2] === 0 ? 0 : 1 }, geometry: { type: 'Point', coordinates: [p[0], p[1]] } })) };
   if (map.getSource('marks')) { map.getSource('marks').setData(fc); return; }
   if (!map.hasImage('markx')) {
     const z = 40, cv = document.createElement('canvas'); cv.width = cv.height = z;
@@ -642,14 +645,20 @@ window.polygroveSetMarks = (pts) => {
     cross('rgba(10,10,10,0.95)', 9.5);   // the dark edge
     cross('#ffe14d', 4.6);               // the website's observation yellow
     map.addImage('markx', g.getImageData(0, 0, z, z), { pixelRatio: 2 });
+    g.clearRect(0, 0, z, z);
+    cross('rgba(10,10,10,0.95)', 9.5);
+    cross('#5fe35a', 4.6);               // not confirmed yet: a bright green, brighter than any region's fill
+    map.addImage('markxg', g.getImageData(0, 0, z, z), { pixelRatio: 2 });
   }
   // sightings a short walk apart piled up into a smudge of ✕s (the six at
   // Sedona, 2026-10-05): marks closer than a few points on screen draw as ONE
   // ✕, and come apart as you zoom in. (Clusters and single spots share the
   // one icon — the layer has no filter.)
-  map.addSource('marks', { type: 'geojson', data: fc, cluster: true, clusterRadius: 16, clusterMaxZoom: 13 });
+  // a merged mark is yellow as soon as ONE of its sightings is confirmed
+  map.addSource('marks', { type: 'geojson', data: fc, cluster: true, clusterRadius: 16, clusterMaxZoom: 13,
+    clusterProperties: { ok: ['max', ['get', 'ok']] } });
   map.addLayer({ id: 'marks', type: 'symbol', source: 'marks',
-    layout: { 'icon-image': 'markx', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+    layout: { 'icon-image': ['case', ['==', ['get', 'ok'], 0], 'markxg', 'markx'], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
               'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.42, 4, 0.62, 7, 0.9, 10, 1.15] } });
 };
 window.polygroveTilt = (pitch, bearing) => { if (ready && !touching && !map.isEasing()) map.jumpTo({ pitch, bearing }); };
