@@ -335,6 +335,15 @@ map.on('load', async () => {
   if (MINI != null) {
     // the site's minimap: just the region, green, in continental context
     for (const id of ['ecolbl', 'parkdot', 'parklbl', 'lakelbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    // the minimap's region stays GREEN: the picker's white pin-highlight made
+    // this picture a white glow with a blob where the region's enclaves
+    // bunch up (user, 2026-10-05, "this is messed up")
+    SEL_OPACITY.fill = 0.45; SEL_OPACITY.glow = 0.6;
+    for (const sfx of ['', '_hd']) {
+      if (map.getLayer('selfill' + sfx)) map.setPaintProperty('selfill' + sfx, 'fill-color', ZERO_GREEN);
+      if (map.getLayer('selglow' + sfx)) map.setPaintProperty('selglow' + sfx, 'line-color', ZERO_GREEN);
+      if (map.getLayer('selline' + sfx)) map.setPaintProperty('selline' + sfx, 'line-color', '#a5e8a9');
+    }
     setSelected(MINI);
     const b = bboxOf(MINI);
     if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 28, duration: 0, maxZoom: 3.6 });
