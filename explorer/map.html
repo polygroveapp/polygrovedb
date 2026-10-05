@@ -643,7 +643,11 @@ window.polygroveSetMarks = (pts) => {
     cross('#ffe14d', 4.6);               // the website's observation yellow
     map.addImage('markx', g.getImageData(0, 0, z, z), { pixelRatio: 2 });
   }
-  map.addSource('marks', { type: 'geojson', data: fc });
+  // sightings a short walk apart piled up into a smudge of ✕s (the six at
+  // Sedona, 2026-10-05): marks closer than a few points on screen draw as ONE
+  // ✕, and come apart as you zoom in. (Clusters and single spots share the
+  // one icon — the layer has no filter.)
+  map.addSource('marks', { type: 'geojson', data: fc, cluster: true, clusterRadius: 16, clusterMaxZoom: 13 });
   map.addLayer({ id: 'marks', type: 'symbol', source: 'marks',
     layout: { 'icon-image': 'markx', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
               'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.42, 4, 0.62, 7, 0.9, 10, 1.15] } });
