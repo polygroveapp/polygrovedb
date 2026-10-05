@@ -62,6 +62,9 @@ let current = null, collected = [], ready = false, pendingState = null, GEO = nu
 // scale and is HIGHLIGHTED — a glowing border and a stronger fill — not
 // flashing ("actually not flashing, but have it highlighted", same day).
 const ZERO_GREEN = '#4CAF50', FULL_YELLOW = '#FFE14D';
+// UNDER THE PIN: green, and FLASHING (user, 2026-10-05: "have the one under
+// the pin be green, but flashing"; white for a few hours before that)
+const SEL_GREEN = '#4CAF50', SEL_PALE = '#a5e8a9';
 let camp = null, completed = [];   // your camp (brown border) · mastered decks (gold border + inside)
 let progress = {};                 // eco id → 0..1, how far its deck is mastered (visited fill: dark → bright green → gold)
 let PAD = { top: 0, bottom: 0 };
@@ -186,17 +189,17 @@ map.on('load', async () => {
   // out to make it smoother"): the region the pin just left keeps its own
   // set of layers (psel*) fading out while the new one fades in
   twin('pselfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': '#ffffff', 'fill-opacity': 0 } });
+    paint: { 'fill-color': SEL_GREEN, 'fill-opacity': 0 } });
   twin('pselglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0 } });
+    paint: { 'line-color': SEL_GREEN, 'line-width': 9, 'line-blur': 7, 'line-opacity': 0 } });
   twin('pselline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0 } });
+    paint: { 'line-color': SEL_PALE, 'line-width': 2, 'line-opacity': 0 } });
   twin('selfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.18 } });
+    paint: { 'fill-color': SEL_GREEN, 'fill-opacity': 0.45 } });
   twin('selglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.45 } });
+    paint: { 'line-color': SEL_GREEN, 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
   twin('selline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 1 } });
+    paint: { 'line-color': SEL_PALE, 'line-width': 2, 'line-opacity': 1 } });
   // YOUR CAMP — the ecoregion you are in — is bordered in a glowing bright
   // GREEN (user, 2026-09-30: "only the ecoregion you're in highlighted
   // green, don't use the brown"; brown from 2026-09-29, gold for an hour
@@ -335,15 +338,9 @@ map.on('load', async () => {
   if (MINI != null) {
     // the site's minimap: just the region, green, in continental context
     for (const id of ['ecolbl', 'parkdot', 'parklbl', 'lakelbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
-    // the minimap's region stays GREEN: the picker's white pin-highlight made
-    // this picture a white glow with a blob where the region's enclaves
-    // bunch up (user, 2026-10-05, "this is messed up")
-    SEL_OPACITY.fill = 0.45; SEL_OPACITY.glow = 0.6;
-    for (const sfx of ['', '_hd']) {
-      if (map.getLayer('selfill' + sfx)) map.setPaintProperty('selfill' + sfx, 'fill-color', ZERO_GREEN);
-      if (map.getLayer('selglow' + sfx)) map.setPaintProperty('selglow' + sfx, 'line-color', ZERO_GREEN);
-      if (map.getLayer('selline' + sfx)) map.setPaintProperty('selline' + sfx, 'line-color', '#a5e8a9');
-    }
+    // the minimap's region is the same steady green — it never flashes (the
+    // flash loop only runs on the picker), so the picture the app keeps is
+    // always the same
     setSelected(MINI);
     const b = bboxOf(MINI);
     if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 28, duration: 0, maxZoom: 3.6 });
@@ -463,7 +460,22 @@ function flyTo(eid) {
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 30, maxZoom: 6.5, duration: 1200 });   // on top of the map's own padding
 }
 let prevSel = null, fadeRaf = 0;
-const SEL_OPACITY = { fill: 0.18, glow: 0.45, line: 1 };   // white, so lighter than the green it replaced (2026-10-05)
+const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
+// the flash: the fill and the glow swing together on a 1.1s sine (fill
+// 0.14 ↔ 0.59, glow 0.19 ↔ 0.79); the thin outline stays solid so the shape
+// never disappears. selK is the crossfade's share, so a region still fades
+// in while it flashes.
+let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0;
+function flashLoop() {
+  if (MINI != null || flashRaf) return;
+  const step = () => {
+    flashRaf = requestAnimationFrame(step);
+    if (flashTick++ & 1) return;   // every other frame is plenty
+    flashP = 0.82 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI);
+    if (current != null) setSelOpacity('sel', selK);
+  };
+  step();
+}
 function setSelected(eid) {
   if (eid === current) return;
   prevSel = current;
@@ -478,11 +490,14 @@ function setSelected(eid) {
     if (t < 1) fadeRaf = requestAnimationFrame(step); else { fadeRaf = 0; prevSel = null; applyFilters(); }
   };
   step();
+  flashLoop();
 }
 function setSelOpacity(prefix, k) {
   const set = (id, prop, v) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, v); if (map.getLayer(id + '_hd')) map.setPaintProperty(id + '_hd', prop, v); };
-  set(prefix + 'fill', 'fill-opacity', SEL_OPACITY.fill * k);
-  set(prefix + 'glow', 'line-opacity', SEL_OPACITY.glow * k);
+  const p = prefix === 'sel' ? flashP : 1;   // only the region under the pin flashes, not the one fading out
+  if (prefix === 'sel') selK = k;
+  set(prefix + 'fill', 'fill-opacity', SEL_OPACITY.fill * k * p);
+  set(prefix + 'glow', 'line-opacity', Math.min(1, SEL_OPACITY.glow * k * p));
   set(prefix + 'line', 'line-opacity', SEL_OPACITY.line * k);
 }
 // every ecoregion layer's filter, in one place: the low-detail layer skips
@@ -497,8 +512,9 @@ function applyFilters() {
   const put = (id, f) => { if (map.getLayer(id)) map.setFilter(id, ['all', f, notHD]); if (map.getLayer(id + '_hd')) map.setFilter(id + '_hd', f); };
   if (map.getLayer('land')) map.setFilter('land', notHD);
   if (map.getLayer('ecoline')) map.setFilter('ecoline', notHD);
-  put('selfill', ['all', sel, notCamp]);
-  for (const id of ['selglow', 'selline']) put(id, sel);
+  // the pin's green draws over the camp as well — whatever is under the pin
+  // flashes (2026-10-05); it was kept off the camp while the camp pulsed gold
+  for (const id of ['selfill', 'selglow', 'selline']) put(id, sel);
   const psel = ['==', ['get', 'eco'], prevSel == null ? -1 : prevSel];
   for (const id of ['pselfill', 'pselglow', 'pselline']) put(id, psel);
   put('visited', vis);
