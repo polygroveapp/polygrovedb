@@ -13,7 +13,8 @@
      app over window.ReactNativeWebView.postMessage:
        app → page: {type:'state', current, collected:[eid…], fly, pad:{top,bottom}}  (collected = visited → strong green)
                    + camp (your ecoregion → brown border) · completed:[eid…] (finished decks → gold inside)
-       page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg} · {type:'pan', dx, dy}
+       app → page: window.polygroveSetMarks([[lng,lat]…])  (your sightings → yellow ✕ marks)
+     page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg} · {type:'pan', dx, dy}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
      `pad` is the app's chrome (header / preview sheet) in CSS px, so the pin
@@ -352,6 +353,7 @@ map.on('load', async () => {
     return;
   }
   if (pendingState) applyState(pendingState);
+  if (pendingMarks) { const m = pendingMarks; pendingMarks = null; window.polygroveSetMarks(m); }
   send({ type: 'ready' });
   // the sheet follows the pin WHILE the map moves (2026-09-30): report() dedupes,
   // so a pan that stays in one region sends nothing extra
@@ -616,6 +618,36 @@ window.polygroveZoom = d => { if (ready) map.easeTo({ zoom: map.getZoom() + d, d
 let touching = false;
 for (const [ev, v] of [['touchstart', true], ['touchend', false], ['touchcancel', false]])
   map.getCanvasContainer().addEventListener(ev, e => { touching = v ? true : e.touches.length > 0; }, { passive: true });
+// YOUR SIGHTINGS, AS ✕ MARKS (user, 2026-10-05: "your observations show up
+// as yellow x's on the map like the x's on the website … still legible when
+// [the region] is 100 percent yellow"): the app hands over the public spot of
+// each of your iNaturalist observations — [[lng, lat], …] — and each is drawn
+// as the website's yellow ✕. The ✕ is drawn onto its icon with a near-black
+// edge under the yellow, so it reads on anything: black land, a green region,
+// and a mastered region filled the very same yellow. The spots stay in this
+// page; nothing is sent anywhere.
+let pendingMarks = null;
+window.polygroveSetMarks = (pts) => {
+  if (MINI != null) return;
+  if (!ready) { pendingMarks = pts; return; }
+  const fc = { type: 'FeatureCollection', features: (Array.isArray(pts) ? pts : [])
+    .filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]))
+    .map(p => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [p[0], p[1]] } })) };
+  if (map.getSource('marks')) { map.getSource('marks').setData(fc); return; }
+  if (!map.hasImage('markx')) {
+    const z = 40, cv = document.createElement('canvas'); cv.width = cv.height = z;
+    const g = cv.getContext('2d'), c = z / 2, r = z / 2 - 9;
+    const cross = (color, w) => { g.strokeStyle = color; g.lineWidth = w; g.lineCap = 'round'; g.beginPath();
+      g.moveTo(c - r, c - r); g.lineTo(c + r, c + r); g.moveTo(c - r, c + r); g.lineTo(c + r, c - r); g.stroke(); };
+    cross('rgba(10,10,10,0.95)', 9.5);   // the dark edge
+    cross('#ffe14d', 4.6);               // the website's observation yellow
+    map.addImage('markx', g.getImageData(0, 0, z, z), { pixelRatio: 2 });
+  }
+  map.addSource('marks', { type: 'geojson', data: fc });
+  map.addLayer({ id: 'marks', type: 'symbol', source: 'marks',
+    layout: { 'icon-image': 'markx', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+              'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.42, 4, 0.62, 7, 0.9, 10, 1.15] } });
+};
 window.polygroveTilt = (pitch, bearing) => { if (ready && !touching && !map.isEasing()) map.jumpTo({ pitch, bearing }); };
 </script>
 </body>
