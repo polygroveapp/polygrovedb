@@ -2296,11 +2296,15 @@ async function renderRangeMap(ids,sci,opts){
     map.addLayer({id:'land',type:'fill',source:'eco',paint:{'fill-color':'#1c1c1c','fill-outline-color':'#2e2e2e'}});
     // HYPSOMETRIC TINT (user, 2026-09-22: "are the colors mapped to the map
     // heights"): MapLibre 5.x color-relief over the terrarium DEM — muted dark
-    // ramp, lowland green-grey → umber → pale peaks. EVERY map page, species
-    // included (user, 2026-09-28: "turn the black of the species map into the
-    // color maps like the other ones"; species pages had kept the flat look).
+    // ramp, lowland green-grey → umber → pale peaks. ECO/PARK pages only:
+    // SPECIES pages are BLACK AND GREY again (user, 2026-10-05: "the species
+    // map and the map on the app have to go back to the black and grey
+    // look"; they had the colours from 2026-09-28 until then). The map is
+    // shared across pages now, so a species page also puts the background
+    // back to black — an eco/park page before it will have turned it blue.
     // Needs its OWN raster-dem source (terrain/hillshade/relief can't share).
-    {
+    if(!(opts.focusEco!=null||opts.park)) map.setPaintProperty('bg','background-color','#0d0d0d');
+    else {
       // NATURAL EARTH COLORS (user, 2026-09-22 "do the color of the earth"):
       // bathymetric blues below sea level, green lowlands → tan → brown → snow
       map.setPaintProperty('bg','background-color','#0b1a29');

@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Polygrove — pick your ecoregion</title>
 <!-- THE APP'S ECOREGION PICKER (2026-09-28): the explorer's Ecoregions-page map,
-     verbatim in look — black land, deep-blue water, terrain relief + hillshade,
+     verbatim in look — black land, black water, grey hillshade (BLACK AND GREY
+     again since 2026-10-05; earth-colour relief and blue water before that),
      thin green ecoregion borders, the chosen region filled green with a glowing
      green outline, green ecoregion names — served as a standalone page the phone
      app embeds in a WebView (MapLibre Native can't run in Expo Go). Talks to the
@@ -22,7 +23,7 @@
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <script src="vendor/maplibre-gl.js"></script>
 <style>
-  html,body{margin:0;height:100%;background:#0b1a29;overflow:hidden;font-family:-apple-system,system-ui,sans-serif}
+  html,body{margin:0;height:100%;background:#0d0d0d;overflow:hidden;font-family:-apple-system,system-ui,sans-serif}
   #map{position:absolute;inset:0}
   .maplibregl-ctrl-attrib{display:none}
 </style>
@@ -47,18 +48,20 @@ const map = new maplibregl.Map({
   canvasContextAttributes: MINI != null ? { preserveDrawingBuffer: true } : undefined,
   attributionControl: false, pitchEnabled: false, dragRotate: false, touchPitch: false, maxPitch: 60,
   style: { version: 8, glyphs: 'fonts/{fontstack}/{range}.pbf', sources: {},
-           layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0b1a29' } }] },
+           layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0d0d0d' } }] },
 });
 // north-up only: the compass was removed the day it was added (user, 2026-09-29)
 map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
-// THE ONE SCALE (user, 2026-10-05: "orange is 0, yellow is 100 … no green"):
-// every ecoregion you've been to is coloured by how far its deck is mastered,
-// orange at nothing → yellow at all of it. Your camp wears its own colour on
-// that scale and is HIGHLIGHTED — a glowing border and a stronger fill — not
+// THE ONE SCALE (user, 2026-10-05, settled on the black-and-grey map: "have
+// it so the colors go from green to yellow from 0 to 100"; orange → yellow
+// for an hour before that, dark green → gold before that): every ecoregion
+// you've been to is coloured by how far its deck is mastered, GREEN at
+// nothing → YELLOW at all of it. Your camp wears its own colour on that
+// scale and is HIGHLIGHTED — a glowing border and a stronger fill — not
 // flashing ("actually not flashing, but have it highlighted", same day).
-const ZERO_ORANGE = '#FF8C00', FULL_YELLOW = '#FFE14D';
+const ZERO_GREEN = '#4CAF50', FULL_YELLOW = '#FFE14D';
 let camp = null, completed = [];   // your camp (brown border) · mastered decks (gold border + inside)
 let progress = {};                 // eco id → 0..1, how far its deck is mastered (visited fill: dark → bright green → gold)
 let PAD = { top: 0, bottom: 0 };
@@ -90,13 +93,10 @@ map.on('load', async () => {
   // out of the low-detail layers.
   map.addSource('ecohd', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({ id: 'land_hd', type: 'fill', source: 'ecohd', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
-  map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
-  map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
-    paint: { 'color-relief-opacity': 0.7,
-      'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-        -6000, '#0e1f2e', -1500, '#14293c', -100, '#1b384d', 0, '#26402d',
-        300, '#2f4a33', 800, '#48603c', 1400, '#6b6f46', 2100, '#786740',
-        2900, '#665244', 3800, '#6e675e', 4800, '#98978f', 6500, '#c9c9c4'] } });
+  // BLACK AND GREY (user, 2026-10-05: "the species map and the map on the app
+  // have to go back to the black and grey look"): no colour relief — black
+  // land, black water, and only the hillshade below to model the terrain in
+  // greys. (The earth-colour tint ran from 2026-09-28 until then.)
   map.addSource('demshade', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
   map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'demshade',
     paint: { 'hillshade-exaggeration': 0.67, 'hillshade-shadow-color': '#000000',
@@ -172,7 +172,7 @@ map.on('load', async () => {
   // ecoregions you've been to (hold cards in): a stronger, solid green
   // outline (user, 2026-09-28 — was gold)
   twin('visited', { type: 'line', layout: ROUND, filter: ['in', ['get', 'eco'], ['literal', []]],
-    paint: { 'line-color': ZERO_ORANGE, 'line-width': 2, 'line-opacity': 0.95 } });
+    paint: { 'line-color': ZERO_GREEN, 'line-width': 2, 'line-opacity': 0.95 } });
   // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
   // MASTERY PAINT (user, 2026-09-30, "the green to light green to gold is
   // the fill on the inside"): an ecoregion you've been to is painted inside
@@ -181,7 +181,7 @@ map.on('load', async () => {
   // the selection still reads. (Was: gold inside once every card was
   // journaled, 2026-09-29.)
   twin('visitfill', { type: 'fill', filter: ['in', ['get', 'eco'], ['literal', []]],
-    paint: { 'fill-color': ZERO_ORANGE, 'fill-opacity': 0.42 } });
+    paint: { 'fill-color': ZERO_GREEN, 'fill-opacity': 0.42 } });
   // CROSSFADE (user, 2026-09-30: "have the changing green fill fade in and
   // out to make it smoother"): the region the pin just left keeps its own
   // set of layers (psel*) fading out while the new one fades in
@@ -208,9 +208,9 @@ map.on('load', async () => {
   // a deck mastered to 100% — so a camp that IS complete keeps its orange
   // border (you're here) and is painted gold inside (applyFilters)
   twin('campfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': ZERO_ORANGE, 'fill-opacity': 0.58 } });
+    paint: { 'fill-color': ZERO_GREEN, 'fill-opacity': 0.58 } });
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': ZERO_ORANGE, 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
+    paint: { 'line-color': ZERO_GREEN, 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#ffd0a0', 'line-width': 2.4, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
@@ -254,7 +254,7 @@ map.on('load', async () => {
       layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-transform': 'uppercase',
                 'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 4, 15], 'text-letter-spacing': 0.35,
                 'text-max-width': 6, 'text-padding': 2 },
-      paint: { 'text-color': '#6d95bd', 'text-halo-color': '#0b1a29', 'text-halo-width': 1.2, 'text-opacity': 0.85 } });
+      paint: { 'text-color': '#6d95bd', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.2, 'text-opacity': 0.85 } });
   }
   // MAJOR CITIES with a SQUARE mark: BLACK inside, GREY border — name and
   // square alike (user, 2026-09-29, after blue, black-on-white and all-grey),
@@ -495,11 +495,11 @@ function applyFilters() {
   put('visited', vis);
   put('visitfill', ['all', vis, notCamp]);
   // MASTERY COLOURS: each visited region — its inside AND its outline — sits
-  // on the one scale, ORANGE at 0% → YELLOW at 100% (user, 2026-10-05; green →
-  // gold before). One 'match' expression, the colours mixed here.
+  // on the one scale, GREEN at 0% → YELLOW at 100% (user, 2026-10-05). One
+  // 'match' expression, the colours mixed here.
   const hex = (c) => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
   const rgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-  const A = rgb(ZERO_ORANGE), B = rgb(FULL_YELLOW);
+  const A = rgb(ZERO_GREEN), B = rgb(FULL_YELLOW);
   const mix = (t) => { const k = Math.max(0, Math.min(1, t)); return hex(A.map((v, i) => v + (B[i] - v) * k)); };
   const at = (e) => (completed.includes(+e) ? 1 : progress[e] || 0);
   const pairs = [];
