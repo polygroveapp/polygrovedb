@@ -53,7 +53,12 @@ const map = new maplibregl.Map({
 map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
-const CAMP_ORANGE = '#FF8C00', DONE_GOLD = '#FFD700';
+// THE ONE SCALE (user, 2026-10-05: "orange is 0, yellow is 100 … no green"):
+// every ecoregion you've been to is coloured by how far its deck is mastered,
+// orange at nothing → yellow at all of it. Your camp wears its own colour on
+// that scale and is HIGHLIGHTED — a glowing border and a stronger fill — not
+// flashing ("actually not flashing, but have it highlighted", same day).
+const ZERO_ORANGE = '#FF8C00', FULL_YELLOW = '#FFE14D';
 let camp = null, completed = [];   // your camp (brown border) · mastered decks (gold border + inside)
 let progress = {};                 // eco id → 0..1, how far its deck is mastered (visited fill: dark → bright green → gold)
 let PAD = { top: 0, bottom: 0 };
@@ -167,7 +172,7 @@ map.on('load', async () => {
   // ecoregions you've been to (hold cards in): a stronger, solid green
   // outline (user, 2026-09-28 — was gold)
   twin('visited', { type: 'line', layout: ROUND, filter: ['in', ['get', 'eco'], ['literal', []]],
-    paint: { 'line-color': '#4CAF50', 'line-width': 2, 'line-opacity': 0.95 } });
+    paint: { 'line-color': ZERO_ORANGE, 'line-width': 2, 'line-opacity': 0.95 } });
   // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
   // MASTERY PAINT (user, 2026-09-30, "the green to light green to gold is
   // the fill on the inside"): an ecoregion you've been to is painted inside
@@ -176,22 +181,22 @@ map.on('load', async () => {
   // the selection still reads. (Was: gold inside once every card was
   // journaled, 2026-09-29.)
   twin('visitfill', { type: 'fill', filter: ['in', ['get', 'eco'], ['literal', []]],
-    paint: { 'fill-color': '#1e5a24', 'fill-opacity': 0.42 } });
+    paint: { 'fill-color': ZERO_ORANGE, 'fill-opacity': 0.42 } });
   // CROSSFADE (user, 2026-09-30: "have the changing green fill fade in and
   // out to make it smoother"): the region the pin just left keeps its own
   // set of layers (psel*) fading out while the new one fades in
   twin('pselfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0 } });
+    paint: { 'fill-color': '#ffffff', 'fill-opacity': 0 } });
   twin('pselglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0 } });
+    paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0 } });
   twin('pselline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 0 } });
+    paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0 } });
   twin('selfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': '#4CAF50', 'fill-opacity': 0.45 } });
+    paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.18 } });
   twin('selglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#4CAF50', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
+    paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.45 } });
   twin('selline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#a5e8a9', 'line-width': 2, 'line-opacity': 1 } });
+    paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 1 } });
   // YOUR CAMP — the ecoregion you are in — is bordered in a glowing bright
   // GREEN (user, 2026-09-30: "only the ecoregion you're in highlighted
   // green, don't use the brown"; brown from 2026-09-29, gold for an hour
@@ -203,9 +208,9 @@ map.on('load', async () => {
   // a deck mastered to 100% — so a camp that IS complete keeps its orange
   // border (you're here) and is painted gold inside (applyFilters)
   twin('campfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': CAMP_ORANGE, 'fill-opacity': 0.2 } });
+    paint: { 'fill-color': ZERO_ORANGE, 'fill-opacity': 0.58 } });
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': CAMP_ORANGE, 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
+    paint: { 'line-color': ZERO_ORANGE, 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
     paint: { 'line-color': '#ffd0a0', 'line-width': 2.4, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
@@ -449,7 +454,7 @@ function flyTo(eid) {
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 30, maxZoom: 6.5, duration: 1200 });   // on top of the map's own padding
 }
 let prevSel = null, fadeRaf = 0;
-const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
+const SEL_OPACITY = { fill: 0.18, glow: 0.45, line: 1 };   // white, so lighter than the green it replaced (2026-10-05)
 function setSelected(eid) {
   if (eid === current) return;
   prevSel = current;
@@ -489,33 +494,25 @@ function applyFilters() {
   for (const id of ['pselfill', 'pselglow', 'pselline']) put(id, psel);
   put('visited', vis);
   put('visitfill', ['all', vis, notCamp]);
-  // MASTERY COLOURS (user, 2026-09-30): each visited region's inside goes
-  // from a dark green (nothing mastered) to a bright green (nearly all), and
-  // GOLD once the whole deck is mastered — one 'match' expression, mixed here
-  const mix = (t) => { const a = [0x1e, 0x5a, 0x24], b = [0x6e, 0xff, 0x62];   // dark → bright green
-    return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * Math.max(0, Math.min(1, t))).toString(16).padStart(2, '0')).join(''); };
+  // MASTERY COLOURS: each visited region — its inside AND its outline — sits
+  // on the one scale, ORANGE at 0% → YELLOW at 100% (user, 2026-10-05; green →
+  // gold before). One 'match' expression, the colours mixed here.
+  const hex = (c) => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+  const rgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const A = rgb(ZERO_ORANGE), B = rgb(FULL_YELLOW);
+  const mix = (t) => { const k = Math.max(0, Math.min(1, t)); return hex(A.map((v, i) => v + (B[i] - v) * k)); };
+  const at = (e) => (completed.includes(+e) ? 1 : progress[e] || 0);
   const pairs = [];
-  for (const e of collected) { const p = progress[e] || 0; pairs.push(+e, p >= 1 || completed.includes(+e) ? '#FFD700' : mix(p)); }
+  for (const e of collected) pairs.push(+e, mix(at(e)));
   const color = pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0);
   for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', color);
+  for (const id of ['visited', 'visited_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', color);
   for (const id of ['campfill', 'campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
-  const campDone = camp != null && ((progress[camp] || 0) >= 1 || completed.includes(+camp));
-  for (const id of ['campfill', 'campfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', campDone ? DONE_GOLD : CAMP_ORANGE);
-  pulseCamp();
-}
-// the camp's gold fill breathes: 0.12 → 0.36 and back on a 2.4s sine, updated
-// every other frame (a paint change is cheap, but no need for 60 a second)
-let pulseRaf = 0, pulseTick = 0;
-function pulseCamp() {
-  if (camp == null || MINI != null) { if (pulseRaf) cancelAnimationFrame(pulseRaf); pulseRaf = 0; return; }
-  if (pulseRaf) return;
-  const step = () => {
-    pulseRaf = requestAnimationFrame(step);
-    if (pulseTick++ & 1) return;
-    const k = 0.24 + 0.12 * Math.sin((performance.now() / 2400) * 2 * Math.PI);
-    for (const id of ['campfill', 'campfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', k);
-  };
-  step();
+  // your camp wears its own colour on the scale: a stronger fill than the
+  // other visited regions, a glow, and a paler line over the glow
+  const campColor = mix(camp == null ? 0 : at(camp)), campPale = hex(rgb(campColor).map(v => v + (255 - v) * 0.6));
+  const paint = (id, prop, v) => { for (const l of [id, id + '_hd']) if (map.getLayer(l)) map.setPaintProperty(l, prop, v); };
+  paint('campfill', 'fill-color', campColor); paint('campglow', 'line-color', campColor); paint('campline', 'line-color', campPale);
 }
 // load the high-detail outline of everything on screen, once zoomed in
 const hdBusy = new Set();
