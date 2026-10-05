@@ -169,6 +169,20 @@
   .dc-box .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#888888}
   .dc-box .v{font-size:14px;margin-top:3px}
   .dc-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  /* FACTS ARE TAPPABLE (user, 2026-10-05, "like the app"): a box opens its
+     source popup, the field note opens Wikipedia */
+  .dc-box.src{cursor:pointer}.dc-box.src:hover{background:#2a2a2a}
+  .dc-note.cardlead{cursor:pointer}.dc-note.cardlead:hover{filter:brightness(1.15)}
+  .face{position:relative}
+  .srcpop-wrap{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);border-radius:14px;cursor:pointer}
+  .srcpop{background:#1c1c1c;border:1px solid #333;border-radius:14px;padding:14px 18px;max-width:82%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .srcpop .lbl{font-size:9.5px;letter-spacing:.14em;color:#888;font-weight:700}
+  .srcpop .src{font-size:13.5px;color:var(--text,#f5f0e8);margin-top:6px;line-height:1.4}
+  .srcpop .chip{display:inline-block;border-radius:12px;padding:3px 10px;margin-top:9px;border:1px solid;font-size:10.5px;font-weight:700}
+  .srcpop .chip.measured{background:rgba(76,175,80,.15);border-color:rgba(76,175,80,.4)}
+  .srcpop .chip.inferred{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.4)}
+  .srcpop .chip.derived{background:rgba(100,181,246,.15);border-color:rgba(100,181,246,.4)}
+  .srcpop .hint{font-size:9.5px;color:#555;margin-top:8px}
   .dc-note{background:#241a1a;border-left:3px solid #e57a7a;border-radius:10px;padding:7px 12px;margin-bottom:8px;font-size:12.5px}
   .dc-note .k{color:#e57a7a;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
   .dc-cons{border-radius:12px;padding:10px 12px;font-size:12px;text-align:center}
@@ -1570,14 +1584,14 @@ function speciesCardHTML(c){   // THE card — shared by the species page and th
         <div class="dc-ico">☆</div>
       </div>
       <div class="dc-row">
-        <div class="dc-box"><div class="k">Trophic level</div><div class="v" style="color:${tc}">${c.trophic||'?'}${fdot}</div></div>
-        <div class="dc-box"><div class="k">Group</div><div class="v">${c.group}</div></div>
+        ${factBox(c,'feeding','Trophic level',c.trophic||'?',tc)}
+        ${factBox(c,'taxonomy','Group',c.group)}
       </div>
       <div class="dc-row">
-        <div class="dc-box"><div class="k">Size</div><div class="v">${c.size||'—'}</div></div>
-        <div class="dc-box"><div class="k">${c.habitat?'Habitat':c.origin?'Native origin':'Biome'}</div><div class="v">${c.habitat||c.origin||c.biome||'—'}</div></div>
+        ${factBox(c,'size','Size',c.size||'—')}
+        ${factBox(c,'slot5',c.habitat?'Habitat':c.origin?'Native origin':'Biome',c.habitat||c.origin||c.biome||'—')}
       </div>
-      <div class="dc-note cardlead" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
+      <div class="dc-note cardlead" onclick="noteWiki(event,this)" data-sci="${esc(c.sci)}" title="Read on Wikipedia" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
       <div class="dc-fwlabel">FOOD WEB</div>
       ${fwMiniHTML(c)}
       <div class="dc-pill">Tap card to flip</div>
@@ -1590,11 +1604,38 @@ function speciesCardHTML(c){   // THE card — shared by the species page and th
       <div class="dc-sci">${c.sci}</div>
       <div style="font-size:12.5px;margin:6px 0 10px"><b style="color:${tc}">${c.trophic||'?'}</b>${fdot} <span style="color:#888888">· ${c.group}</span></div>
       <div style="border-top:1px solid rgba(255,255,255,.05);margin:0 -16px 10px"></div><!-- demo's faint section line (user, 2026-09-26) -->
-      <div class="dc-note cardlead" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
+      <div class="dc-note cardlead" onclick="noteWiki(event,this)" data-sci="${esc(c.sci)}" title="Read on Wikipedia" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
       <div class="dc-pill" style="margin-top:auto">Tap for details</div>
     </div>
     </div></div>
     </div>`;
+}
+// THE APP'S FACT TAPS, ON THE WEBSITE (user, 2026-10-05): a fact box with a
+// known source opens the same in-card popup the app shows — label, source,
+// confidence chip, tap to close; the field note opens the species' Wikipedia
+// article (Wikipedia's Go search resolves the scientific name). Clicks stop
+// here so the card does not flip.
+const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function factBox(c,slot,k,v,color){
+  const pv=(c.provenance||{})[slot];
+  const style=color?` style="color:${color}"`:'';
+  if(!pv||!pv.source) return `<div class="dc-box"><div class="k">${k}</div><div class="v"${style}>${v}</div></div>`;
+  return `<div class="dc-box src" title="Where this comes from" onclick="srcPop(event,this)" data-k="${esc(k)}" data-src="${esc(pv.source)}" data-conf="${esc(pv.confidence||'')}"><div class="k">${k}</div><div class="v"${style}>${v}</div></div>`;
+}
+function srcPop(ev,box){
+  ev.stopPropagation();
+  const face=box.closest('.face'); if(!face) return;
+  face.querySelectorAll('.srcpop-wrap').forEach(x=>x.remove());
+  const conf=box.dataset.conf||'';
+  const w=document.createElement('div'); w.className='srcpop-wrap';
+  w.innerHTML=`<div class="srcpop"><div class="lbl">${esc(box.dataset.k).toUpperCase()}</div><div class="src">${esc(box.dataset.src)}</div>${conf?`<span class="chip ${esc(conf)}">${esc(conf)}</span>`:''}<div class="hint">tap to close</div></div>`;
+  w.onclick=e=>{e.stopPropagation();w.remove();};
+  face.appendChild(w);
+}
+function noteWiki(ev,el){
+  ev.stopPropagation();
+  const sci=el.dataset.sci; if(!sci) return;
+  window.open(`https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(sci)}&go=Go`,'_blank','noopener');
 }
 function fwMiniHTML(c){
   const svg=fwGraphSVG(c,300,200,9,16,8,0.34,'sm');   // nodes big enough to read their photos
