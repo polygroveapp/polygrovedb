@@ -53,6 +53,7 @@ const map = new maplibregl.Map({
 map.touchZoomRotate.disableRotation();
 
 let current = null, collected = [], ready = false, pendingState = null, GEO = null;
+const CAMP_ORANGE = '#FF8C00', DONE_GOLD = '#FFD700';
 let camp = null, completed = [];   // your camp (brown border) · mastered decks (gold border + inside)
 let progress = {};                 // eco id → 0..1, how far its deck is mastered (visited fill: dark → bright green → gold)
 let PAD = { top: 0, bottom: 0 };
@@ -195,15 +196,18 @@ map.on('load', async () => {
   // GREEN (user, 2026-09-30: "only the ecoregion you're in highlighted
   // green, don't use the brown"; brown from 2026-09-29, gold for an hour
   // before that), drawn over the pin's outline so it never disappears
-  // …and the glow is YELLOW (user, 2026-09-30, minutes after green): the
-  // title's yellow, a pale yellow line over it — and GOLD INSIDE, PULSING
-  // (user, 2026-09-30): the fill breathes between faint and warm, ~2.4s
+  // …ORANGE (user, 2026-10-05: "have your currently selected one orange,
+  // and gold only for 100% completion"; yellow/gold since 2026-09-30): an
+  // orange glow, a pale orange line over it, and an orange fill that
+  // breathes between faint and warm, ~2.4s. GOLD now means one thing only —
+  // a deck mastered to 100% — so a camp that IS complete keeps its orange
+  // border (you're here) and is painted gold inside (applyFilters)
   twin('campfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': '#FFD700', 'fill-opacity': 0.2 } });
+    paint: { 'fill-color': CAMP_ORANGE, 'fill-opacity': 0.2 } });
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#ffe14d', 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
+    paint: { 'line-color': CAMP_ORANGE, 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#fff3a6', 'line-width': 2.4, 'line-opacity': 1 } });
+    paint: { 'line-color': '#ffd0a0', 'line-width': 2.4, 'line-opacity': 1 } });
   // green ecoregion names, placed on the polygons
   map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
@@ -495,6 +499,8 @@ function applyFilters() {
   const color = pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0);
   for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', color);
   for (const id of ['campfill', 'campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
+  const campDone = camp != null && ((progress[camp] || 0) >= 1 || completed.includes(+camp));
+  for (const id of ['campfill', 'campfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', campDone ? DONE_GOLD : CAMP_ORANGE);
   pulseCamp();
 }
 // the camp's gold fill breathes: 0.12 → 0.36 and back on a 2.4s sine, updated
