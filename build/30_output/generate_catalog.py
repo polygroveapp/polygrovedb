@@ -134,6 +134,8 @@ con.sql("""CREATE OR REPLACE TEMP TABLE sz AS SELECT sid, arg_min(src, lpad(pri:
   UNION ALL SELECT r.species_id,'ReptTraits', r.mass_g::varchar||' g', 1 FROM reptile_traits r JOIN species s ON s.species_id=r.species_id AND s.class IN ('Squamata','Testudines','Crocodylia','Rhynchocephalia','Sphenodontia') WHERE r.mass_g>0
   UNION ALL SELECT a.species_id,'AmphiBIO', a.body_size_mm::varchar||' mm', 1 FROM amphibian_traits a JOIN species s ON s.species_id=a.species_id AND s.class='Amphibia' WHERE a.body_size_mm>0
   UNION ALL SELECT p.species_id,'EOL-height', round(p.height)::varchar||' cm', 1 FROM plant_fungi_size p JOIN species s ON s.species_id=p.species_id AND s.kingdom IN ('Plantae','Fungi') WHERE p.height>0
+  -- BIEN (CC BY) + AusTraits (CC BY 4.0) plant heights (2026-10-05, plant_height_open.py): EOL covered ~4,000 plants; these cover far more
+  UNION ALL SELECT p.species_id, p.src, round(p.height_cm)::varchar||' cm', 1 FROM plant_height_open p JOIN species s ON s.species_id=p.species_id AND s.kingdom='Plantae' WHERE p.height_cm>0
   UNION ALL SELECT species_id,'TetrapodTraits', size_val, 2 FROM tt_ok WHERE size_val IS NOT NULL
   UNION ALL SELECT l.species_id,'LepTraits', l.wingspan_mm::varchar||' mm wingspan', 1 FROM lep_traits l JOIN species s ON s.species_id=l.species_id AND s.class='Insecta' WHERE l.wingspan_mm>0
   UNION ALL SELECT o.species_id,'Odonate Phenotypic Database', o.body_mm::varchar||' mm', 1 FROM odonate_traits o JOIN species s ON s.species_id=o.species_id AND s.class='Insecta' WHERE o.body_mm>0
@@ -717,8 +719,15 @@ for sid, canon, cls, kingdom, levels in con.sql("SELECT species_id,canonicalName
                                                                 # the MAP fills from explorer/data/range (every ecoregion, graded)                           # range map: RESOLVE eco ids
       "provenance": prov,
     })
-json.dump(cards, open("catalog.json","w"), ensure_ascii=False)
-print(f"wrote catalog.json — {len(cards):,} cards ({time.time()-t0:.0f}s total)")
+# TWO FILES (2026-10-05): Cloudflare Pages caps a file at 25 MiB and the catalog
+# passed 29 MiB when BIEN + AusTraits added 4,500 plant cards. The Q3/Q4 quiz
+# payloads (a third of the bytes) go to quiz.json — {id: {q3, q4}} — and the
+# catalog is written minified. The site's boot() and the app's loadCatalog()
+# fetch both and put q3/q4 back on the card, so every reader sees the old shape.
+quiz = {c["id"]: {k: c.pop(k) for k in ("q3", "q4") if k in c} for c in cards}
+json.dump(cards, open("catalog.json","w"), ensure_ascii=False, separators=(',',':'))
+json.dump(quiz, open("quiz.json","w"), ensure_ascii=False, separators=(',',':'))
+print(f"wrote catalog.json + quiz.json — {len(cards):,} cards ({time.time()-t0:.0f}s total)")
 
 # ---- explorer sync: pipeline pool WITH resolved values (not just flags) --------
 # [sci, class, mask(f16 sz8 fw4 s5_2 b1), feeding, size, habitat, origin, biome, top-edge]
@@ -746,7 +755,7 @@ if _os.path.isdir("../../explorer/data"):
                      HAB.get(sid,(None,None))[1], og2, pool_biome.get(sid),
                      f"{te[0]} {NAME.get(te[1],'?')}" if te else None])
     json.dump(pool, open("../../explorer/data/pool.json","w"), ensure_ascii=False, separators=(',',':'))
-    import shutil; shutil.copy("catalog.json","../../explorer/data/catalog.json")
+    import shutil; shutil.copy("catalog.json","../../explorer/data/catalog.json"); shutil.copy("quiz.json","../../explorer/data/quiz.json")
     print(f"explorer sync: pool.json {len(pool):,} candidates + catalog.json copied")
 con.sql("SELECT s.kingdom, s.class, count(*) n FROM catalog s GROUP BY 1,2 ORDER BY 3 DESC LIMIT 12").show()
 print("look-alikes present on:", sum(1 for c in cards if c['lookAlikes']), "cards")

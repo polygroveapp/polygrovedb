@@ -437,7 +437,7 @@ function applyHashRoute(){
 }
 window.addEventListener('hashchange',applyHashRoute);
 async function boot(){
-  const [cat,cov,pool,eco,meta,seas,aud,ecometa]=await Promise.all([
+  const [cat,cov,pool,eco,meta,seas,aud,ecometa,quiz]=await Promise.all([
     fetch('data/catalog.json',{cache:'no-cache'}).then(r=>r.json()),
     fetch('data/coverage.json',{cache:'no-cache'}).then(r=>r.json()),
     fetch('data/pool.json',{cache:'no-cache'}).then(r=>r.json()),
@@ -445,7 +445,10 @@ async function boot(){
     fetch('data/index_meta.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({})),
     fetch('data/seasonality.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({})),
     fetch('data/audio.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({})),
-    fetch('data/eco_meta.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({}))]);
+    fetch('data/eco_meta.json',{cache:'no-cache'}).then(r=>r.json()).catch(()=>({})),
+    // the Q3/Q4 quiz payloads live beside the catalog (2026-10-05, Pages' 25 MiB cap); back onto each card here
+    fetch('data/quiz.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);
+  for(const c of cat){ const q=quiz[c.id]; if(q) Object.assign(c,q); }
   // card-id → Wikimedia CDN thumb, baked at build time; non-blocking, optional
   fetch('data/photos.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{window._ecoPhotos=j;}).catch(()=>{window._ecoPhotos={};});
   // how each card photo sits in its hexagon (export_photo_framing.py)

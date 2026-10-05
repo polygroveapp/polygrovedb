@@ -40,6 +40,9 @@ CHAIN = [
     ("10_sources/amphibio.py",             "amphibians: AmphiBIO"),
     ("10_sources/repttraits.py",           "reptiles: ReptTraits"),
     ("10_sources/eol_height.py",           "plant/fungi height from EOL dump"),
+    # bien_height_pull.py (network, ~30 min on BIEN's server) refreshes data/bien_height.csv;
+    # data/austraits-7.0.0/ is the Zenodo zip, unpacked
+    ("10_sources/plant_height_open.py",    "plant height from BIEN + AusTraits (open, CC BY)"),
     ("10_sources/eol_mollusc_mass.py",     "mollusc body mass from EOL dump"),
     ("10_sources/tetrapodtraits.py",       "TetrapodTraits + bird/amphibian biome"),
     ("10_sources/animaltraits_globifeed.py","AnimalTraits inverts + GloBI-derived feeding"),
