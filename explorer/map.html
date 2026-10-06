@@ -42,6 +42,7 @@ const MINI = (() => { const m = /[?&]mini=(\d+)/.exec(location.search); return m
 const send = (m) => { try { RN ? RN.postMessage(JSON.stringify(m)) : console.log('msg', m); } catch (e) {} };
 
 const map = new maplibregl.Map({
+  fadeDuration: 0,   // symbols appear and go without the 300ms cross-fade — the ✕s "jiggled" as placement re-ran (2026-10-06)
   // minZoom 1.3: further out the whole world fits the screen's height and
   // MapLibre then refuses to pan vertically — the map could only slide
   // sideways (user, 2026-09-29, opening with no camp chosen)
@@ -506,7 +507,10 @@ function flashLoop() {
     if (flashTick++ & 1) return;   // every other frame is plenty
     flashP = 0.82 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI);
     if (current != null) setSelOpacity('sel', selK);
-    shimmerMarks(performance.now());
+    // below z8 the marks' placement is collision-based and a paint change per
+    // frame kept re-running it — the ✕s jiggled (user, 2026-10-06); there the
+    // shimmer ticks at 4 fps, which reads as a slow twinkle and lets placement settle
+    if (map.getZoom() >= 8 || (flashTick & 15) === 0) shimmerMarks(performance.now());
   };
   step();
 }
