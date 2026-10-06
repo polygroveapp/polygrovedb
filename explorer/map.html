@@ -608,14 +608,22 @@ function bboxOf(eid) {
 // gets the observation ids under the finger (a merged mark = all of them)
 // and shows the sighting, with the way to its card
 map.on('click', ev => {
-  if (map.getLayer('marks')) {
-    const b = 14, hits = map.queryRenderedFeatures([[ev.point.x - b, ev.point.y - b], [ev.point.x + b, ev.point.y + b]], { layers: ['marks'] });
-    if (hits.length) {
-      const f = hits[0], src = map.getSource('marks');
-      const done = ids => send({ type: 'mark', ids: ids.filter(Boolean).slice(0, 30), ok: f.properties.ok, lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] });
-      if (f.properties.cluster) {
-        src.getClusterLeaves(f.properties.cluster_id, 30, 0, (err, leaves) => done(err ? [] : leaves.map(l => l.properties.id)));
-      } else done([f.properties.id]);
+  // the marks are found by PROJECTING the list, not by querying the symbol
+  // layer: with its colour repainted every frame, queryRenderedFeatures on
+  // that layer throws inside MapLibre now and then (found 2026-10-05 — the
+  // thrown error ended the handler, so taps did nothing at all)
+  if (MARKS.length) {
+    const R = 18, near = [];
+    for (const m of MARKS) {
+      const q = map.project([m[0], m[1]]);
+      const d = Math.hypot(q.x - ev.point.x, q.y - ev.point.y);
+      if (d <= R) near.push([d, m]);
+    }
+    if (near.length) {
+      near.sort((a, b) => a[0] - b[0]);
+      const ids = near.map(n => n[1][3]).filter(Boolean).slice(0, 30);
+      const ok = near.some(n => n[1][2] !== 0) ? 1 : 0;
+      send({ type: 'mark', ids, ok, lng: near[0][1][0], lat: near[0][1][1] });
       return;
     }
   }
@@ -652,10 +660,11 @@ for (const [ev, v] of [['touchstart', true], ['touchend', false], ['touchcancel'
 // edge under the yellow, so it reads on anything: black land, a green region,
 // and a mastered region filled the very same yellow. The spots stay in this
 // page; nothing is sent anywhere.
-let pendingMarks = null;
+let pendingMarks = null, MARKS = [];   // the marks as given: [lng, lat, ok, id]
 window.polygroveSetMarks = (pts) => {
   if (MINI != null) return;
   if (!ready) { pendingMarks = pts; return; }
+  MARKS = (Array.isArray(pts) ? pts : []).filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
   const fc = { type: 'FeatureCollection', features: (Array.isArray(pts) ? pts : [])
     .filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]))
     // a third number says whether iNaturalist's community has CONFIRMED the
