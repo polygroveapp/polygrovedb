@@ -15,6 +15,7 @@
                    + camp (your ecoregion → brown border) · completed:[eid…] (finished decks → gold inside)
        app → page: window.polygroveSetMarks([[lng,lat]…])  (your sightings → yellow ✕ marks)
      page → app: {type:'mark', ids:[observation id…], ok, lng, lat}  (a tap on a ✕)
+     page → app: {type:'under', marks:[{id, kind}…]}  (the ✕ marks under the pin, nearest first)
      page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg} · {type:'pan', dx, dy}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
@@ -424,7 +425,28 @@ let lastReported;
 // region still reads it — a beat is a handful of frames).
 let candidate, candidateSince = 0;
 const STEADY_MS = 140;
+// the ✕ marks within reach of the pin, nearest first (user, 2026-10-06: "a list
+// of all the x's under the pin") — sent with every settle; the app shows them
+let lastUnder = '';
+function reportUnder() {
+  if (!MARKS.length) { if (lastUnder) { lastUnder = ''; send({ type: 'under', marks: [] }); } return; }
+  // literally UNDER THE PIN'S TIP (user, 2026-10-06): a mark counts when the
+  // tip sits on its ✕ — a ✕ is ~14 px across on screen at mid zoom
+  const pt = pinPoint(), R = 14, near = [];
+  for (const m of MARKS) {
+    const q = map.project([m[0], m[1]]);
+    const d = Math.hypot(q.x - pt[0], q.y - pt[1]);
+    if (d <= R) near.push([d, m]);
+  }
+  near.sort((a, b) => a[0] - b[0]);
+  const out = near.slice(0, 40).map(n => ({ id: n[1][3], kind: n[1][2] ?? 1 }));
+  const key = out.map(o => o.id).join(',');
+  if (key === lastUnder) return;
+  lastUnder = key;
+  send({ type: 'under', marks: out });
+}
 function report() {
+  reportUnder();
   const f = regionAtPin(), eid = f ? f.properties.eco : null;
   if (eid !== candidate) { candidate = eid; candidateSince = performance.now(); if (eid !== current) setTimeout(report, STEADY_MS + 10); }
   if (eid === current && eid === lastReported) return;
@@ -673,7 +695,7 @@ window.polygroveSetMarks = (pts) => {
     // (kind 2 = POTENTIAL, confirmed but no card yet — grey; user, 2026-10-06)
     .map(p => ({ type: 'Feature', properties: { ok: p[2] === 0 ? 0 : p[2] === 2 ? 2 : 1, id: p[3] ?? 0, h: Math.abs(Math.floor(p[0] * 1000 + p[1] * 7919)) % 1000 },
                  geometry: { type: 'Point', coordinates: [p[0], p[1]] } })) };
-  if (map.getSource('marks')) { map.getSource('marks').setData(fc); return; }
+  if (map.getSource('marks')) { map.getSource('marks').setData(fc); lastUnder = ''; reportUnder(); return; }
   // ONE ✕ shape as an SDF, tinted by paint (user, 2026-10-05: "the glistening
   // colour changes for the x, look at the code on the website"): the colour
   // is set every frame by the shimmer in flashLoop — confirmed marks sweep
@@ -697,12 +719,30 @@ window.polygroveSetMarks = (pts) => {
   // account. Three layers, grey under green under yellow, so a colour is
   // never buried by a neighbour of another colour.
   map.addSource('marks', { type: 'geojson', data: fc });
+  // UNDER THE NAMES (user, 2026-10-06: "we are missing a bunch of things
+  // like park names"): the marks go in beneath the first label layer, so
+  // park, city, lake and ecoregion names keep their places and the ✕s show
+  // through around them — not the other way round, which emptied California
+  // of names on a 4,500-sighting account
+  // DENSE ONLY WHEN ZOOMED IN (user, 2026-10-06): every sighting is in the
+  // source, but marks that would overlap are let through only from zoom 8 —
+  // further out, the collision engine thins them (a mark whose ✕ would sit
+  // on another's is held back, the kinds ranked yellow > green > grey), so a
+  // busy coast reads as a scatter rather than a blanket; zoom in and all of
+  // them appear
+  const firstLabel = ['parkdot', 'parklbl', 'citydot', 'citylbl', 'lakelbl', 'adminlbl', 'ecolbl', 'oceanlbl'].find(l => map.getLayer(l));
   for (const [id, kind] of [['marks_p', 2], ['marks_w', 0], ['marks', 1]]) {
     map.addLayer({ id, type: 'symbol', source: 'marks', filter: ['==', ['get', 'ok'], kind],
-      layout: { 'icon-image': 'markx', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-                'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.42, 4, 0.62, 7, 0.9, 10, 1.15] },
+      layout: { 'icon-image': 'markx',
+                // more of them further out (user, 2026-10-06): overlaps allowed from z6.5, and
+                // the spacing marks keep from each other is tight — only a ✕ sitting on another is held back
+                'icon-allow-overlap': ['step', ['zoom'], false, 5, true], 'icon-ignore-placement': ['step', ['zoom'], false, 5, true],
+                'icon-padding': 0,
+                'symbol-sort-key': kind === 1 ? 0 : kind === 0 ? 1 : 2,
+                // smaller ✕s at the regional zooms, so more of them fit before they are allowed to pile up
+                'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.36, 4, 0.5, 6, 0.62, 8, 0.9, 10, 1.15] },
       paint: { 'icon-color': kind === 0 ? '#4caf50' : kind === 2 ? '#9a9a9a' : '#ffd03a',
-               'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6 } });
+               'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6 } }, firstLabel);
   }
   flashLoop();   // the shimmer rides the selection's frame loop
 };
