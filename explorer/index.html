@@ -2614,9 +2614,9 @@ async function renderRangeMap(ids,sci,opts){
              map.setPaintProperty('obsdots','icon-halo-color',
                ['interpolate',['linear'],m2,0,'rgba(255,215,0,0.3)',1,'rgba(255,215,0,0.75)']);
              map.setPaintProperty('obsdots','icon-halo-width',['+',1.5,['*',3.2,m2]]);
-             map.setPaintProperty('obsdots','icon-color',   // wider sweep, dipping
-               // into ORANGE at the low end (user, 2026-09-25)
-               ['interpolate',['linear'],m2,0,'rgb(255,165,48)',0.5,'rgb(255,208,58)',1,'rgb(255,238,130)']);
+             map.setPaintProperty('obsdots','icon-color',   // wider sweep — LESS ORANGE
+               // (user, 2026-10-05; the low end dipped to orange from 2026-09-25): deep yellow → yellow → pale yellow
+               ['interpolate',['linear'],m2,0,'rgb(255,200,60)',0.5,'rgb(255,225,77)',1,'rgb(255,245,160)']);
            }
            // focused ecoregion/park outline SHIMMERS GOLD in the same breath (user, 2026-09-22)
            if(map.getLayer('focushl-glow')){
