@@ -622,8 +622,7 @@ map.on('click', ev => {
     if (near.length) {
       near.sort((a, b) => a[0] - b[0]);
       const ids = near.map(n => n[1][3]).filter(Boolean).slice(0, 30);
-      const ok = near.some(n => n[1][2] !== 0) ? 1 : 0;
-      send({ type: 'mark', ids, ok, lng: near[0][1][0], lat: near[0][1][1] });
+      send({ type: 'mark', ids, ok: near[0][1][2] ?? 1, lng: near[0][1][0], lat: near[0][1][1] });
       return;
     }
   }
@@ -671,7 +670,8 @@ window.polygroveSetMarks = (pts) => {
     // sighting (1, or absent) or it is still waiting (0) — waiting ones are
     // drawn GREEN (user, 2026-10-05), confirmed ones yellow
     // h: a stable per-mark phase, so each ✕ glistens on its own clock (the website's trick)
-    .map(p => ({ type: 'Feature', properties: { ok: p[2] === 0 ? 0 : 1, id: p[3] ?? 0, h: Math.abs(Math.floor(p[0] * 1000 + p[1] * 7919)) % 1000 },
+    // (kind 2 = POTENTIAL, confirmed but no card yet — grey; user, 2026-10-06)
+    .map(p => ({ type: 'Feature', properties: { ok: p[2] === 0 ? 0 : p[2] === 2 ? 2 : 1, id: p[3] ?? 0, h: Math.abs(Math.floor(p[0] * 1000 + p[1] * 7919)) % 1000 },
                  geometry: { type: 'Point', coordinates: [p[0], p[1]] } })) };
   if (map.getSource('marks')) { map.getSource('marks').setData(fc); return; }
   // ONE ✕ shape as an SDF, tinted by paint (user, 2026-10-05: "the glistening
@@ -691,14 +691,19 @@ window.polygroveSetMarks = (pts) => {
   // Sedona, 2026-10-05): marks closer than a few points on screen draw as ONE
   // ✕, and come apart as you zoom in. (Clusters and single spots share the
   // one icon — the layer has no filter.)
-  // a merged mark is yellow as soon as ONE of its sightings is confirmed
-  map.addSource('marks', { type: 'geojson', data: fc, cluster: true, clusterRadius: 16, clusterMaxZoom: 13,
-    clusterProperties: { ok: ['max', ['get', 'ok']], h: ['max', ['get', 'h']] } });
-  map.addLayer({ id: 'marks', type: 'symbol', source: 'marks',
-    layout: { 'icon-image': 'markx', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-              'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.42, 4, 0.62, 7, 0.9, 10, 1.15] },
-    paint: { 'icon-color': ['case', ['==', ['get', 'ok'], 0], '#4caf50', '#ffd03a'],
-             'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6 } });
+  // EVERY sighting is its own ✕, no merging (user, 2026-10-06: "put all of the
+  // observations on the map") — merged marks turned yellow whenever one
+  // sighting in them was confirmed, which hid nearly all the green on a busy
+  // account. Three layers, grey under green under yellow, so a colour is
+  // never buried by a neighbour of another colour.
+  map.addSource('marks', { type: 'geojson', data: fc });
+  for (const [id, kind] of [['marks_p', 2], ['marks_w', 0], ['marks', 1]]) {
+    map.addLayer({ id, type: 'symbol', source: 'marks', filter: ['==', ['get', 'ok'], kind],
+      layout: { 'icon-image': 'markx', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+                'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.42, 4, 0.62, 7, 0.9, 10, 1.15] },
+      paint: { 'icon-color': kind === 0 ? '#4caf50' : kind === 2 ? '#9a9a9a' : '#ffd03a',
+               'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6 } });
+  }
   flashLoop();   // the shimmer rides the selection's frame loop
 };
 // the website's irregular twinkle: per-mark phase (h) and tempo, two
@@ -707,9 +712,9 @@ function shimmerMarks(t) {
   if (!map.getLayer('marks')) return;
   const p = ['+', ['*', t / 400, ['+', 0.6, ['*', 0.0089, ['%', ['get', 'h'], 101]]]], ['*', ['get', 'h'], 0.0628]];
   const m = ['+', 0.5, ['*', 0.25, ['sin', p]], ['*', 0.25, ['sin', ['*', 1.618, p]]]];
-  map.setPaintProperty('marks', 'icon-color', ['case', ['==', ['get', 'ok'], 0],
-    ['interpolate', ['linear'], m, 0, 'rgb(46,125,50)', 0.5, 'rgb(76,175,80)', 1, 'rgb(165,232,169)'],      // dark green → green → light green
-    ['interpolate', ['linear'], m, 0, 'rgb(255,200,60)', 0.5, 'rgb(255,225,77)', 1, 'rgb(255,245,160)']]);   // the website's deep yellow → yellow → pale yellow (less orange, user 2026-10-05)
+  map.setPaintProperty('marks', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(255,200,60)', 0.5, 'rgb(255,225,77)', 1, 'rgb(255,245,160)']);   // deep yellow → yellow → pale yellow (less orange, user 2026-10-05)
+  map.setPaintProperty('marks_w', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(46,125,50)', 0.5, 'rgb(76,175,80)', 1, 'rgb(165,232,169)']);   // dark green → green → light green
+  map.setPaintProperty('marks_p', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(110,110,110)', 0.5, 'rgb(154,154,154)', 1, 'rgb(205,205,205)']);   // grey, a quiet glisten
 }
 window.polygroveTilt = (pitch, bearing) => { if (ready && !touching && !map.isEasing()) map.jumpTo({ pitch, bearing }); };
 </script>
