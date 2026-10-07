@@ -185,9 +185,8 @@ map.on('load', async () => {
   const ROUND = { 'line-join': 'round', 'line-cap': 'round' };
   const twin = (id, def) => { map.addLayer(Object.assign({ id, source: 'eco' }, def)); map.addLayer(Object.assign({ id: id + '_hd', source: 'ecohd' }, def)); };
   twin('ecoline', { type: 'line', layout: ROUND,
-    // brighter (user, 2026-10-07: "the base outline of the borders for ecoregions with no cards")
-    paint: { 'line-color': '#a5d6a7', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.6, 5, 1.1, 7.5, 1.6],
-             'line-opacity': 0.92, 'line-dasharray': [1.6, 1.9] } });
+    paint: { 'line-color': '#81C784', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 5, 0.8, 7.5, 1.2],
+             'line-opacity': 0.6, 'line-dasharray': [1.6, 1.9] } });
   // ecoregions you've been to (hold cards in): a stronger, solid green
   // outline (user, 2026-09-28 — was gold)
   // (hidden since 2026-10-06 — user: "no borders should be highlighted besides
@@ -629,10 +628,11 @@ function paintScale() {
   // explored"): a muted green at 0%, full green at 50%, yellow at 100%; a
   // region never visited gets the muted green too
   const DIM_GREEN = '#2e6b33';
+  const lighter = (c) => hex(rgb(c).map(v => v + (255 - v) * 0.35));   // lighter (user, 2026-10-07)
   const borderOf = (e) => {
-    if (e == null || !collected.includes(+e)) return DIM_GREEN;
+    if (e == null || !collected.includes(+e)) return lighter(DIM_GREEN);
     const k = at(e);
-    return k < 0.5 ? lerp(DIM_GREEN, ZERO_GREEN, k * 2) : lerp(ZERO_GREEN, FULL_YELLOW, (k - 0.5) * 2);
+    return lighter(k < 0.5 ? lerp(DIM_GREEN, ZERO_GREEN, k * 2) : lerp(ZERO_GREEN, FULL_YELLOW, (k - 0.5) * 2));
   };
   for (const [prefix, e] of [['sel', current], ['psel', prevSel]]) {
     const c = borderOf(e);
