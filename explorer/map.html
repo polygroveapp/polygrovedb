@@ -185,8 +185,9 @@ map.on('load', async () => {
   const ROUND = { 'line-join': 'round', 'line-cap': 'round' };
   const twin = (id, def) => { map.addLayer(Object.assign({ id, source: 'eco' }, def)); map.addLayer(Object.assign({ id: id + '_hd', source: 'ecohd' }, def)); };
   twin('ecoline', { type: 'line', layout: ROUND,
-    paint: { 'line-color': '#81C784', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 5, 0.8, 7.5, 1.2],
-             'line-opacity': 0.6, 'line-dasharray': [1.6, 1.9] } });
+    // brighter (user, 2026-10-07: "the base outline of the borders for ecoregions with no cards")
+    paint: { 'line-color': '#a5d6a7', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.6, 5, 1.1, 7.5, 1.6],
+             'line-opacity': 0.92, 'line-dasharray': [1.6, 1.9] } });
   // ecoregions you've been to (hold cards in): a stronger, solid green
   // outline (user, 2026-09-28 — was gold)
   // (hidden since 2026-10-06 — user: "no borders should be highlighted besides
