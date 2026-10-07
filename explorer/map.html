@@ -502,17 +502,17 @@ const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
 // 0.14 ↔ 0.59, glow 0.19 ↔ 0.79); the thin outline stays solid so the shape
 // never disappears. selK is the crossfade's share, so a region still fades
 // in while it flashes.
-let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;
+let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;   // flashP stays 1: the highlight no longer pulses (2026-10-06)
 function flashLoop() {
   if (MINI != null || flashRaf) return;
   const step = () => {
     flashRaf = requestAnimationFrame(step);
     flashTick++;
-    // the region's flash repaints the map: 15 fps is smooth for a 1.1 s pulse
-    // and half the work of 30 (2026-10-06, an iPhone 13 Pro lagged with the marks hidden)
+    // NO FLASH (user, 2026-10-06: "remove the flashing for the highlighted
+    // ecoregion"): the region under the pin is highlighted steady — every
+    // pulse repainted the whole map, and an iPhone 13 Pro lagged. The loop
+    // now only drives the marks' shimmer.
     if (flashTick & 3) return;
-    flashP = 0.82 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI);
-    if (current != null) setSelOpacity('sel', selK);
     // below z8 the marks' placement is collision-based and a paint change per
     // frame kept re-running it — the ✕s jiggled (user, 2026-10-06); there the
     // shimmer ticks at 4 fps, which reads as a slow twinkle and lets placement settle
