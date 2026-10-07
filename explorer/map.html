@@ -549,9 +549,11 @@ function setSelOpacity(prefix, k) {
   const set = (id, prop, v) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, v); if (map.getLayer(id + '_hd')) map.setPaintProperty(id + '_hd', prop, v); };
   const p = prefix === 'sel' ? flashP : 1;   // only the region under the pin flashes, not the one fading out
   if (prefix === 'sel') selK = k;
-  set(prefix + 'fill', 'fill-opacity', SEL_OPACITY.fill * k * p);
+  // only the BORDER pulses (user, 2026-10-06: "remove the flashing altogether
+  // for the fill, just the borders"): the fill holds steady, glow and line breathe
+  set(prefix + 'fill', 'fill-opacity', SEL_OPACITY.fill * k);
   set(prefix + 'glow', 'line-opacity', Math.min(1, SEL_OPACITY.glow * k * p));
-  set(prefix + 'line', 'line-opacity', SEL_OPACITY.line * k);
+  set(prefix + 'line', 'line-opacity', SEL_OPACITY.line * k * (0.7 + 0.3 * p));
 }
 // every ecoregion layer's filter, in one place: the low-detail layer skips
 // regions that have their high-detail twin loaded
@@ -587,17 +589,18 @@ let goldP = 0;   // 0 = yellow, 1 = white
 function paintScale() {
   const done = (e) => completed.includes(+e);
   const at = (e) => (done(e) ? 1 : progress[e] || 0);
-  const colorOf = (e) => (done(e) ? lerp(FULL_YELLOW, GOLD_WHITE, goldP) : mix(at(e)));
-  const pairs = [];
-  for (const e of collected) pairs.push(+e, colorOf(e));
-  const color = pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0);
-  for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', color);
-  for (const id of ['visited', 'visited_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', color);
+  // fills hold steady; only the OUTLINE of a finished region breathes (user, 2026-10-06)
+  const fillOf = (e) => mix(at(e));
+  const lineOf = (e) => (done(e) ? lerp(FULL_YELLOW, GOLD_WHITE, goldP) : mix(at(e)));
+  const scale = (f) => { const pairs = []; for (const e of collected) pairs.push(+e, f(e)); return pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0); };
+  const fillColor = scale(fillOf), lineColor = scale(lineOf);
+  for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', fillColor);
+  for (const id of ['visited', 'visited_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', lineColor);
   // your camp wears its own colour on the scale: a stronger fill than the
   // other visited regions, a glow, and a paler line over the glow
-  const campColor = camp == null ? mix(0) : colorOf(camp), campPale = hex(rgb(campColor).map(v => v + (255 - v) * 0.6));
+  const campFill = camp == null ? mix(0) : fillOf(camp), campLine = camp == null ? mix(0) : lineOf(camp), campPale = hex(rgb(campLine).map(v => v + (255 - v) * 0.6));
   const paint = (id, prop, v) => { for (const l of [id, id + '_hd']) if (map.getLayer(l)) map.setPaintProperty(l, prop, v); };
-  paint('campfill', 'fill-color', campColor); paint('campglow', 'line-color', campColor); paint('campline', 'line-color', campPale);
+  paint('campfill', 'fill-color', campFill); paint('campglow', 'line-color', campLine); paint('campline', 'line-color', campPale);
 }
 // load the high-detail outline of everything on screen, once zoomed in
 const hdBusy = new Set();
