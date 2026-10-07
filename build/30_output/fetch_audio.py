@@ -20,31 +20,57 @@ S=requests.Session(); S.headers.update({"User-Agent":"PolygroveDB/0.1 (open spec
 OK_LIC=('http://creativecommons.org/publicdomain/zero/1.0/','http://creativecommons.org/licenses/by/4.0/',
         'https://creativecommons.org/publicdomain/zero/1.0/','https://creativecommons.org/licenses/by/4.0/')
 t0=time.time(); found=0
-for i,(sid,name) in enumerate(todo):
-    try:
-        r=S.get("https://api.gbif.org/v1/occurrence/search",
-                params={"taxonKey":sid,"mediaType":"Sound","limit":50,"license":["CC0_1_0","CC_BY_4_0"]}, timeout=30)
+from concurrent.futures import ThreadPoolExecutor
+def fetch(job):
+    sid,name=job
+    waited=0
+    attempt=0
+    while attempt<4:
+        try:
+            r=S.get("https://api.gbif.org/v1/occurrence/search",
+                    params={"taxonKey":sid,"mediaType":"Sound","limit":50,"license":["CC0_1_0","CC_BY_4_0"]}, timeout=30)
+        except Exception:
+            attempt+=1; time.sleep(2*attempt); continue
+        if r.status_code==429:
+            # over GBIF's limit (2026-10-06: a six-thread run got the address
+            # throttled for a long while): wait it out, up to an hour per species,
+            # without spending an attempt — the limit lifts, the pull resumes
+            if waited>=3600: return sid,None
+            w=float(r.headers.get("Retry-After") or 60); time.sleep(w); waited+=w; continue
+        if r.status_code in (500,502,503,504):
+            attempt+=1; time.sleep(3*attempt); continue
+        if r.status_code!=200: return sid,None
+        j=r.json()
+        # under load GBIF has answered 200 with count>0 and an empty page (the
+        # American robin came back [] against 2,376 matching records): retry
+        if not j.get("results") and j.get("count",0)>0:
+            attempt+=1; time.sleep(2*attempt); continue
         clips=[]
-        if r.status_code==200:
-            for occ in r.json().get("results",[]):
-                for m in occ.get("media",[]):
-                    if m.get("type")!="Sound" or not m.get("identifier"): continue
-                    lic=(m.get("license") or occ.get("license") or '')
-                    if lic not in OK_LIC and occ.get("license") not in ('CC0_1_0','CC_BY_4_0'): continue
-                    clips.append({"url":m["identifier"],
-                                  "by":m.get("rightsHolder") or occ.get("rightsHolder") or occ.get("recordedBy") or "",
-                                  "lic":"CC0" if "zero" in lic or occ.get("license")=='CC0_1_0' else "CC-BY",
-                                  "ds":occ.get("datasetName","")[:40]})
-                    if len(clips)>=3: break
+        for occ in j.get("results",[]):
+            for m in occ.get("media",[]):
+                if m.get("type")!="Sound" or not m.get("identifier"): continue
+                lic=(m.get("license") or occ.get("license") or '')
+                if lic not in OK_LIC and occ.get("license") not in ('CC0_1_0','CC_BY_4_0'): continue
+                clips.append({"url":m["identifier"],
+                              "by":m.get("rightsHolder") or occ.get("rightsHolder") or occ.get("recordedBy") or "",
+                              "lic":"CC0" if "zero" in lic or occ.get("license")=='CC0_1_0' else "CC-BY",
+                              "ds":occ.get("datasetName","")[:40]})
                 if len(clips)>=3: break
+            if len(clips)>=3: break
+        return sid,clips
+    return sid,None   # missing key = retried on next run
+# ONE request at a time, ~4/s: three in flight got the address rate-limited (2026-10-06)
+def paced(jobs):
+    for j in jobs:
+        yield fetch(j); time.sleep(0.25)
+with ThreadPoolExecutor(1) as ex:
+    for i,(sid,clips) in enumerate(paced(todo)):
+        if clips is None: continue
         res[str(sid)]=clips
         if clips: found+=1
-    except Exception:
-        pass          # missing key = retried on next run
-    if (i+1)%250==0:
-        json.dump(res,open(OUT,"w"))
-        print(f"  {i+1:,}/{len(todo):,} · {found:,} with sound · {(time.time()-t0)/60:.0f}m", flush=True)
-    time.sleep(0.12)  # ~8 req/s, polite
+        if (i+1)%250==0:
+            json.dump(res,open(OUT,"w"))
+            print(f"  {i+1:,}/{len(todo):,} · {found:,} with sound · {(time.time()-t0)/60:.0f}m", flush=True)
 json.dump(res,open(OUT,"w"))
 have=sum(1 for v in res.values() if v)
 print(f"DONE: {have:,}/{len(deck):,} deck species have licensed audio", flush=True)

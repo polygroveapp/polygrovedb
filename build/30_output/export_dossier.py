@@ -128,9 +128,17 @@ if os.path.exists("../../data/wiki_lead.json"):
         # husks left by stripped templates: "The cougar ( ; Puma concolor)" -> "(Puma concolor)"
         t=_re.sub(r"\(\s*[;,·]\s*", "(", t); t=_re.sub(r"\(\s*\)", "", t)
         t=_re.sub(r"\s+([,.;])", r"\1", t); return _re.sub(r"\s{2,}", " ", t).strip()
+    # re-pick from the stored candidates with the current scorer and junk
+    # filter (the extraction is slow; the choice of sentence is not)
+    os.environ['LEADS_NO_DB']='1'; import extract_lead_sentences as _els
     for sid, d in json.load(open("../../data/wiki_lead.json")).items():
         sci=sid2sci.get(sid)
         if not sci: continue
+        if d.get('sents'):
+            cands=[c for c in d['sents'] if not _els.is_junk(c)]
+            i=_els.pick_lead(cands)
+            if i is None: continue
+            d={**d, 'lead': cands[i]}
         d={**d, 'lead': _tidy(d['lead'])}
         label='lead sentence' if d['level']=='species' else 'lead sentence (genus article)'
         shards[djb2(sci)].setdefault(sci,[]).insert(0, ['Wikipedia extracts (sourced)', label, d['lead']])
