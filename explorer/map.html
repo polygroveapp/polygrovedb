@@ -512,7 +512,11 @@ function flashLoop() {
   const step = () => {
     flashRaf = requestAnimationFrame(step);
     if (flashTick++ & 1) return;   // every other frame is plenty
-    flashP = 0.82 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI);
+    // NO PULSE ONCE ZOOMED IN (user, 2026-10-06: "there are no others on screen
+    // and it gets distracting"): from z6.5 the highlight holds steady; the pulse
+    // eases back in as you zoom out, where the selected region is one of many
+    const z = map.getZoom(), amp = z >= 6.5 ? 0 : z <= 5.5 ? 1 : 6.5 - z;
+    flashP = 1 + amp * (-0.18 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI));
     if (current != null) setSelOpacity('sel', selK);
     if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 0)) shimmerMarks(performance.now());
   };
