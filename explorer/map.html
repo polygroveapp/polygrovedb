@@ -518,7 +518,9 @@ function flashLoop() {
     const z = map.getZoom(), amp = z >= 6.5 ? 0 : z <= 5.5 ? 1 : 6.5 - z;
     flashP = 1 + amp * (-0.18 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI));
     if (current != null) setSelOpacity('sel', selK);
-    if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 0)) shimmerMarks(performance.now());
+    // (flashTick is odd here — the even frames returned above — so the far-out
+    // tick is `=== 1`; `=== 0` never fired and the ✕s sat still when zoomed out, 2026-10-06)
+    if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 1)) shimmerMarks(performance.now());
   };
   step();
 }
