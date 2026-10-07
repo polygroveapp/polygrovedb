@@ -796,6 +796,13 @@ function shimmerMarks(t) {
   map.setPaintProperty('marks_w', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(46,125,50)', 0.5, 'rgb(76,175,80)', 1, 'rgb(165,232,169)']);   // dark green → green → light green
   map.setPaintProperty('marks_p', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(110,110,110)', 0.5, 'rgb(154,154,154)', 1, 'rgb(205,205,205)']);   // grey, a quiet glisten
 }
+// observations on / off (the app's ✕ obs button, 2026-10-06): hides the three mark layers
+let marksShown = true;
+window.polygroveShowMarks = (on) => {
+  marksShown = !!on;
+  for (const id of ['marks', 'marks_w', 'marks_p']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', marksShown ? 'visible' : 'none');
+  if (!marksShown && lastUnder) { lastUnder = ''; send({ type: 'under', marks: [] }); } else if (marksShown) reportUnder();
+};
 window.polygroveTilt = (pitch, bearing) => { if (ready && !touching && !map.isEasing()) map.jumpTo({ pitch, bearing }); };
 </script>
 </body>
