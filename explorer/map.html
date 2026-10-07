@@ -340,12 +340,12 @@ map.on('load', async () => {
     }).catch(() => {});
   };
   map.on('zoomend', loadTrails); loadTrails();
-  // 3D TERRAIN for the picker (2026-09-29): the explorer's DEM, gentler —
-  // without height the phone's subtle tilt would just skew a flat sheet
-  if (MINI == null) { try {
-    map.addSource('dem', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
-    map.setTerrain({ source: 'dem', exaggeration: 3 });
-  } catch (e) {} }
+  // NO 3D TERRAIN (2026-10-06): it was added on 2026-09-29 so the gyro tilt
+  // had height to lean against, and the tilt is gone. With terrain on, every
+  // pan into fresh ground waited on elevation tiles from S3 before anything
+  // could draw (the black screen on an iPhone 13 Pro "when it moves far off to
+  // where it's currently loaded") and the whole scene re-meshed on each move.
+  // The hillshade above still gives the grey relief, and land paints at once.
   ready = true;
   if (MINI != null) {
     // the site's minimap: just the region, green, in continental context
@@ -591,7 +591,7 @@ function loadHD() {
     .then(fc => { const f = fc && (fc.features ? fc.features[0] : fc); if (f && f.geometry) { f.properties = Object.assign({}, f.properties, { eco: e }); HD.set(e, f); } })))
     .then(() => {
       ids.forEach(e => hdBusy.delete(e));
-      if (HD.size > 70) for (const k of [...HD.keys()].slice(0, HD.size - 70)) HD.delete(k);   // oldest out
+      if (HD.size > 36) for (const k of [...HD.keys()].slice(0, HD.size - 36)) HD.delete(k);   // oldest out (70 → 36 on 2026-10-06: every batch re-tiles the whole set)
       map.getSource('ecohd').setData({ type: 'FeatureCollection', features: [...HD.values()] });
       applyFilters();
       settle();
