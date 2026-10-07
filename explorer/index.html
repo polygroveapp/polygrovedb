@@ -660,7 +660,7 @@ function showPool(c){
       <div class="facts">
         ${box('Taxonomy',`<i>${c.sci}</i>`)}
         ${box('Feeding',c.feeding)}
-        ${box('Size',c.size)}
+        ${box('Size',niceSize(c.size))}
         ${box('Food web',has(4)&&c.topEdge?c.topEdge.replace(/ (\S+ \S+)$/,' <i>$1</i>'):null)}
         ${box('Habitat / Origin',c.habitat||c.origin,!!c.biome)}
         ${box('Biome (location)',c.biome)}
@@ -1588,7 +1588,7 @@ function speciesCardHTML(c){   // THE card — shared by the species page and th
         ${factBox(c,'taxonomy','Group',c.group)}
       </div>
       <div class="dc-row">
-        ${factBox(c,'size','Size',c.size||'—')}
+        ${factBox(c,'size','Size',c.size?niceSize(c.size):'—')}
         ${factBox(c,'slot5',c.habitat?'Habitat':c.origin?'Native origin':'Biome',c.habitat||c.origin||c.biome||'—')}
       </div>
       <div class="dc-note cardlead" onclick="noteWiki(event,this)" data-sci="${esc(c.sci)}" title="Read on Wikipedia" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
@@ -1616,6 +1616,20 @@ function speciesCardHTML(c){   // THE card — shared by the species page and th
 // article (Wikipedia's Go search resolves the scientific name). Clicks stop
 // here so the card does not flip.
 const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// RELATABLE SIZES (user, 2026-10-06): "2140.8 g" reads as "2.1 kg | 4.7 lb" —
+// grams → kg → t, cm → m, mm → cm, and the imperial twin after a bar. The
+// catalog's raw string is kept for anything that does not parse.
+function niceSize(size){
+  const m=/^\s*([\d.,]+)\s*(cm|mm|g)\b/.exec(size||''); if(!m) return size;
+  const v=parseFloat(m[1].replace(/,/g,'')), u=m[2]; if(!(v>0)) return size;
+  const f=(x,d=1)=>x>=100?Math.round(x).toLocaleString():x>=10?x.toFixed(0):x.toFixed(d).replace(/\.0$/,'');
+  let met, imp;
+  if(u==='g'){ met=v>=1e6?`${f(v/1e6)} t`:v>=1000?`${f(v/1000)} kg`:`${f(v)} g`;
+    const lb=v/453.592, oz=v/28.3495; imp=lb>=2000?`${f(lb/2000)} tons`:lb>=1?`${f(lb)} lb`:`${f(oz,oz<1?2:1)} oz`; }
+  else { met=u==='cm'?(v>=100?`${f(v/100)} m`:`${f(v)} cm`):(v>=10?`${f(v/10)} cm`:`${f(v)} mm`);
+    const inch=u==='cm'?v/2.54:v/25.4; imp=inch>=12?`${f(inch/12)} ft`:`${f(inch,inch<1?2:1)} in`; }
+  return `${met} | ${imp}`;
+}
 function factBox(c,slot,k,v,color){
   const pv=(c.provenance||{})[slot];
   const style=color?` style="color:${color}"`:'';
@@ -1675,7 +1689,7 @@ function buildQuiz(c){
   qs.push({label:'Q2 · Feeding guild', type:'tf', q:`The ${c.name} is ${t2?c.role:c.falseRole}.`, a:t2, explain:t2?null:`The ${c.name} is ${c.role}.`});
   if(c.q3&&c.q3.opponents&&c.q3.opponents.length){const o=c.q3.opponents[Math.floor(rng()*c.q3.opponents.length)];
     qs.push({label:'Q3 · Size', type:'mc', q:`On average, is the ${c.name} ${c.q3.bigger}, ${c.q3.smaller}, or about the same as the ${o.name}?`,
-      opts:[c.q3.bigger,'about the same',c.q3.smaller], a:o.answer, explain:`${c.name}: ${c.size} · ${o.name}: ${o.size}`});}
+      opts:[c.q3.bigger,'about the same',c.q3.smaller], a:o.answer, explain:`${c.name}: ${niceSize(c.size)} · ${o.name}: ${niceSize(o.size)}`});}
   if(c.q4&&c.q4.eats&&c.q4.eatenBy) qs.push({label:'Q4 · Food web', type:'dual',
     s1:{title:'Consumes +', opts:c.q4.eats.options, a:c.q4.eats.answer},
     s2:{title:'Consumed by −', opts:c.q4.eatenBy.options, a:c.q4.eatenBy.answer}});
