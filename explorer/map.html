@@ -750,7 +750,7 @@ window.polygroveSetMarks = (pts) => {
   const firstLabel = ['parkdot', 'parklbl', 'citydot', 'citylbl', 'lakelbl', 'adminlbl', 'ecolbl', 'oceanlbl'].find(l => map.getLayer(l));
   for (const [id, kind] of [['marks_p', 2], ['marks_w', 0], ['marks', 1]]) {
     map.addLayer({ id, type: 'symbol', source: 'marks', filter: ['==', ['get', 'ok'], kind],
-      layout: { 'icon-image': 'markx',
+      layout: { 'icon-image': 'markx', visibility: marksShown ? 'visible' : 'none',   // the obs button's choice survives a rebuild of the layers
                 // more of them further out (user, 2026-10-06): overlaps allowed from z6.5, and
                 // the spacing marks keep from each other is tight — only a ✕ sitting on another is held back
                 // overlaps only at CITY zoom (user, 2026-10-06: a Bay Area view "has too
