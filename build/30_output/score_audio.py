@@ -24,7 +24,10 @@ from concurrent.futures import ThreadPoolExecutor
 Q='../../data/audio_quality.json'
 q=json.load(open(Q)) if os.path.exists(Q) else {}
 res=json.load(open('../../data/species_audio.json'))
-urls=sorted({c['url'] for v in res.values() for c in (v or [])} - set(q))
+# Wikipedia's own recordings (wiki_audio.py), by scientific name — measured like
+# the rest, and placed FIRST in the rebuild (editor-curated, 2026-10-07)
+WIKI=json.load(open('../../data/wiki_audio.json')) if os.path.exists('../../data/wiki_audio.json') else {}
+urls=sorted(({c['url'] for v in res.values() for c in (v or [])} | {c['url'] for v in WIKI.values() for c in v}) - set(q))
 print(f"{len(urls):,} clips to measure ({len(q):,} already)", flush=True)
 
 def measure(url):
@@ -63,9 +66,10 @@ json.dump(q, open(Q,'w'))
 cards=json.load(open('../../explorer/data/catalog.json'))
 au={}
 for c in cards:
-    clips=[k for k in (res.get(str(c['species_id'])) or []) if not q.get(k['url'],{}).get('dead')]
-    clips.sort(key=lambda k: (-(q.get(k['url'],{}).get('snr') or 0), -(q.get(k['url'],{}).get('peak') or -99)))
-    if clips: au[c['sci']]=clips
+    alive=lambda ks: [k for k in ks if not q.get(k['url'],{}).get('dead')]
+    best=lambda ks: sorted(ks, key=lambda k: (-(q.get(k['url'],{}).get('snr') or 0), -(q.get(k['url'],{}).get('peak') or -99)))
+    clips=best(alive(WIKI.get(c['sci'],[]))) + best(alive(res.get(str(c['species_id'])) or []))
+    if clips: au[c['sci']]=clips[:4]
 json.dump(au, open('../../explorer/data/audio.json','w'), ensure_ascii=False, separators=(',',':'))
 dead=sum(1 for v in q.values() if v.get('dead'))
 print(f"DONE: {len(q):,} clips measured, {dead:,} dead; audio.json: {len(au):,} species  ({(time.time()-t0)/60:.0f}m)", flush=True)
