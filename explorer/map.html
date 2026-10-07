@@ -703,7 +703,8 @@ window.polygroveSetMarks = (pts) => {
     // (kind 2 = POTENTIAL, confirmed but no card yet — grey; user, 2026-10-06)
     .map(p => ({ type: 'Feature', properties: { ok: p[2] === 0 ? 0 : p[2] === 2 ? 2 : 1, id: p[3] ?? 0, h: Math.abs(Math.floor(p[0] * 1000 + p[1] * 7919)) % 1000 },
                  geometry: { type: 'Point', coordinates: [p[0], p[1]] } })) };
-  if (map.getSource('marks')) { map.getSource('marks').setData(fc); lastUnder = ''; reportUnder(); return; }
+  ALL_FEATS = fc.features; markTier = -1;
+  if (map.getSource('marks')) { applyMarkTier(true); lastUnder = ''; reportUnder(); return; }
   // ONE ✕ shape as an SDF, tinted by paint (user, 2026-10-05: "the glistening
   // colour changes for the x, look at the code on the website"): the colour
   // is set every frame by the shimmer in flashLoop — confirmed marks sweep
@@ -726,7 +727,9 @@ window.polygroveSetMarks = (pts) => {
   // sighting in them was confirmed, which hid nearly all the green on a busy
   // account. Three layers, grey under green under yellow, so a colour is
   // never buried by a neighbour of another colour.
-  map.addSource('marks', { type: 'geojson', data: fc });
+  map.addSource('marks', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, buffer: 0 });
+  applyMarkTier(true);
+  map.on('zoomend', () => applyMarkTier(false));
   // UNDER THE NAMES (user, 2026-10-06: "we are missing a bunch of things
   // like park names"): the marks go in beneath the first label layer, so
   // park, city, lake and ecoregion names keep their places and the ✕s show
@@ -757,6 +760,29 @@ window.polygroveSetMarks = (pts) => {
   }
   flashLoop();   // the shimmer rides the selection's frame loop
 };
+// THINNED WHEN FAR OUT (2026-10-06: an iPhone 13 Pro went black and choppy
+// drawing 12,000 ✕s — below street zoom MapLibre re-runs collision placement
+// over every one on each move). The source holds ONE mark per map cell at the
+// regional zooms, the cell shrinking as you zoom in, and every sighting from
+// zoom 8.5. Yellow wins a cell over green over grey, so a confirmed sighting
+// never hides behind a potential one. MARKS (taps, under-the-pin) stays complete.
+let ALL_FEATS = [], markTier = -1;
+const TIERS = [[4.5, 0.6], [6, 0.25], [7.5, 0.08], [8.5, 0.025], [99, 0]];   // [below zoom, cell degrees]
+function applyMarkTier(force) {
+  const z = map.getZoom(); let t = TIERS.findIndex(([zz]) => z < zz); if (t < 0) t = TIERS.length - 1;
+  if (t === markTier && !force) return;
+  markTier = t;
+  const cell = TIERS[t][1]; let feats = ALL_FEATS;
+  if (cell > 0 && feats.length > 400) {
+    const rank = f => (f.properties.ok === 1 ? 0 : f.properties.ok === 0 ? 1 : 2);
+    const seen = new Set(); feats = [];
+    for (const f of [...ALL_FEATS].sort((a, b) => rank(a) - rank(b))) {
+      const [x, y] = f.geometry.coordinates, k = Math.floor(x / cell) + ':' + Math.floor(y / cell);
+      if (seen.has(k)) continue; seen.add(k); feats.push(f);
+    }
+  }
+  const src = map.getSource('marks'); if (src) src.setData({ type: 'FeatureCollection', features: feats });
+}
 // the website's irregular twinkle: per-mark phase (h) and tempo, two
 // incommensurate sines, so the field sparkles rather than breathing in unison
 function shimmerMarks(t) {
