@@ -502,12 +502,22 @@ const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
 // 0.14 ↔ 0.59, glow 0.19 ↔ 0.79); the thin outline stays solid so the shape
 // never disappears. selK is the crossfade's share, so a region still fades
 // in while it flashes.
-let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;   // flashP stays 1: the highlight no longer pulses (2026-10-06)
-// NO FRAME LOOP AT ALL (user, 2026-10-06: "the animation is just too much,
-// remove it and just use grey, green and yellow"): the highlight is steady
-// and the ✕ marks are plain colours set once in the layer paint — grey
-// potential, green waiting, yellow confirmed. Nothing repaints on a timer.
-function flashLoop() {}
+let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;
+// THE FRAME LOOP IS BACK (user, 2026-10-06: "put everything back that wasn't
+// gyro related … and the glimmering"): the 3D terrain was the lag, not this.
+// The region under the pin pulses, the ✕ marks glisten — every other frame;
+// below z8 the shimmer ticks at 4 fps so collision placement can settle.
+function flashLoop() {
+  if (MINI != null || flashRaf) return;
+  const step = () => {
+    flashRaf = requestAnimationFrame(step);
+    if (flashTick++ & 1) return;   // every other frame is plenty
+    flashP = 0.82 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI);
+    if (current != null) setSelOpacity('sel', selK);
+    if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 0)) shimmerMarks(performance.now());
+  };
+  step();
+}
 function setSelected(eid) {
   if (eid === current) return;
   prevSel = current;
@@ -591,7 +601,7 @@ function loadHD() {
     .then(fc => { const f = fc && (fc.features ? fc.features[0] : fc); if (f && f.geometry) { f.properties = Object.assign({}, f.properties, { eco: e }); HD.set(e, f); } })))
     .then(() => {
       ids.forEach(e => hdBusy.delete(e));
-      if (HD.size > 36) for (const k of [...HD.keys()].slice(0, HD.size - 36)) HD.delete(k);   // oldest out (70 → 36 on 2026-10-06: every batch re-tiles the whole set)
+      if (HD.size > 70) for (const k of [...HD.keys()].slice(0, HD.size - 70)) HD.delete(k);   // oldest out
       map.getSource('ecohd').setData({ type: 'FeatureCollection', features: [...HD.values()] });
       applyFilters();
       settle();
@@ -693,8 +703,7 @@ window.polygroveSetMarks = (pts) => {
     // (kind 2 = POTENTIAL, confirmed but no card yet — grey; user, 2026-10-06)
     .map(p => ({ type: 'Feature', properties: { ok: p[2] === 0 ? 0 : p[2] === 2 ? 2 : 1, id: p[3] ?? 0, h: Math.abs(Math.floor(p[0] * 1000 + p[1] * 7919)) % 1000 },
                  geometry: { type: 'Point', coordinates: [p[0], p[1]] } })) };
-  ALL_FEATS = fc.features; markTier = -1;
-  if (map.getSource('marks')) { applyMarkTier(true); lastUnder = ''; reportUnder(); return; }
+  if (map.getSource('marks')) { map.getSource('marks').setData(fc); lastUnder = ''; reportUnder(); return; }
   // ONE ✕ shape as an SDF, tinted by paint (user, 2026-10-05: "the glistening
   // colour changes for the x, look at the code on the website"): the colour
   // is set every frame by the shimmer in flashLoop — confirmed marks sweep
@@ -717,9 +726,7 @@ window.polygroveSetMarks = (pts) => {
   // sighting in them was confirmed, which hid nearly all the green on a busy
   // account. Three layers, grey under green under yellow, so a colour is
   // never buried by a neighbour of another colour.
-  map.addSource('marks', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, buffer: 0 });
-  applyMarkTier(true);
-  map.on('zoomend', () => applyMarkTier(false));
+  map.addSource('marks', { type: 'geojson', data: fc });
   // UNDER THE NAMES (user, 2026-10-06: "we are missing a bunch of things
   // like park names"): the marks go in beneath the first label layer, so
   // park, city, lake and ecoregion names keep their places and the ✕s show
@@ -740,43 +747,18 @@ window.polygroveSetMarks = (pts) => {
                 // overlaps only at CITY zoom (user, 2026-10-06: a Bay Area view "has too
                 // many"): below z8 marks keep a little room from each other and only
                 // the ones that fit draw; from z8 every sighting shows
-                // OVERLAPPING ✕s BECOME ONE (user, 2026-10-06): at every zoom a mark
-                // whose ✕ would sit on another's is held back — yellow over green over
-                // grey (the layers' order) — so a pile of sightings reads as one ✕ and
-                // comes apart as you zoom in. The list under the pin still has them all.
-                'icon-allow-overlap': false, 'icon-ignore-placement': false,
-                'icon-padding': 1,
+                // EVERY observation from z8 (user, 2026-10-06: "so you can see every
+                // observation"); further out the collision engine thins the pile
+                'icon-allow-overlap': ['step', ['zoom'], false, 8, true], 'icon-ignore-placement': ['step', ['zoom'], false, 8, true],
+                'icon-padding': ['interpolate', ['linear'], ['zoom'], 3, 4, 7.9, 2, 8, 0],
                 'symbol-sort-key': kind === 1 ? 0 : kind === 0 ? 1 : 2,
                 // smaller ✕s at the regional zooms, so more of them fit before they are allowed to pile up
                 'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.36, 4, 0.5, 6, 0.62, 8, 0.9, 10, 1.15] },
-      paint: { 'icon-color': kind === 0 ? '#4caf50' : kind === 2 ? '#9a9a9a' : '#ffe14d',   // steady: green waiting · grey potential · yellow confirmed
+      paint: { 'icon-color': kind === 0 ? '#4caf50' : kind === 2 ? '#9a9a9a' : '#ffd03a',
                'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6 } }, firstLabel);
   }
   flashLoop();   // the shimmer rides the selection's frame loop
 };
-// THINNED WHEN FAR OUT (2026-10-06: an iPhone 13 Pro went black and choppy
-// drawing 12,000 ✕s — below street zoom MapLibre re-runs collision placement
-// over every one on each move). The source holds ONE mark per map cell at the
-// regional zooms, the cell shrinking as you zoom in, and every sighting from
-// zoom 8.5. Yellow wins a cell over green over grey, so a confirmed sighting
-// never hides behind a potential one. MARKS (taps, under-the-pin) stays complete.
-let ALL_FEATS = [], markTier = -1;
-const TIERS = [[4.5, 0.6], [6, 0.25], [7.5, 0.08], [8.5, 0.025], [99, 0]];   // [below zoom, cell degrees]
-function applyMarkTier(force) {
-  const z = map.getZoom(); let t = TIERS.findIndex(([zz]) => z < zz); if (t < 0) t = TIERS.length - 1;
-  if (t === markTier && !force) return;
-  markTier = t;
-  const cell = TIERS[t][1]; let feats = ALL_FEATS;
-  if (cell > 0 && feats.length > 400) {
-    const rank = f => (f.properties.ok === 1 ? 0 : f.properties.ok === 0 ? 1 : 2);
-    const seen = new Set(); feats = [];
-    for (const f of [...ALL_FEATS].sort((a, b) => rank(a) - rank(b))) {
-      const [x, y] = f.geometry.coordinates, k = Math.floor(x / cell) + ':' + Math.floor(y / cell);
-      if (seen.has(k)) continue; seen.add(k); feats.push(f);
-    }
-  }
-  const src = map.getSource('marks'); if (src) src.setData({ type: 'FeatureCollection', features: feats });
-}
 // the website's irregular twinkle: per-mark phase (h) and tempo, two
 // incommensurate sines, so the field sparkles rather than breathing in unison
 function shimmerMarks(t) {
