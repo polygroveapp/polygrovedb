@@ -610,11 +610,12 @@ function paintScale() {
   // should be flashing the colour that the fill is, if it's under the pin"):
   // the glow is the region's mastery colour, the thin line a paler cut of it;
   // a region you have never visited has no fill, so its border stays green
-  const pale = (c) => hex(rgb(c).map(v => v + (255 - v) * 0.6));
-  const borderOf = (e) => (e != null && collected.includes(+e) ? fillOf(e) : SEL_GREEN);
+  // the border runs GREEN → YELLOW with mastery, never white (user, 2026-10-06);
+  // glow and line share the one colour
+  const borderOf = (e) => (e != null && collected.includes(+e) ? lerp(ZERO_GREEN, FULL_YELLOW, at(e)) : SEL_GREEN);
   for (const [prefix, e] of [['sel', current], ['psel', prevSel]]) {
     const c = borderOf(e);
-    paint(prefix + 'glow', 'line-color', c); paint(prefix + 'line', 'line-color', pale(c));
+    paint(prefix + 'glow', 'line-color', c); paint(prefix + 'line', 'line-color', c);
   }
 }
 // load the high-detail outline of everything on screen, once zoomed in
