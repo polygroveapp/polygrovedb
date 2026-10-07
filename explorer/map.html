@@ -181,8 +181,10 @@ map.on('load', async () => {
              'line-opacity': 0.6, 'line-dasharray': [1.6, 1.9] } });
   // ecoregions you've been to (hold cards in): a stronger, solid green
   // outline (user, 2026-09-28 — was gold)
+  // (hidden since 2026-10-06 — user: "no borders should be highlighted besides
+  // when the pin's over it"; the fill carries the mastery colour)
   twin('visited', { type: 'line', layout: ROUND, filter: ['in', ['get', 'eco'], ['literal', []]],
-    paint: { 'line-color': ZERO_GREEN, 'line-width': 2, 'line-opacity': 0.95 } });
+    paint: { 'line-color': ZERO_GREEN, 'line-width': 2, 'line-opacity': 0 } });
   // the chosen ecoregion: green fill + glowing green outline (ecohl-glow / ecohl)
   // MASTERY PAINT (user, 2026-09-30, "the green to light green to gold is
   // the fill on the inside"): an ecoregion you've been to is painted inside
@@ -219,10 +221,11 @@ map.on('load', async () => {
   // border (you're here) and is painted gold inside (applyFilters)
   twin('campfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
     paint: { 'fill-color': ZERO_GREEN, 'fill-opacity': 0.58 } });
+  // the camp's glow and line are hidden too (2026-10-06): only the region under the pin gets a border
   twin('campglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': ZERO_GREEN, 'line-width': 9, 'line-blur': 6, 'line-opacity': 0.7 } });
+    paint: { 'line-color': ZERO_GREEN, 'line-width': 9, 'line-blur': 6, 'line-opacity': 0 } });
   twin('campline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': '#ffd0a0', 'line-width': 2.4, 'line-opacity': 1 } });
+    paint: { 'line-color': '#ffd0a0', 'line-width': 2.4, 'line-opacity': 0 } });
   // green ecoregion names, placed on the polygons
   map.addLayer({ id: 'ecolbl', type: 'symbol', source: 'eco', minzoom: 2.4,
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
@@ -521,8 +524,6 @@ function flashLoop() {
     const z = map.getZoom(), amp = z >= 6.5 ? 0 : z <= 5.5 ? 1 : 6.5 - z;
     flashP = 1 + amp * (-0.18 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI));
     if (current != null) setSelOpacity('sel', selK);
-    // finished regions breathe yellow → white, ~2.6 s, repainted at 15 fps
-    if (completed.length && (flashTick & 3) === 1) { goldP = 0.5 + 0.5 * Math.sin((performance.now() / 1300) * 2 * Math.PI); paintScale(); }
     // (flashTick is odd here — the even frames returned above — so the far-out
     // tick is `=== 1`; `=== 0` never fired and the ✕s sat still when zoomed out, 2026-10-06)
     if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 1)) shimmerMarks(performance.now());
@@ -591,7 +592,7 @@ function paintScale() {
   const at = (e) => (done(e) ? 1 : progress[e] || 0);
   // fills hold steady; only the OUTLINE of a finished region breathes (user, 2026-10-06)
   const fillOf = (e) => mix(at(e));
-  const lineOf = (e) => (done(e) ? lerp(FULL_YELLOW, GOLD_WHITE, goldP) : mix(at(e)));
+  const lineOf = (e) => mix(at(e));   // (steady: the only pulse is the selection's, user 2026-10-06)
   const scale = (f) => { const pairs = []; for (const e of collected) pairs.push(+e, f(e)); return pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0); };
   const fillColor = scale(fillOf), lineColor = scale(lineOf);
   for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', fillColor);
