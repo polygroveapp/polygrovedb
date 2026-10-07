@@ -24,7 +24,8 @@ REF_RE  = re.compile(r"<ref[^>]*>(.*?)</ref>", re.DOTALL | re.IGNORECASE)
 
 # --- new cleanup regexes ---
 HEADING_RE = re.compile(r"(?m)^=+\s*.+?\s*=+\s*$")                     # == Section ==
-CONVERT_RE = re.compile(r"\{\{(?:convert|cvt)\s*\|\s*([^|}]+)\s*\|\s*([^|}]+)[^}]*\}\}", re.I)
+import sys; sys.path.insert(0, "../30_output")
+from wiki_convert import render_converts                                  # {{convert}} ranges written out: 35–46 cm
 TONE_BLOCK = re.compile(r"\b(rap(e|es|ed|ing)|molest|mutilat|disembowel|dismember|slaughter)\w*", re.I)
 
 # --- seek helpers (same mechanism as step 2) ---
@@ -59,7 +60,7 @@ def get_wikitext(title,hops=0):
 # --- improved extraction ---
 def field_notes(wt):
     wt = HEADING_RE.sub("", wt or "")          # 1. drop section headings
-    wt = CONVERT_RE.sub(r"\1 \2", wt)          # 2. preserve measurements
+    wt = render_converts(wt)                   # 2. preserve measurements (ranges too)
     out=[]
     for para in re.split(r"\n\n+", wt):
         if "<ref" not in para: continue

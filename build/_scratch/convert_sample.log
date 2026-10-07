@@ -1,0 +1,58 @@
+10,220 species carry Wikipedia text · 2,872 match the suspect pattern · re-extracting 400
+  250/400 · 0 leads + 10 note lists change · 0.8m
+
+0 lead sentences and 22 candidate notes change, across 19 species  (1.2m)
+0 extractions did not reproduce the shipped text and were left alone
+0 notes would have LOST a number the shipped text states — those species were left alone
+0 changed notes still show a dangling number (not a convert template — {{val}}, {{nowrap}}, plain text)
+every before/after: build/_scratch/convert_reextract_report_sample.json
+
+  [Arctocephalus philippii · candidate]
+   - Males are significantly larger and average 300 lb and 6 ft in length.
+   + Males are significantly larger and average 300 lb and 6 ft 6 in in length.
+
+  [Calocedrus decurrens · candidate]
+   - Calocedrus decurrens is a large tree, typically reaching heights of 30-40 m and a trunk diameter up to 1.2 m.
+   + Calocedrus decurrens is a large tree, typically reaching heights of 30–40 m and a trunk diameter up to 1.2 m.
+
+  [Ochotona macrotis · candidate]
+   - None
+   + An adult large-eared pika is 15 to 20.4 cm long.
+
+  [Tangara parzudakii · candidate]
+   - The flame-faced tanager is a distinctive-looking medium-sized species of tanager, being on average 14-15 cm in length and 28 g in mass.
+   + The flame-faced tanager is a distinctive-looking medium-sized species of tanager, being on average 14–15 cm in length and 28 g in mass.
+
+  [Virola sebifera · candidate]
+   - The fruit is reddish, oval-shaped, and about 10-15 mm long and about 11 mm in diameter.
+   + The fruit is reddish, oval-shaped, and about 10–15 mm long and about 11 mm in diameter.
+
+  [Pharomachrus antisianus · candidate]
+   - The crested quetzal is found along the Andes from Bolivia through Ecuador, Peru and Colombia to Venezuela, in pristine and mature second-growth forest from 1200-3000 m in altitude.
+   + The crested quetzal is found along the Andes from Bolivia through Ecuador, Peru and Colombia to Venezuela, in pristine and mature second-growth forest from 1200–3000 m in altitude.
+
+  [Phlox subulata · candidate]
+   - Requiring full sun and well-drained soil, it is very hardy, tolerating temperatures down to -20 C, and is suitable for hardiness zones USDA 3 to 9.
+   + Requiring full sun and well-drained soil, it is very hardy, tolerating temperatures down to −20 °C, and is suitable for hardiness zones USDA 3 to 9.
+
+  [Arctocephalus philippii · candidate]
+   - Females are lighter brown and average 100 lb and 4 ft long.
+   + Females are lighter brown and average 100 lb and 4 ft 6 in long.
+
+  [Bufo bufo · candidate]
+   - The toads start moving at dusk, but they need a temperature above 5 C to travel far.
+   + The toads start moving at dusk, but they need a temperature above 5 °C to travel far.
+
+  [Kalmia latifolia · candidate]
+   - Kalmia latifolia is an evergreen shrub growing 3-9 m tall.
+   + Kalmia latifolia is an evergreen shrub growing 3–9 m tall.
+
+  [Neoscona arabesca · candidate]
+   - Females range in size from 5-7 mm and males 5-6 mm.
+   + Females range in size from 5–7 mm and males 5–6 mm.
+
+  [Styrax japonicus · candidate]
+   - Generally pest-resistant and disease-resistant, It is cold hardy to -15 C, with a classification of USDA hardiness zones ranging from 5-8, depending on the cultivation and provenance.
+   + Generally pest-resistant and disease-resistant, It is cold hardy to −15 °C, with a classification of USDA hardiness zones ranging from 5-8, depending on the cultivation and provenance.
+
+DRY RUN — nothing written. --write patches the caches and the shards.

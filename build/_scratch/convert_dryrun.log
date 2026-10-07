@@ -1,0 +1,67 @@
+10,220 species carry Wikipedia text · 2,872 show a dangling number · re-extracting 2,872
+  250/2,872 · 10 leads + 185 note lists change · 0.9m
+  500/2,872 · 20 leads + 382 note lists change · 1.8m
+  750/2,872 · 37 leads + 569 note lists change · 2.7m
+  1,000/2,872 · 48 leads + 763 note lists change · 3.5m
+  1,250/2,872 · 61 leads + 949 note lists change · 4.4m
+  1,500/2,872 · 84 leads + 1,131 note lists change · 5.3m
+  1,750/2,872 · 97 leads + 1,322 note lists change · 6.2m
+  2,000/2,872 · 106 leads + 1,503 note lists change · 7.0m
+  2,250/2,872 · 116 leads + 1,682 note lists change · 7.9m
+  2,500/2,872 · 127 leads + 1,881 note lists change · 8.8m
+  2,750/2,872 · 141 leads + 2,053 note lists change · 9.7m
+
+142 lead sentences and 5,452 candidate notes change, across 2,226 species  (10.1m)
+0 extractions did not reproduce the shipped text and were left alone
+19 changed notes still show a dangling number (not a convert template — {{val}}, {{nowrap}}, plain text)
+every before/after: build/_scratch/convert_reextract_report.json
+
+  [Hippopotamus amphibius · candidate]
+   - Males establish territories in water but not land, and these may range 250 – in lakes and 50 – in rivers.
+   + Males establish territories in water but not land, and these may range 250–500 m in lakes and 50–100 m in rivers.
+
+  [Caluromys philander · candidate]
+   - None
+   + The ears measure 3 to 3.5 cm, the tail 25 to 36 cm and the hind feet 3.2 to 3.9 cm.
+
+  [Meles meles · candidate]
+   - Adults measure 25 – at the shoulder, 60 – in body length, 12 – in tail length, 7.5 – in hind foot length and 3.5 – in ear height.
+   + Adults measure 25–30 cm at the shoulder, 60–90 cm in body length, 12–24 cm in tail length, 7.5–13 cm in hind foot length and 3.5–7 cm in ear height.
+
+  [Tsuga canadensis · candidate]
+   - In contrast, the southern end of the range experiences up to 200 days without frost and January temperatures as high as 6 C.
+   + In contrast, the southern end of the range experiences up to 200 days without frost and January temperatures as high as 6 °C.
+
+  [Aptenodytes forsteri · candidate]
+   - Adult emperor penguins are 110 - in length, averaging 115 cm.
+   + Adult emperor penguins are 110–120 cm in length, averaging 115 cm.
+
+  [Arctictis binturong · candidate]
+   - None
+   + Range size of males varied between 0.9 and 6.1 km².
+
+  [Python sebae · candidate]
+   - In 2017, a 8 ft female Central African rock python, kept as a pet in Hampshire, England, was found to have killed its owner by asphyxiation, according to a coroner's inquest.
+   + In 2017, a 8 ft-long female Central African rock python, kept as a pet in Hampshire, England, was found to have killed its owner by asphyxiation, according to a coroner's inquest.
+
+  [Balaenoptera edeni · candidate]
+   - None
+   + Bryde's whales have an upright, falcate dorsal fin that is up to 46.25 cm in height, average 34.4 cm, and is usually between 30 and 37.5 cm.
+
+  [Liriodendron tulipifera · candidate]
+   - The tulip tree is one of the largest of the native trees of eastern North America, known in an extraordinary case to reach the height of 58.5 m with the next-tallest known specimens in the 170-177 ft range.
+   + The tulip tree is one of the largest of the native trees of eastern North America, known in an extraordinary case to reach the height of 58.5 m with the next-tallest known specimens in the 170–177 ft range.
+
+  [Setophaga americana · candidate]
+   - Among standard measurements, the wing chord is 5.1 to, the tail is 3.7 to, the bill is 0.8 to and the tarsus is 1.5 to.
+   + Among standard measurements, the wing chord is 5.1 to 6.5 cm, the tail is 3.7 to 4.5 cm, the bill is 0.8 to 1.1 cm and the tarsus is 1.5 to 1.8 cm.
+
+  [Aquila clanga · candidate]
+   - None
+   + Territories can be from 15 to 30 km² in ideal regions, usually within the confines of a protected area, though are much larger elsewhere.
+
+  [Polyboroides radiatus · candidate]
+   - The nest of the Madagascar harrier-hawk is a large, bulky structure which is constructed using sticks and situated approximately 18 - above the ground within the canopy of a tree.
+   + The nest of the Madagascar harrier-hawk is a large, bulky structure which is constructed using sticks and situated approximately 18–30 m above the ground within the canopy of a tree.
+
+DRY RUN — nothing written. --write patches the caches and the shards.

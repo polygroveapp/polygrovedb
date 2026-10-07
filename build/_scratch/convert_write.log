@@ -1,0 +1,70 @@
+10,220 species carry Wikipedia text · 2,872 match the suspect pattern · re-extracting 2,872
+  250/2,872 · 10 leads + 185 note lists change · 1.0m
+  500/2,872 · 20 leads + 382 note lists change · 1.9m
+  750/2,872 · 37 leads + 569 note lists change · 2.7m
+  1,000/2,872 · 48 leads + 763 note lists change · 3.6m
+  1,250/2,872 · 61 leads + 949 note lists change · 4.5m
+  1,500/2,872 · 84 leads + 1,131 note lists change · 5.3m
+  1,750/2,872 · 97 leads + 1,322 note lists change · 6.2m
+  2,000/2,872 · 106 leads + 1,503 note lists change · 7.1m
+  2,250/2,872 · 116 leads + 1,682 note lists change · 7.9m
+  2,500/2,872 · 127 leads + 1,880 note lists change · 8.8m
+  2,750/2,872 · 141 leads + 2,052 note lists change · 9.6m
+
+142 lead sentences and 5,019 candidate notes change, across 2,225 species  (10.0m)
+0 extractions did not reproduce the shipped text and were left alone
+1 notes would have LOST a number the shipped text states — those species were left alone
+   [Sequoia sempervirens] - The Crannell Creek Giant was documented to have a trunk volume of at least 61573 ft3about 32% larger than Grogan's Fault and 17% larger than General Sherman, the current largest tree.
+                          + The Crannell Creek Giant was documented to have a trunk volume of at least 61,573 ft³about 32% larger than Grogan's Fault and 17% larger than General Sherman, the current largest tree.
+16 changed notes still show a dangling number (not a convert template — {{val}}, {{nowrap}}, plain text)
+every before/after: build/_scratch/convert_reextract_report.json
+
+  [Leptodactylus podicipinus · candidate]
+   - Male Leptodactylus podicipinus grow to a snout–vent length of 24 and and females to 30 and.
+   + Male Leptodactylus podicipinus grow to a snout–vent length of 24 and 43 mm and females to 30 and 54 mm.
+
+  [Cephalanthus occidentalis · candidate]
+   - The leaves are opposite or in whorls of three, elliptic to ovate, 7 - long and 4 - broad, with a smooth edge and a short petiole.
+   + The leaves are opposite or in whorls of three, elliptic to ovate, 7–18 cm long and 4–10 cm broad, with a smooth edge and a short petiole.
+
+  [Nyctereutes procyonoides · candidate]
+   - In December, their physical activity decreases once snow depth reaches 15 –, and limit the range from their burrows to no more than 150 –.
+   + In December, their physical activity decreases once snow depth reaches 15–20 cm, and limit the range from their burrows to no more than 150–200 m.
+
+  [Aquila audax · candidate]
+   - Not far from that in Mutawintji National Park density was around a pair per 3 to.
+   + Not far from that in Mutawintji National Park density was around a pair per 3 to 9 km².
+
+  [Artocarpus altilis · candidate]
+   - Studies in Barbados indicate a reasonable potential of 6.7 to .
+   + Studies in Barbados indicate a reasonable potential of 6.7 to 13.4 ST/acre.
+
+  [Sedum debile · candidate]
+   - The species flowers during summer months and can be found on elevation of 1500 - in states such as Idaho, Montana, Nevada, New Mexico, Oregon, Utah and Wyoming.
+   + The species flowers during summer months and can be found on elevation of 1500–3500 m in states such as Idaho, Montana, Nevada, New Mexico, Oregon, Utah and Wyoming.
+
+  [Boiga irregularis · candidate]
+   - The brown tree snake population on the island has reached peak densities exceeding 100 /ha.
+   + The brown tree snake population on the island has reached peak densities exceeding 100/ha.
+
+  [Microchera albocoronata · candidate]
+   - None
+   + In Panama it is found between 600 and 1650 m.
+
+  [Taxus canadensis · candidate]
+   - The leaves (needles) are lanceolate, flat, dark green, 1 – long and 1 - broad, arranged in two flat rows either side of the branch.
+   + The leaves (needles) are lanceolate, flat, dark green, 1–2.5 cm long and 1–2.4 mm broad, arranged in two flat rows either side of the branch.
+
+  [Aquila rapax · candidate]
+   - In males, the wing chord is 495 to and, in females, the wing chord is 500 to.
+   + In males, the wing chord is 495 to 535 mm and, in females, the wing chord is 500 to 562 mm.
+
+  [Rana arvalis · candidate]
+   - Moor frogs from Denmark are only able to survive freezing temperatures as low as -4 C for 3 to 4 days.
+   + Moor frogs from Denmark are only able to survive freezing temperatures as low as −4 °C for 3 to 4 days.
+
+  [Dryobates minor · candidate]
+   - This is the smallest European woodpecker, with adults being 14 to long with a wing span of 24 to and weighing 17 to.
+   + This is the smallest European woodpecker, with adults being 14 to 16.5 cm long with a wing span of 24 to 29 cm and weighing 17 to 25 g.
+
+WROTE: 256 shards patched (142 lead rows; the candidate lists of 2,146 species, 106,731 rows); caches updated, originals kept as data/*.pre-convert-fix

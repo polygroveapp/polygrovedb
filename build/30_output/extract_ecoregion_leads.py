@@ -38,7 +38,7 @@ def get_wikitext(title,hops=0):
     if m and hops<2:
         t=m.group(1).strip(); return get_wikitext(t[:1].upper()+t[1:],hops+1)
     return wt,title
-CONVERT_RE=re.compile(r"\{\{(?:convert|cvt)\s*\|\s*([^|}]+)\s*\|\s*([^|}]+)[^}]*\}\}", re.I)
+from wiki_convert import render_converts   # {{convert}} ranges written out: 35–46 cm
 def section_text(wt, names):
     """the wikitext under the first heading whose title is one of `names` (any level)"""
     for m in re.finditer(r"(?m)^(=+)\s*(.*?)\s*\1\s*$", wt):
@@ -48,7 +48,7 @@ def section_text(wt, names):
             return rest[:nxt.start()] if nxt else rest
     return None
 def clean_sentences(body, n):
-    body=CONVERT_RE.sub(r"\1 \2",body)
+    body=render_converts(body)
     body=re.sub(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>","",body,flags=re.DOTALL)
     body=re.sub(r"(?m)^\s*\[\[(File|Image):[^\n]*$","",body)
     text=mw.parse(body).strip_code()
@@ -71,7 +71,7 @@ def ecology_sentence(wt):
 def lead_sentences(wt, n=2):
     """the first n clean sentences of the article's lead section"""
     if not wt: return []
-    body=re.split(r"(?m)^=+",wt)[0]; body=CONVERT_RE.sub(r"\1 \2",body)
+    body=re.split(r"(?m)^=+",wt)[0]; body=render_converts(body)
     body=re.sub(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>","",body,flags=re.DOTALL)
     text=mw.parse(body).strip_code()
     out=[]

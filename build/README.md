@@ -21,6 +21,9 @@ stages, not step numbers). Run with the miniconda python
 30_output/      what ships
   generate_catalog.py  → catalog.json (the deck; all quiz logic + provenance)
   audit.py             coverage reporting
+  wiki_convert.py      {{convert}} measurements as readable text ("35–46 cm") — shared by every
+                       Wikipedia-text extractor; `python3 wiki_convert.py` runs its checks
+  reextract_convert_notes.py  re-extract only the notes with cut measurements (index seek, minutes)
 archive/        retired notebooks — kept for history, NOT in the chain (see its README)
 ```
 

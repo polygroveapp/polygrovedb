@@ -36,7 +36,7 @@ def fetch(job):
             # throttled for a long while): wait it out, up to an hour per species,
             # without spending an attempt — the limit lifts, the pull resumes
             if waited>=3600: return sid,None
-            w=float(r.headers.get("Retry-After") or 60); time.sleep(w); waited+=w; continue
+            w=max(60.0,float(r.headers.get("Retry-After") or 60)); time.sleep(w); waited+=w; continue
         if r.status_code in (500,502,503,504):
             attempt+=1; time.sleep(3*attempt); continue
         if r.status_code!=200: return sid,None
@@ -59,18 +59,54 @@ def fetch(job):
             if len(clips)>=3: break
         return sid,clips
     return sid,None   # missing key = retried on next run
-# ONE request at a time, ~4/s: three in flight got the address rate-limited (2026-10-06)
-def paced(jobs):
-    for j in jobs:
-        yield fetch(j); time.sleep(0.25)
-with ThreadPoolExecutor(1) as ex:
-    for i,(sid,clips) in enumerate(paced(todo)):
-        if clips is None: continue
-        res[str(sid)]=clips
-        if clips: found+=1
-        if (i+1)%250==0:
-            json.dump(res,open(OUT,"w"))
-            print(f"  {i+1:,}/{len(todo):,} · {found:,} with sound · {(time.time()-t0)/60:.0f}m", flush=True)
+# TWO PASSES (2026-10-06, after GBIF throttled the one-request-per-species
+# pattern: "Too many API requests… request a download"):
+#  1. batches of 40 species in ONE faceted request (limit=0, facet=speciesKey)
+#     say which of them have any CC0/CC-BY sound at all — most have none and
+#     are settled with ~350 requests instead of 14,000
+#  2. one request each for the species that do, to fetch up to three clips
+# Paced at one request per 1.5 s; a 429 rests for a minute.
+def facet_batch(sids):
+    """-> (total count, {speciesKey: count}) for the batch, or None on failure"""
+    for attempt in range(6):
+        try:
+            r=S.get("https://api.gbif.org/v1/occurrence/search",
+                    params={"taxonKey":sids,"mediaType":"Sound","license":["CC0_1_0","CC_BY_4_0"],"limit":0,"facet":"speciesKey","facetLimit":200}, timeout=60)
+        except Exception:
+            time.sleep(5); continue
+        if r.status_code==429 or r.status_code>=500: time.sleep(60 if r.status_code==429 else 5); continue
+        if r.status_code!=200: return None
+        j=r.json(); fc=(j.get("facets") or [{}])[0].get("counts",[])
+        return j.get("count",0), {int(f["name"]):f.get("count",0) for f in fc}
+    return None
+withsound=[]; t0=time.time(); batches=[todo[i:i+40] for i in range(0,len(todo),40)]
+for bi,batch in enumerate(batches):
+    got=facet_batch([sid for sid,_ in batch])
+    if got is None: continue             # left out of res → retried next run
+    total,hits=got
+    ids={sid for sid,_ in batch}
+    # occurrences are faceted by their ACCEPTED species key: a deck id that is
+    # a synonym matches the search but never appears in the facet (the
+    # helmeted guineafowl's 15 recordings were missed this way, 2026-10-06).
+    # When the matched keys don't account for every record, the unmatched
+    # species of the batch stay candidates for pass 2.
+    accounted=sum(n for k,n in hits.items() if k in ids)
+    for sid,_ in batch:
+        if sid in hits or (total>accounted): withsound.append((sid,_))
+        else: res[str(sid)]=[]
+    if (bi+1)%25==0:
+        json.dump(res,open(OUT,"w"))
+        print(f"  pass 1: {bi+1}/{len(batches)} batches · {len(withsound):,} candidates so far · {(time.time()-t0)/60:.0f}m", flush=True)
+json.dump(res,open(OUT,"w"))
+print(f"pass 1 done: {len(withsound):,} of {len(todo):,} species have licensed sound ({(time.time()-t0)/60:.0f}m)", flush=True)
+for i,(sid,clips) in enumerate(fetch(j) for j in withsound):
+    if clips is None: continue
+    res[str(sid)]=clips
+    if clips: found+=1
+    if (i+1)%100==0:
+        json.dump(res,open(OUT,"w"))
+        print(f"  pass 2: {i+1:,}/{len(withsound):,} · {found:,} with sound · {(time.time()-t0)/60:.0f}m", flush=True)
+    time.sleep(1.5)
 json.dump(res,open(OUT,"w"))
 have=sum(1 for v in res.values() if v)
 print(f"DONE: {have:,}/{len(deck):,} deck species have licensed audio", flush=True)

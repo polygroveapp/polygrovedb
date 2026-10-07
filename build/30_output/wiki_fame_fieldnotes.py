@@ -16,7 +16,7 @@ import mwparserfromhell as mw
 DATA="../../data"; DUMP=f"{DATA}/enwiki-multistream.xml.bz2"
 REF_RE=re.compile(r"<ref[^>]*>(.*?)</ref>", re.DOTALL|re.IGNORECASE)
 HEADING_RE=re.compile(r"(?m)^=+\s*.+?\s*=+\s*$")
-CONVERT_RE=re.compile(r"\{\{(?:convert|cvt)\s*\|\s*([^|}]+)\s*\|\s*([^|}]+)[^}]*\}\}", re.I)
+from wiki_convert import render_converts   # {{convert}} ranges written out: 35–46 cm
 TONE_BLOCK=re.compile(r"\b(rap(e|es|ed|ing)|molest|mutilat|disembowel|dismember|slaughter)\w*", re.I)
 _con=None
 def con():
@@ -52,7 +52,7 @@ def get_wikitext(title,hops=0):
         t=m.group(1).strip(); return get_wikitext(t[:1].upper()+t[1:],hops+1)
     return wt,title
 def field_notes(wt):
-    wt=HEADING_RE.sub("",wt or ""); wt=CONVERT_RE.sub(r"\1 \2",wt)
+    wt=HEADING_RE.sub("",wt or ""); wt=render_converts(wt)
     out=[]
     for para in re.split(r"\n\n+",wt):
         if "<ref" not in para: continue
