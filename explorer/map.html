@@ -597,6 +597,10 @@ function paintScale() {
   const fillColor = scale(fillOf), lineColor = scale(lineOf);
   for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', fillColor);
   for (const id of ['visited', 'visited_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', lineColor);
+  // a SOLAR region keeps a steady gold border (user, 2026-10-06); every other
+  // visited region has none — under the pin the selection border takes over
+  const goldOnly = completed.length ? ['match', ['get', 'eco'], completed.map(Number), 0.95, 0] : 0;
+  for (const id of ['visited', 'visited_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', goldOnly);
   // your camp wears its own colour on the scale: a stronger fill than the
   // other visited regions, a glow, and a paler line over the glow
   const campFill = camp == null ? mix(0) : fillOf(camp), campLine = camp == null ? mix(0) : lineOf(camp), campPale = hex(rgb(campLine).map(v => v + (255 - v) * 0.6));
