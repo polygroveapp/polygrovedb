@@ -1627,7 +1627,7 @@ function niceSize(size){
   if(u==='g'){ met=v>=1e6?`${f(v/1e6)}t`:v>=1000?`${f(v/1000)}kg`:`${f(v)}g`;
     const lb=v/453.592, oz=v/28.3495; imp=lb>=2000?`${f(lb/2000)}tons`:lb>=1?`${f(lb)}lb`:`${f(oz,oz<1?2:1)}oz`; }
   else { met=u==='cm'?(v>=100?`${f(v/100)}m`:`${f(v)}cm`):(v>=10?`${f(v/10)}cm`:`${f(v)}mm`);
-    const inch=u==='cm'?v/2.54:v/25.4; imp=inch>=12?`${f(inch/12)}ft`:`${f(inch,inch<1?2:1)}in`; }
+    const inch=u==='cm'?v/2.54:v/25.4; imp=inch>=12?`${f(inch/12)} ft`:`${f(inch,inch<1?2:1)}in`; }
   return `${met} ${imp}`;
 }
 function factBox(c,slot,k,v,color){
