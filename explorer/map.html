@@ -65,7 +65,10 @@ let current = null, collected = [], ready = false, pendingState = null, GEO = nu
 // nothing → YELLOW at all of it. Your camp wears its own colour on that
 // scale and is HIGHLIGHTED — a glowing border and a stronger fill — not
 // flashing ("actually not flashing, but have it highlighted", same day).
-const ZERO_GREEN = '#4CAF50', FULL_YELLOW = '#FFF3B0';   // 100% = a pale yellow heading to white (user, 2026-10-06: 'don't make the gold fill so orange, go yellow to white'; was #FFE14D)
+const ZERO_GREEN = '#4CAF50', FULL_YELLOW = '#FFE14D';
+// THE SCALE (user, 2026-10-06): near-black at 0% → green at 50% → yellow at
+// 100%, and a finished region's yellow breathes toward white
+const ZERO_DARK = '#14301a', MID_GREEN = ZERO_GREEN, GOLD_WHITE = '#FFFBE6';
 // UNDER THE PIN: green, and FLASHING (user, 2026-10-05: "have the one under
 // the pin be green, but flashing"; white for a few hours before that)
 const SEL_GREEN = '#4CAF50', SEL_PALE = '#a5e8a9';
@@ -518,6 +521,8 @@ function flashLoop() {
     const z = map.getZoom(), amp = z >= 6.5 ? 0 : z <= 5.5 ? 1 : 6.5 - z;
     flashP = 1 + amp * (-0.18 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI));
     if (current != null) setSelOpacity('sel', selK);
+    // finished regions breathe yellow → white, ~2.6 s, repainted at 15 fps
+    if (completed.length && (flashTick & 3) === 1) { goldP = 0.5 + 0.5 * Math.sin((performance.now() / 1300) * 2 * Math.PI); paintScale(); }
     // (flashTick is odd here — the even frames returned above — so the far-out
     // tick is `=== 1`; `=== 0` never fired and the ✕s sat still when zoomed out, 2026-10-06)
     if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 1)) shimmerMarks(performance.now());
@@ -567,23 +572,30 @@ function applyFilters() {
   for (const id of ['pselfill', 'pselglow', 'pselline']) put(id, psel);
   put('visited', vis);
   put('visitfill', ['all', vis, notCamp]);
-  // MASTERY COLOURS: each visited region — its inside AND its outline — sits
-  // on the one scale, GREEN at 0% → YELLOW at 100% (user, 2026-10-05). One
-  // 'match' expression, the colours mixed here.
-  const hex = (c) => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
-  const rgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-  const A = rgb(ZERO_GREEN), B = rgb(FULL_YELLOW);
-  const mix = (t) => { const k = Math.max(0, Math.min(1, t)); return hex(A.map((v, i) => v + (B[i] - v) * k)); };
-  const at = (e) => (completed.includes(+e) ? 1 : progress[e] || 0);
+  for (const id of ['campfill', 'campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
+  paintScale();
+}
+// MASTERY COLOURS: each visited region — its inside AND its outline — sits
+// on the one scale: near-black at 0%, green at 50%, yellow at 100% (user,
+// 2026-10-06: "start out the green super subtle … black to green to yellow").
+// A FINISHED region breathes yellow → white (goldP, driven by the frame loop).
+const hex = (c) => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+const rgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const lerp = (a, b, k) => hex(rgb(a).map((v, i) => v + (rgb(b)[i] - v) * k));
+const mix = (t) => { const k = Math.max(0, Math.min(1, t)); return k < 0.5 ? lerp(ZERO_DARK, MID_GREEN, k * 2) : lerp(MID_GREEN, FULL_YELLOW, (k - 0.5) * 2); };
+let goldP = 0;   // 0 = yellow, 1 = white
+function paintScale() {
+  const done = (e) => completed.includes(+e);
+  const at = (e) => (done(e) ? 1 : progress[e] || 0);
+  const colorOf = (e) => (done(e) ? lerp(FULL_YELLOW, GOLD_WHITE, goldP) : mix(at(e)));
   const pairs = [];
-  for (const e of collected) pairs.push(+e, mix(at(e)));
+  for (const e of collected) pairs.push(+e, colorOf(e));
   const color = pairs.length ? ['match', ['get', 'eco'], ...pairs, mix(0)] : mix(0);
   for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', color);
   for (const id of ['visited', 'visited_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', color);
-  for (const id of ['campfill', 'campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
   // your camp wears its own colour on the scale: a stronger fill than the
   // other visited regions, a glow, and a paler line over the glow
-  const campColor = mix(camp == null ? 0 : at(camp)), campPale = hex(rgb(campColor).map(v => v + (255 - v) * 0.6));
+  const campColor = camp == null ? mix(0) : colorOf(camp), campPale = hex(rgb(campColor).map(v => v + (255 - v) * 0.6));
   const paint = (id, prop, v) => { for (const l of [id, id + '_hd']) if (map.getLayer(l)) map.setPaintProperty(l, prop, v); };
   paint('campfill', 'fill-color', campColor); paint('campglow', 'line-color', campColor); paint('campline', 'line-color', campPale);
 }
