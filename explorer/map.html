@@ -39,6 +39,14 @@ const RN = window.ReactNativeWebView;
 // renders the region's place on the globe — non-interactive, fitted to the
 // region, no pin/labels chatter — for a small WebView on the phone's home
 const MINI = (() => { const m = /[?&]mini=(\d+)/.exec(location.search); return m ? +m[1] : null; })();
+// RANGE MODE (user, 2026-10-06, the PolygroveDB tab's species page): ?range=<sci>
+// draws the website's range map — every ecoregion the species is recorded in,
+// filled by its share of records, with the ✕ observation cells — fitted to
+// the range. Still by default (a picture in the page); &live=1 makes it
+// pannable for the full-screen view. No pin, no sheet, nothing sent.
+const RANGE = (() => { const m = /[?&]range=([^&]+)/.exec(location.search); return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : null; })();
+const LIVE = /[?&]live=1/.test(location.search);
+const PASSIVE = MINI != null || RANGE != null;   // no picker behaviour: no pin, no reports, no high-detail swaps
 const send = (m) => { try { RN ? RN.postMessage(JSON.stringify(m)) : console.log('msg', m); } catch (e) {} };
 
 const map = new maplibregl.Map({
@@ -46,8 +54,8 @@ const map = new maplibregl.Map({
   // minZoom 1.3: further out the whole world fits the screen's height and
   // MapLibre then refuses to pan vertically — the map could only slide
   // sideways (user, 2026-09-29, opening with no camp chosen)
-  container: 'map', center: [12, 22], zoom: 1.5, minZoom: MINI == null ? 1.3 : 0, maxZoom: 13, doubleClickZoom: false,
-  interactive: MINI == null,
+  container: 'map', center: [12, 22], zoom: 1.5, minZoom: PASSIVE ? 0 : 1.3, maxZoom: 13, doubleClickZoom: false,
+  interactive: !PASSIVE || (RANGE != null && LIVE),
   // mini mode keeps its pixels so it can hand the app a snapshot (below)
   canvasContextAttributes: MINI != null ? { preserveDrawingBuffer: true } : undefined,
   attributionControl: false, pitchEnabled: false, dragRotate: false, touchPitch: false, maxPitch: 60,
@@ -127,7 +135,7 @@ map.on('load', async () => {
   // topologically simplified, so neighbours share their borders exactly.
   let detail = false;
   const loadDetail = () => {
-    if (detail || MINI != null || map.getZoom() < 3.2) return;
+    if (detail || PASSIVE || map.getZoom() < 3.2) return;
     detail = true; map.off('zoomend', loadDetail);
     fetch('data/eco_detail.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
       .then(d => { if (d && map.getSource('eco')) map.getSource('eco').setData(d); else detail = false; })
@@ -139,7 +147,7 @@ map.on('load', async () => {
   // PARK BOUNDARIES in the explorer's brown, as SOLID lines (user,
   // 2026-09-29): the NPS polygons that matched a named park, fetched after
   // first paint so they never delay the map
-  if (MINI == null) fetch('data/park_bounds.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(pb => {
+  if (!PASSIVE) fetch('data/park_bounds.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(pb => {
     if (!pb || map.getSource('parkbounds')) return;
     // the NPS file also carries battlefields, parkways and historic sites: only
     // a boundary whose name matches a park label sitting inside (or near) it
@@ -369,12 +377,13 @@ map.on('load', async () => {
     map.once('idle', () => setTimeout(snap, 400));
     return;
   }
+  if (RANGE != null) { await drawRange(RANGE); return; }
   if (pendingState) applyState(pendingState);
   if (pendingMarks) { const m = pendingMarks; pendingMarks = null; window.polygroveSetMarks(m); }
   send({ type: 'ready' });
   // the sheet follows the pin WHILE the map moves (2026-09-30): report() dedupes,
   // so a pan that stays in one region sends nothing extra
-  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (MINI == null) { report(); sendPan(); } else highlightPin(); }); });
+  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!PASSIVE) { report(); sendPan(); } else if (MINI != null) highlightPin(); }); });
   // report at moveend AND once the tiles for the new view have rendered —
   // right after a fly-to the region under the pin often isn't drawn yet, and
   // queryRenderedFeatures only sees what's drawn
@@ -514,7 +523,7 @@ let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;
 // The region under the pin pulses, the ✕ marks glisten — every other frame;
 // below z8 the shimmer ticks at 4 fps so collision placement can settle.
 function flashLoop() {
-  if (MINI != null || flashRaf) return;
+  if (PASSIVE || flashRaf) return;
   const step = () => {
     flashRaf = requestAnimationFrame(step);
     if (flashTick++ & 1) return;   // every other frame is plenty
@@ -629,7 +638,7 @@ function paintScale() {
 // load the high-detail outline of everything on screen, once zoomed in
 const hdBusy = new Set();
 function loadHD() {
-  if (MINI != null || !ready || map.getZoom() < 5.5) return;
+  if (PASSIVE || !ready || map.getZoom() < 5.5) return;
   let ids = [];
   try { ids = [...new Set(map.queryRenderedFeatures({ layers: ['land'] }).map(f => f.properties.eco))]; } catch (e) { return; }
   // nothing under the pin? The coarse outline may simply have lost this spot
@@ -736,7 +745,7 @@ for (const [ev, v] of [['touchstart', true], ['touchend', false], ['touchcancel'
 // page; nothing is sent anywhere.
 let pendingMarks = null, MARKS = [];   // the marks as given: [lng, lat, ok, id]
 window.polygroveSetMarks = (pts) => {
-  if (MINI != null) return;
+  if (PASSIVE) return;
   if (!ready) { pendingMarks = pts; return; }
   MARKS = (Array.isArray(pts) ? pts : []).filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
   const fc = { type: 'FeatureCollection', features: (Array.isArray(pts) ? pts : [])
@@ -820,6 +829,48 @@ window.polygroveShowMarks = (on) => {
   for (const id of ['marks', 'marks_w', 'marks_p']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', marksShown ? 'visible' : 'none');
   if (!marksShown && lastUnder) { lastUnder = ''; send({ type: 'under', marks: [] }); } else if (marksShown) reportUnder();
 };
+// THE RANGE MAP (the website's renderRangeMap, for the app): fill by share of
+// records (log-scaled, as the site), ✕ cells where it was recorded, fitted to
+// every ecoregion it lives in — vagrants and footholds included
+const djb2 = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 33) + s.charCodeAt(i)) >>> 0; return h % 256; };
+async function drawRange(sci) {
+  for (const id of ['parkdot', 'parklbl', 'lakelbl', 'visitfill', 'visited', 'campfill', 'campglow', 'campline', 'selfill', 'selglow', 'selline', 'pselfill', 'pselglow', 'pselline'])
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+  const k = djb2(sci);
+  const [rangeShard, obsShard] = await Promise.all([
+    fetch(`data/range/${k}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch(`data/obs/${k}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+  ]);
+  const fill = rangeShard[sci] || [], cells = obsShard[sci] || [];
+  const ids = fill.map(f => f[0]);
+  if (ids.length) {
+    const mx = Math.max(1, ...fill.map(f => f[1]));
+    const op = ['match', ['get', 'eco'], ...fill.flatMap(([e, pm]) => [e, +(0.10 + 0.62 * Math.log1p(pm) / Math.log1p(mx)).toFixed(3)]), 0];
+    const before = ['ecolbl', 'adminlbl', 'oceanlbl'].find(l => map.getLayer(l));
+    map.addLayer({ id: 'range', type: 'fill', source: 'eco', filter: ['in', ['get', 'eco'], ['literal', ids]],
+      paint: { 'fill-color': '#4CAF50', 'fill-opacity': op, 'fill-outline-color': '#81C784' } }, before);
+  }
+  if (cells.length) {
+    const feats = cells.map(([cx, cy, n]) => ({ type: 'Feature', properties: { n: n || 1 }, geometry: { type: 'Point', coordinates: [cx / 100 + 0.005, cy / 100 + 0.005] } }));
+    map.addSource('obs', { type: 'geojson', data: { type: 'FeatureCollection', features: feats } });
+    if (!map.hasImage('xpt')) {
+      const z = 36, cv = document.createElement('canvas'); cv.width = cv.height = z;
+      const g = cv.getContext('2d'), c = z / 2, r = z / 2 - 5;
+      g.strokeStyle = '#ffffff'; g.lineWidth = 6.4; g.lineCap = 'round'; g.beginPath();
+      g.moveTo(c - r, c - r); g.lineTo(c + r, c + r); g.moveTo(c - r, c + r); g.lineTo(c + r, c - r); g.stroke();
+      map.addImage('xpt', g.getImageData(0, 0, z, z), { pixelRatio: 2, sdf: true });
+    }
+    const byCount = ['interpolate', ['linear'], ['sqrt', ['get', 'n']], 1, 0.4, 100, 0.75, 3000, 1.1];
+    map.addLayer({ id: 'obsdots', type: 'symbol', source: 'obs',
+      layout: { 'icon-image': 'xpt', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+                'icon-size': ['interpolate', ['exponential', 1.5], ['zoom'], 0, ['*', 0.4, byCount], 3, ['*', 0.88, byCount], 6, ['*', 2.7, byCount], 9, ['*', 5, byCount]] },
+      paint: { 'icon-color': '#ffe14d', 'icon-halo-color': 'rgba(255,215,0,0.5)', 'icon-halo-width': 2, 'icon-halo-blur': 3 } });
+  }
+  let w = 180, s2 = 90, e = -180, n = -90, hit = false;
+  for (const id of ids) { const b = bboxOf(id); if (!b) continue; hit = true; w = Math.min(w, b[0]); s2 = Math.min(s2, b[1]); e = Math.max(e, b[2]); n = Math.max(n, b[3]); }
+  if (hit) map.fitBounds([[w, s2], [e, n]], { padding: LIVE ? 30 : 18, maxZoom: 8, duration: 0 });
+  map.once('idle', () => send({ type: 'range-ready', ecoregions: ids.length, cells: cells.length }));
+}
 window.polygroveTilt = (pitch, bearing) => { if (ready && !touching && !map.isEasing()) map.jumpTo({ pitch, bearing }); };
 </script>
 </body>
