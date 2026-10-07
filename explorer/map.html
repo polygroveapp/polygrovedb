@@ -612,7 +612,15 @@ function paintScale() {
   // a region you have never visited has no fill, so its border stays green
   // the border runs GREEN → YELLOW with mastery, never white (user, 2026-10-06);
   // glow and line share the one colour
-  const borderOf = (e) => (e != null && collected.includes(+e) ? lerp(ZERO_GREEN, FULL_YELLOW, at(e)) : SEL_GREEN);
+  // and starts DIM (user, 2026-10-06: "less intense if the ecoregion is barely
+  // explored"): a muted green at 0%, full green at 50%, yellow at 100%; a
+  // region never visited gets the muted green too
+  const DIM_GREEN = '#2e6b33';
+  const borderOf = (e) => {
+    if (e == null || !collected.includes(+e)) return DIM_GREEN;
+    const k = at(e);
+    return k < 0.5 ? lerp(DIM_GREEN, ZERO_GREEN, k * 2) : lerp(ZERO_GREEN, FULL_YELLOW, (k - 0.5) * 2);
+  };
   for (const [prefix, e] of [['sel', current], ['psel', prevSel]]) {
     const c = borderOf(e);
     paint(prefix + 'glow', 'line-color', c); paint(prefix + 'line', 'line-color', c);
