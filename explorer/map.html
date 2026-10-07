@@ -420,12 +420,12 @@ function settle() {
 }
 let idleQueued = false;   // tilt fires moveend many times a second: one idle follow-up at a time
 let lastReported;
-// NO FLICKER (user, 2026-09-30: "don't make it so sensitive"): along a border
-// the pin's read can alternate every frame. A different region only takes
-// over once it has been under the pin for 140ms straight (a fling across a
-// region still reads it — a beat is a handful of frames).
+// NO WAIT (user, 2026-10-06: "remove the delay to select the next
+// ecoregion"): the region under the pin takes over the moment it is read.
+// The 140 ms steady beat from 2026-09-30 guarded against the gyro tilt
+// jittering the pin along a border; the tilt is gone, so it is too.
 let candidate, candidateSince = 0;
-const STEADY_MS = 140;
+const STEADY_MS = 0;
 // the ✕ marks within reach of the pin, nearest first (user, 2026-10-06: "a list
 // of all the x's under the pin") — sent with every settle; the app shows them
 let lastUnder = '';
