@@ -552,7 +552,7 @@ function setSelOpacity(prefix, k) {
   if (prefix === 'sel') selK = k;
   // only the BORDER pulses (user, 2026-10-06: "remove the flashing altogether
   // for the fill, just the borders"): the fill holds steady, glow and line breathe
-  set(prefix + 'fill', 'fill-opacity', SEL_OPACITY.fill * k);
+  set(prefix + 'fill', 'fill-opacity', 0);   // the fill is the region's own mastery colour, untouched by selection (user, 2026-10-06)
   set(prefix + 'glow', 'line-opacity', Math.min(1, SEL_OPACITY.glow * k * p));
   set(prefix + 'line', 'line-opacity', SEL_OPACITY.line * k * (0.7 + 0.3 * p));
 }
