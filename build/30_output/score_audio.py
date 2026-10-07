@@ -32,8 +32,12 @@ print(f"{len(urls):,} clips to measure ({len(q):,} already)", flush=True)
 
 def measure(url):
     try:
-        if not url.rsplit('.',1)[-1].split('?')[0].lower() in ('wav','m4a','mp3','mpga','ogg','flac','aac','mp4'): return url, {'dead': True, 'why': 'not audio'}
-        c=av.open(url, timeout=(10,30)); st=c.streams.audio[0]
+        # the extension sits BEFORE any query string (Commons urls carry ?utm_…;
+        # the old check read the dot in 'commons.wikimedia.org', 2026-10-07)
+        if not url.split('?')[0].rsplit('.',1)[-1].lower() in ('wav','m4a','mp3','mpga','ogg','oga','opus','flac','aac','mp4'): return url, {'dead': True, 'why': 'not audio'}
+        c=av.open(url, options={'user_agent':'PolygroveDB/0.1 (open species database; polygrovedb.pages.dev)'}, timeout=(10,30))
+        if not c.streams.audio: return url, {'dead': True, 'why': 'no audio stream'}
+        st=c.streams.audio[0]
         rs=av.AudioResampler(format='fltp', layout='mono', rate=16000); buf=[]; n=0
         for fr in c.decode(st):
             for f in rs.resample(fr):
