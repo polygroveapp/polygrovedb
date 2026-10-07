@@ -502,12 +502,15 @@ const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
 // 0.14 ↔ 0.59, glow 0.19 ↔ 0.79); the thin outline stays solid so the shape
 // never disappears. selK is the crossfade's share, so a region still fades
 // in while it flashes.
-let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0;
+let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;
 function flashLoop() {
   if (MINI != null || flashRaf) return;
   const step = () => {
     flashRaf = requestAnimationFrame(step);
-    if (flashTick++ & 1) return;   // every other frame is plenty
+    flashTick++;
+    // the region's flash repaints the map: 15 fps is smooth for a 1.1 s pulse
+    // and half the work of 30 (2026-10-06, an iPhone 13 Pro lagged with the marks hidden)
+    if (flashTick & 3) return;
     flashP = 0.82 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI);
     if (current != null) setSelOpacity('sel', selK);
     // below z8 the marks' placement is collision-based and a paint change per
@@ -517,7 +520,7 @@ function flashLoop() {
     // shimmer is a paint change over every mark: 20 fps close in, ~2 fps far
     // out, and nothing at all while the map is being moved or is easing
     if (touching || map.isMoving()) return;
-    if ((map.getZoom() >= 8 && (flashTick & 3) === 2) || (flashTick & 31) === 0) shimmerMarks(performance.now());
+    if (marksShown && ((map.getZoom() >= 8 && (flashTick & 7) === 4) || (flashTick & 31) === 0)) shimmerMarks(performance.now());
   };
   step();
 }
@@ -797,7 +800,6 @@ function shimmerMarks(t) {
   map.setPaintProperty('marks_p', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(110,110,110)', 0.5, 'rgb(154,154,154)', 1, 'rgb(205,205,205)']);   // grey, a quiet glisten
 }
 // observations on / off (the app's ✕ obs button, 2026-10-06): hides the three mark layers
-let marksShown = true;
 window.polygroveShowMarks = (on) => {
   marksShown = !!on;
   for (const id of ['marks', 'marks_w', 'marks_p']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', marksShown ? 'visible' : 'none');
