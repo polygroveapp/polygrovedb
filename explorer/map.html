@@ -503,27 +503,11 @@ const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
 // never disappears. selK is the crossfade's share, so a region still fades
 // in while it flashes.
 let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;   // flashP stays 1: the highlight no longer pulses (2026-10-06)
-function flashLoop() {
-  if (MINI != null || flashRaf) return;
-  const step = () => {
-    flashRaf = requestAnimationFrame(step);
-    flashTick++;
-    // NO FLASH (user, 2026-10-06: "remove the flashing for the highlighted
-    // ecoregion"): the region under the pin is highlighted steady — every
-    // pulse repainted the whole map, and an iPhone 13 Pro lagged. The loop
-    // now only drives the marks' shimmer.
-    if (flashTick & 3) return;
-    // below z8 the marks' placement is collision-based and a paint change per
-    // frame kept re-running it — the ✕s jiggled (user, 2026-10-06); there the
-    // shimmer ticks at 4 fps, which reads as a slow twinkle and lets placement settle
-    // and ON A PHONE (2026-10-06: an iPhone 13 Pro locked up with 12,000 ✕s) the
-    // shimmer is a paint change over every mark: 20 fps close in, ~2 fps far
-    // out, and nothing at all while the map is being moved or is easing
-    if (touching || map.isMoving()) return;
-    if (marksShown && ((map.getZoom() >= 8 && (flashTick & 7) === 4) || (flashTick & 31) === 0)) shimmerMarks(performance.now());
-  };
-  step();
-}
+// NO FRAME LOOP AT ALL (user, 2026-10-06: "the animation is just too much,
+// remove it and just use grey, green and yellow"): the highlight is steady
+// and the ✕ marks are plain colours set once in the layer paint — grey
+// potential, green waiting, yellow confirmed. Nothing repaints on a timer.
+function flashLoop() {}
 function setSelected(eid) {
   if (eid === current) return;
   prevSel = current;
@@ -761,7 +745,7 @@ window.polygroveSetMarks = (pts) => {
                 'symbol-sort-key': kind === 1 ? 0 : kind === 0 ? 1 : 2,
                 // smaller ✕s at the regional zooms, so more of them fit before they are allowed to pile up
                 'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.36, 4, 0.5, 6, 0.62, 8, 0.9, 10, 1.15] },
-      paint: { 'icon-color': kind === 0 ? '#4caf50' : kind === 2 ? '#9a9a9a' : '#ffd03a',
+      paint: { 'icon-color': kind === 0 ? '#4caf50' : kind === 2 ? '#9a9a9a' : '#ffe14d',   // steady: green waiting · grey potential · yellow confirmed
                'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6 } }, firstLabel);
   }
   flashLoop();   // the shimmer rides the selection's frame loop
