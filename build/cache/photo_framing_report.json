@@ -2,9 +2,9 @@
  "cards": 12943,
  "kinds": {
   "ok": 2859,
-  "far": 5035,
+  "zoom": 8420,
   "slide": 1340,
-  "zoom": 3709
+  "far": 324
  },
  "detector": {
   "subject": 10972,
@@ -12,144 +12,109 @@
  },
  "by_group": {
   "Amphibian": {
-   "zoom": 112,
+   "zoom": 180,
    "slide": 29,
-   "far": 71,
-   "ok": 57
+   "ok": 57,
+   "far": 3
   },
   "Arachnid": {
    "ok": 100,
-   "zoom": 82,
-   "far": 41,
-   "slide": 25
+   "zoom": 122,
+   "slide": 25,
+   "far": 1
   },
   "Bi/Annual Herb": {
-   "far": 390,
+   "zoom": 654,
    "ok": 203,
-   "zoom": 265,
-   "slide": 74
+   "slide": 74,
+   "far": 1
   },
   "Bird": {
-   "zoom": 629,
+   "zoom": 790,
    "slide": 413,
-   "ok": 801,
-   "far": 161
+   "ok": 801
   },
   "Epiphyte": {
-   "zoom": 5,
-   "ok": 4,
-   "far": 15
+   "zoom": 20,
+   "ok": 4
   },
   "Fish": {
-   "far": 902,
-   "zoom": 205,
+   "zoom": 840,
+   "far": 267,
    "slide": 41,
    "ok": 50
   },
   "Geophyte": {
    "ok": 86,
-   "zoom": 154,
-   "far": 250,
+   "zoom": 404,
    "slide": 43
   },
   "Ginkgoopsida": {
-   "far": 1
+   "zoom": 1
   },
   "Insect": {
    "slide": 194,
-   "far": 387,
-   "zoom": 430,
-   "ok": 409
+   "zoom": 808,
+   "ok": 409,
+   "far": 9
   },
   "Mammal": {
-   "far": 315,
-   "zoom": 377,
+   "zoom": 677,
    "slide": 131,
-   "ok": 261
+   "ok": 261,
+   "far": 15
   },
   "Mollusk": {
-   "zoom": 70,
+   "zoom": 168,
    "ok": 40,
-   "far": 101,
+   "far": 3,
    "slide": 7
   },
   "Perennial Herb": {
-   "far": 468,
-   "zoom": 335,
+   "zoom": 803,
    "ok": 223,
    "slide": 125
   },
   "Plant": {
    "ok": 67,
-   "far": 95,
-   "zoom": 74,
-   "slide": 23
+   "zoom": 168,
+   "slide": 23,
+   "far": 1
   },
   "Reptile": {
-   "zoom": 265,
-   "far": 510,
+   "zoom": 760,
    "slide": 58,
-   "ok": 65
+   "ok": 65,
+   "far": 15
   },
   "Shrub": {
    "ok": 114,
-   "far": 204,
-   "zoom": 113,
-   "slide": 40
+   "zoom": 316,
+   "slide": 40,
+   "far": 1
   },
   "Subshrub": {
-   "far": 213,
+   "zoom": 343,
    "ok": 119,
-   "zoom": 130,
    "slide": 33
   },
   "Tree": {
-   "zoom": 303,
-   "far": 632,
+   "zoom": 928,
    "ok": 135,
+   "far": 7,
    "slide": 71
   },
   "Tree/Shrub": {
    "ok": 125,
-   "zoom": 159,
-   "far": 279,
-   "slide": 33
+   "zoom": 437,
+   "slide": 33,
+   "far": 1
   },
   "Worm": {
    "zoom": 1
   }
  },
  "swap_candidates": [
-  {
-   "id": "brazilian-diesel-tree",
-   "kept": 0.0,
-   "fills": 0.003
-  },
-  {
-   "id": "north-africa-grass",
-   "kept": 0.0,
-   "fills": 0.007
-  },
-  {
-   "id": "red-oak",
-   "kept": 0.037,
-   "fills": 0.047
-  },
-  {
-   "id": "alexander-palm",
-   "kept": 0.082,
-   "fills": 0.032
-  },
-  {
-   "id": "french-mallow",
-   "kept": 0.084,
-   "fills": 0.036
-  },
-  {
-   "id": "white-beaked-dolphin",
-   "kept": 0.145,
-   "fills": 0.027
-  },
   {
    "id": "king-mullet",
    "kept": 0.292,
@@ -301,11 +266,6 @@
    "fills": 0.377
   },
   {
-   "id": "mummichog",
-   "kept": 0.389,
-   "fills": 0.802
-  },
-  {
    "id": "lumpsucker",
    "kept": 0.391,
    "fills": 0.719
@@ -319,11 +279,6 @@
    "id": "brown-rudderfish",
    "kept": 0.393,
    "fills": 0.488
-  },
-  {
-   "id": "douglas-knotweed",
-   "kept": 0.393,
-   "fills": 0.036
   },
   {
    "id": "wrymouth",
@@ -436,11 +391,6 @@
    "fills": 0.339
   },
   {
-   "id": "longnose-sucker",
-   "kept": 0.415,
-   "fills": 0.938
-  },
-  {
    "id": "margined-snake-eel",
    "kept": 0.417,
    "fills": 0.209
@@ -449,11 +399,6 @@
    "id": "red-roughy",
    "kept": 0.417,
    "fills": 0.605
-  },
-  {
-   "id": "macrostrombus-costatus",
-   "kept": 0.418,
-   "fills": 0.82
   },
   {
    "id": "flos-apidanus",
@@ -501,11 +446,6 @@
    "fills": 0.416
   },
   {
-   "id": "atlantic-sharpnose-shark",
-   "kept": 0.422,
-   "fills": 0.674
-  },
-  {
    "id": "parides-aeneas",
    "kept": 0.423,
    "fills": 0.353
@@ -526,16 +466,6 @@
    "fills": 0.253
   },
   {
-   "id": "staudtia-kamerunensis",
-   "kept": 0.427,
-   "fills": 0.711
-  },
-  {
-   "id": "chocolate-line-topsnail",
-   "kept": 0.428,
-   "fills": 0.677
-  },
-  {
    "id": "opsiphanes-cassiae",
    "kept": 0.428,
    "fills": 0.497
@@ -551,11 +481,6 @@
    "fills": 0.203
   },
   {
-   "id": "corn-spurrey",
-   "kept": 0.429,
-   "fills": 0.024
-  },
-  {
    "id": "italian-loach",
    "kept": 0.429,
    "fills": 0.242
@@ -569,11 +494,6 @@
    "id": "california-smoothtongue",
    "kept": 0.432,
    "fills": 0.299
-  },
-  {
-   "id": "heath-snail",
-   "kept": 0.432,
-   "fills": 0.368
   },
   {
    "id": "night-smelt",
@@ -594,11 +514,6 @@
    "id": "wakasagi",
    "kept": 0.435,
    "fills": 0.354
-  },
-  {
-   "id": "cusk",
-   "kept": 0.436,
-   "fills": 0.765
   },
   {
    "id": "sideroxylon-celastrinum",
@@ -626,16 +541,6 @@
    "fills": 0.475
   },
   {
-   "id": "zodarion-italicum",
-   "kept": 0.437,
-   "fills": 0.651
-  },
-  {
-   "id": "great-lanternshark",
-   "kept": 0.438,
-   "fills": 0.65
-  },
-  {
    "id": "roughnose-grenadier",
    "kept": 0.438,
    "fills": 0.402
@@ -644,11 +549,6 @@
    "id": "sea-char",
    "kept": 0.438,
    "fills": 0.383
-  },
-  {
-   "id": "gulper-shark",
-   "kept": 0.439,
-   "fills": 0.559
   },
   {
    "id": "slimy-sculpin",
@@ -669,11 +569,6 @@
    "id": "barred-sand-bass",
    "kept": 0.441,
    "fills": 0.443
-  },
-  {
-   "id": "coastal-poa",
-   "kept": 0.441,
-   "fills": 0.835
   },
   {
    "id": "coolihoo",
@@ -701,19 +596,9 @@
    "fills": 0.443
   },
   {
-   "id": "european-wood-anemone",
-   "kept": 0.443,
-   "fills": 0.875
-  },
-  {
    "id": "shimofuri-goby",
    "kept": 0.443,
    "fills": 0.463
-  },
-  {
-   "id": "euphorbia-seguieriana",
-   "kept": 0.446,
-   "fills": 0.745
   },
   {
    "id": "southern-bottlenose-whale",
@@ -731,19 +616,9 @@
    "fills": 0.576
   },
   {
-   "id": "western-dwarf-squirrel",
-   "kept": 0.449,
-   "fills": 0.508
-  },
-  {
    "id": "blackspotted-rockfish",
    "kept": 0.45,
    "fills": 0.535
-  },
-  {
-   "id": "rough-brome",
-   "kept": 0.45,
-   "fills": 0.898
   },
   {
    "id": "giant-lance-skink",
@@ -756,11 +631,6 @@
    "fills": 0.39
   },
   {
-   "id": "gilberts-skink",
-   "kept": 0.453,
-   "fills": 0.167
-  },
-  {
    "id": "queen-helmet",
    "kept": 0.453,
    "fills": 0.233
@@ -769,16 +639,6 @@
    "id": "four-spotted-flounder",
    "kept": 0.454,
    "fills": 0.583
-  },
-  {
-   "id": "bicolor-damselfish",
-   "kept": 0.455,
-   "fills": 0.726
-  },
-  {
-   "id": "kebrako",
-   "kept": 0.456,
-   "fills": 0.765
   },
   {
    "id": "longbill-spearfish",
@@ -794,11 +654,6 @@
    "id": "northern-redbelly-dace",
    "kept": 0.457,
    "fills": 0.39
-  },
-  {
-   "id": "shortnose-anole",
-   "kept": 0.457,
-   "fills": 0.858
   },
   {
    "id": "osetr",
@@ -836,26 +691,6 @@
    "fills": 0.322
   },
   {
-   "id": "malabarian-pit-viper",
-   "kept": 0.46,
-   "fills": 0.938
-  },
-  {
-   "id": "two-toed-amphiuma",
-   "kept": 0.46,
-   "fills": 0.397
-  },
-  {
-   "id": "spectral-bat",
-   "kept": 0.461,
-   "fills": 0.749
-  },
-  {
-   "id": "button-tops",
-   "kept": 0.462,
-   "fills": 0.306
-  },
-  {
    "id": "hardhead-catfish",
    "kept": 0.462,
    "fills": 0.293
@@ -881,29 +716,9 @@
    "fills": 0.259
   },
   {
-   "id": "brown-rockfish",
-   "kept": 0.465,
-   "fills": 0.688
-  },
-  {
    "id": "gadella",
    "kept": 0.465,
    "fills": 0.393
-  },
-  {
-   "id": "kuakish",
-   "kept": 0.465,
-   "fills": 0.783
-  },
-  {
-   "id": "conospermum-taxifolium",
-   "kept": 0.466,
-   "fills": 0.693
-  },
-  {
-   "id": "curly-waterweed",
-   "kept": 0.466,
-   "fills": 0.84
   },
   {
    "id": "trunkfish",
@@ -966,11 +781,6 @@
    "fills": 0.431
   },
   {
-   "id": "yellow-bass",
-   "kept": 0.472,
-   "fills": 0.63
-  },
-  {
    "id": "largescale-sucker",
    "kept": 0.473,
    "fills": 0.353
@@ -991,24 +801,9 @@
    "fills": 0.472
   },
   {
-   "id": "turbinella-oak",
-   "kept": 0.474,
-   "fills": 0.712
-  },
-  {
    "id": "sauger",
    "kept": 0.475,
    "fills": 0.405
-  },
-  {
-   "id": "broad-bordered-acraea",
-   "kept": 0.476,
-   "fills": 0.536
-  },
-  {
-   "id": "congowood",
-   "kept": 0.476,
-   "fills": 0.979
   },
   {
    "id": "sowerbys-beaked-whale",
@@ -1026,24 +821,9 @@
    "fills": 0.316
   },
   {
-   "id": "jararacussu",
-   "kept": 0.478,
-   "fills": 0.847
-  },
-  {
    "id": "kitefin-shark",
    "kept": 0.478,
    "fills": 0.247
-  },
-  {
-   "id": "velvet-snail",
-   "kept": 0.478,
-   "fills": 0.399
-  },
-  {
-   "id": "flat-top-shell",
-   "kept": 0.479,
-   "fills": 0.378
   },
   {
    "id": "kahikatea",
@@ -1054,16 +834,6 @@
    "id": "mimic-shiner",
    "kept": 0.479,
    "fills": 0.345
-  },
-  {
-   "id": "rough-chervil",
-   "kept": 0.479,
-   "fills": 0.958
-  },
-  {
-   "id": "low-nutrush",
-   "kept": 0.48,
-   "fills": 0.84
   },
   {
    "id": "scovells-pipefish",
@@ -1086,11 +856,6 @@
    "fills": 0.518
   },
   {
-   "id": "st-patricks-cabbage",
-   "kept": 0.482,
-   "fills": 0.783
-  },
-  {
    "id": "atlantic-midshipman",
    "kept": 0.483,
    "fills": 0.315
@@ -1101,24 +866,9 @@
    "fills": 0.393
   },
   {
-   "id": "black-poplar",
-   "kept": 0.484,
-   "fills": 0.528
-  },
-  {
    "id": "dusky-snailfish",
    "kept": 0.484,
    "fills": 0.529
-  },
-  {
-   "id": "gympienut",
-   "kept": 0.484,
-   "fills": 0.979
-  },
-  {
-   "id": "irish-saxifrage",
-   "kept": 0.484,
-   "fills": 0.819
   },
   {
    "id": "north-pacific-hake",
@@ -1126,44 +876,9 @@
    "fills": 0.332
   },
   {
-   "id": "black-dogfish",
-   "kept": 0.485,
-   "fills": 0.566
-  },
-  {
-   "id": "jack-pine",
-   "kept": 0.485,
-   "fills": 0.608
-  },
-  {
-   "id": "broom-tea-tree",
-   "kept": 0.486,
-   "fills": 0.819
-  },
-  {
-   "id": "dwarf-willowherb",
-   "kept": 0.486,
-   "fills": 0.938
-  },
-  {
-   "id": "nucella-emarginata",
-   "kept": 0.486,
-   "fills": 0.53
-  },
-  {
    "id": "white-royal",
    "kept": 0.486,
    "fills": 0.364
-  },
-  {
-   "id": "claremontiella-nodulosa",
-   "kept": 0.487,
-   "fills": 0.425
-  },
-  {
-   "id": "cobweb-house-leek",
-   "kept": 0.487,
-   "fills": 0.783
   },
   {
    "id": "least-cisco",
@@ -1181,29 +896,9 @@
    "fills": 0.316
   },
   {
-   "id": "emerald-nerite",
-   "kept": 0.488,
-   "fills": 0.376
-  },
-  {
    "id": "norway-pout",
    "kept": 0.488,
    "fills": 0.283
-  },
-  {
-   "id": "poorland-flatsedge",
-   "kept": 0.488,
-   "fills": 0.668
-  },
-  {
-   "id": "stinking-tutsan",
-   "kept": 0.488,
-   "fills": 0.125
-  },
-  {
-   "id": "yellow-periwinkle",
-   "kept": 0.488,
-   "fills": 0.373
   },
   {
    "id": "southern-cavefish",
@@ -1216,11 +911,6 @@
    "fills": 0.362
   },
   {
-   "id": "spring-water-starwort",
-   "kept": 0.489,
-   "fills": 0.958
-  },
-  {
    "id": "atlantic-argentine",
    "kept": 0.49,
    "fills": 0.316
@@ -1231,34 +921,9 @@
    "fills": 0.373
   },
   {
-   "id": "ninebark",
-   "kept": 0.49,
-   "fills": 0.554
-  },
-  {
-   "id": "myrica-caroliniensis",
-   "kept": 0.491,
-   "fills": 0.82
-  },
-  {
-   "id": "sargent-cherry",
-   "kept": 0.491,
-   "fills": 0.668
-  },
-  {
-   "id": "appias-sylvia",
-   "kept": 0.492,
-   "fills": 0.574
-  },
-  {
    "id": "arctic-lemming",
    "kept": 0.492,
    "fills": 0.512
-  },
-  {
-   "id": "pennants-top-shell",
-   "kept": 0.492,
-   "fills": 0.388
   },
   {
    "id": "lesser-silver-smelt",
@@ -1274,16 +939,6 @@
    "id": "spotted-sorubim",
    "kept": 0.493,
    "fills": 0.266
-  },
-  {
-   "id": "western-brome",
-   "kept": 0.493,
-   "fills": 0.649
-  },
-  {
-   "id": "common-necklace-shell",
-   "kept": 0.494,
-   "fills": 0.551
   },
   {
    "id": "eastern-mudminnow",
@@ -1316,49 +971,9 @@
    "fills": 0.41
   },
   {
-   "id": "hutchinsia",
-   "kept": 0.496,
-   "fills": 0.102
-  },
-  {
-   "id": "pinto-abalone",
-   "kept": 0.496,
-   "fills": 0.709
-  },
-  {
-   "id": "potato",
-   "kept": 0.497,
-   "fills": 0.764
-  },
-  {
-   "id": "scurria-scurra",
-   "kept": 0.497,
-   "fills": 0.412
-  },
-  {
-   "id": "widow-rockfish",
-   "kept": 0.497,
-   "fills": 0.261
-  },
-  {
    "id": "chilipepper",
    "kept": 0.498,
    "fills": 0.443
-  },
-  {
-   "id": "creeping-spearwort",
-   "kept": 0.498,
-   "fills": 0.766
-  },
-  {
-   "id": "cystopteris-montana",
-   "kept": 0.498,
-   "fills": 0.765
-  },
-  {
-   "id": "aliger-gigas",
-   "kept": 0.499,
-   "fills": 0.759
   },
   {
    "id": "atlantic-silverside",
@@ -1396,49 +1011,14 @@
    "fills": 0.318
   },
   {
-   "id": "grey-top-shell",
-   "kept": 0.502,
-   "fills": 0.322
-  },
-  {
-   "id": "mallotus-resinosus",
-   "kept": 0.502,
-   "fills": 0.41
-  },
-  {
    "id": "african-corkwood",
    "kept": 0.503,
    "fills": 0.627
   },
   {
-   "id": "cymbula-oculus",
-   "kept": 0.503,
-   "fills": 0.265
-  },
-  {
-   "id": "definite-patch",
-   "kept": 0.503,
-   "fills": 0.507
-  },
-  {
-   "id": "lottia-subrugosa",
-   "kept": 0.503,
-   "fills": 0.393
-  },
-  {
    "id": "pelamid",
    "kept": 0.503,
    "fills": 0.359
-  },
-  {
-   "id": "pink-poui",
-   "kept": 0.503,
-   "fills": 0.066
-  },
-  {
-   "id": "canoe-birch",
-   "kept": 0.504,
-   "fills": 0.765
   },
   {
    "id": "nile-bichir",
@@ -1461,11 +1041,6 @@
    "fills": 0.266
   },
   {
-   "id": "sampsons-snakeroot",
-   "kept": 0.505,
-   "fills": 0.66
-  },
-  {
    "id": "striped-sharpnose-snake",
    "kept": 0.505,
    "fills": 0.096
@@ -1476,69 +1051,9 @@
    "fills": 0.409
   },
   {
-   "id": "common-pink",
-   "kept": 0.506,
-   "fills": 0.783
-  },
-  {
-   "id": "little-yellow-shouldered-bat",
-   "kept": 0.506,
-   "fills": 0.417
-  },
-  {
-   "id": "paradise-shelduck",
-   "kept": 0.506,
-   "fills": 0.268
-  },
-  {
-   "id": "stream-water-crowfoot",
-   "kept": 0.506,
-   "fills": 0.783
-  },
-  {
-   "id": "sundial-lupine",
-   "kept": 0.506,
-   "fills": 0.783
-  },
-  {
-   "id": "tiger-salamander",
-   "kept": 0.506,
-   "fills": 0.674
-  },
-  {
-   "id": "great-purple-hairstreak",
-   "kept": 0.507,
-   "fills": 0.293
-  },
-  {
-   "id": "opposite-leaved-golden-saxifrage",
-   "kept": 0.507,
-   "fills": 0.723
-  },
-  {
-   "id": "banded-water-snake",
-   "kept": 0.509,
-   "fills": 0.431
-  },
-  {
-   "id": "spanish-ling",
-   "kept": 0.509,
-   "fills": 0.255
-  },
-  {
    "id": "zebra-catfish",
    "kept": 0.509,
    "fills": 0.252
-  },
-  {
-   "id": "bald-brome",
-   "kept": 0.51,
-   "fills": 0.73
-  },
-  {
-   "id": "nodding-brome",
-   "kept": 0.51,
-   "fills": 0.747
   },
   {
    "id": "orange-waxtail",
@@ -1546,44 +1061,14 @@
    "fills": 0.15
   },
   {
-   "id": "white-stem-gooseberry",
-   "kept": 0.511,
-   "fills": 0.783
-  },
-  {
-   "id": "alnus-incana",
-   "kept": 0.512,
-   "fills": 0.764
-  },
-  {
-   "id": "amblypodia-rama",
-   "kept": 0.512,
-   "fills": 0.349
-  },
-  {
-   "id": "chilean-pigeon",
-   "kept": 0.512,
-   "fills": 0.07
-  },
-  {
    "id": "english-sole",
    "kept": 0.512,
    "fills": 0.188
   },
   {
-   "id": "grey-alder",
-   "kept": 0.512,
-   "fills": 0.764
-  },
-  {
    "id": "longnose-gar",
    "kept": 0.512,
    "fills": 0.144
-  },
-  {
-   "id": "puppet-top-shell",
-   "kept": 0.512,
-   "fills": 0.33
   },
   {
    "id": "brown-cat-shark",
@@ -1596,69 +1081,14 @@
    "fills": 0.398
   },
   {
-   "id": "scurria-variabilis",
-   "kept": 0.513,
-   "fills": 0.709
-  },
-  {
    "id": "sneep",
    "kept": 0.513,
    "fills": 0.37
   },
   {
-   "id": "lottia-scabra",
-   "kept": 0.514,
-   "fills": 0.28
-  },
-  {
    "id": "notoscopelus-elongatus",
    "kept": 0.514,
    "fills": 0.351
-  },
-  {
-   "id": "forest-oak",
-   "kept": 0.515,
-   "fills": 0.552
-  },
-  {
-   "id": "possum-haw",
-   "kept": 0.515,
-   "fills": 0.627
-  },
-  {
-   "id": "aderss-duiker",
-   "kept": 0.516,
-   "fills": 0.898
-  },
-  {
-   "id": "blue-mussel",
-   "kept": 0.516,
-   "fills": 0.442
-  },
-  {
-   "id": "curryplant",
-   "kept": 0.516,
-   "fills": 0.626
-  },
-  {
-   "id": "lemon-traveller-tip",
-   "kept": 0.516,
-   "fills": 0.839
-  },
-  {
-   "id": "marsh-shrew",
-   "kept": 0.516,
-   "fills": 0.449
-  },
-  {
-   "id": "parietaria-debilis",
-   "kept": 0.516,
-   "fills": 0.764
-  },
-  {
-   "id": "pepperbark",
-   "kept": 0.516,
-   "fills": 0.46
   },
   {
    "id": "toxostome",
@@ -1671,24 +1101,9 @@
    "fills": 0.249
   },
   {
-   "id": "small-leaf-fig",
-   "kept": 0.517,
-   "fills": 0.747
-  },
-  {
    "id": "poutassou",
    "kept": 0.518,
    "fills": 0.345
-  },
-  {
-   "id": "northern-rock-bass",
-   "kept": 0.519,
-   "fills": 0.541
-  },
-  {
-   "id": "old-mans-beard",
-   "kept": 0.519,
-   "fills": 0.626
   },
   {
    "id": "trout-perch",
@@ -1701,21 +1116,6 @@
    "fills": 0.456
   },
   {
-   "id": "water-plantain-buttercup",
-   "kept": 0.52,
-   "fills": 0.107
-  },
-  {
-   "id": "black-foot-paua",
-   "kept": 0.521,
-   "fills": 0.412
-  },
-  {
-   "id": "black-rosewood",
-   "kept": 0.521,
-   "fills": 0.801
-  },
-  {
    "id": "pacific-herring",
    "kept": 0.521,
    "fills": 0.293
@@ -1726,29 +1126,9 @@
    "fills": 0.323
   },
   {
-   "id": "rough-limpet",
-   "kept": 0.521,
-   "fills": 0.345
-  },
-  {
-   "id": "shiny-lyonia",
-   "kept": 0.521,
-   "fills": 0.296
-  },
-  {
-   "id": "white-jute",
-   "kept": 0.521,
-   "fills": 0.674
-  },
-  {
    "id": "golden-shiner",
    "kept": 0.522,
    "fills": 0.39
-  },
-  {
-   "id": "pond-water-crowfoot",
-   "kept": 0.522,
-   "fills": 0.742
   },
   {
    "id": "silond-catfish",
@@ -1756,69 +1136,9 @@
    "fills": 0.307
   },
   {
-   "id": "archidendron-jiringa",
-   "kept": 0.523,
-   "fills": 0.747
-  },
-  {
-   "id": "coffee-bean",
-   "kept": 0.523,
-   "fills": 0.406
-  },
-  {
-   "id": "dill",
-   "kept": 0.523,
-   "fills": 0.878
-  },
-  {
-   "id": "dryobalanops-lanceolata",
-   "kept": 0.523,
-   "fills": 0.408
-  },
-  {
-   "id": "perideridia-parishii",
-   "kept": 0.523,
-   "fills": 0.019
-  },
-  {
-   "id": "praxelis",
-   "kept": 0.523,
-   "fills": 0.642
-  },
-  {
-   "id": "snack-mackerel",
-   "kept": 0.523,
-   "fills": 0.296
-  },
-  {
-   "id": "acacia-spathulifolia",
-   "kept": 0.524,
-   "fills": 0.747
-  },
-  {
    "id": "axefish",
    "kept": 0.524,
    "fills": 0.51
-  },
-  {
-   "id": "mat-phlox",
-   "kept": 0.524,
-   "fills": 0.879
-  },
-  {
-   "id": "arhopala-atosia",
-   "kept": 0.525,
-   "fills": 0.391
-  },
-  {
-   "id": "boston-ivy",
-   "kept": 0.525,
-   "fills": 0.747
-  },
-  {
-   "id": "floating-bur-reed",
-   "kept": 0.525,
-   "fills": 0.792
   },
   {
    "id": "aleutian-alligatorfish",
@@ -1831,49 +1151,9 @@
    "fills": 0.352
   },
   {
-   "id": "hygrophila-costata",
-   "kept": 0.526,
-   "fills": 0.627
-  },
-  {
-   "id": "kelp-greenling",
-   "kept": 0.526,
-   "fills": 0.585
-  },
-  {
-   "id": "sandhill-crane",
-   "kept": 0.526,
-   "fills": 0.059
-  },
-  {
-   "id": "star-nosed-mole",
-   "kept": 0.527,
-   "fills": 0.615
-  },
-  {
    "id": "woundhead",
    "kept": 0.527,
    "fills": 0.333
-  },
-  {
-   "id": "common-bubble-snail",
-   "kept": 0.528,
-   "fills": 0.408
-  },
-  {
-   "id": "granulated-catfish",
-   "kept": 0.528,
-   "fills": 0.525
-  },
-  {
-   "id": "haliotis-discus",
-   "kept": 0.528,
-   "fills": 0.341
-  },
-  {
-   "id": "pacific-spiny-dogfish",
-   "kept": 0.528,
-   "fills": 0.231
   },
   {
    "id": "western-kukri",
@@ -1881,29 +1161,9 @@
    "fills": 0.451
   },
   {
-   "id": "aloysia-virgata",
-   "kept": 0.529,
-   "fills": 0.641
-  },
-  {
-   "id": "berberis-aquifolium",
-   "kept": 0.529,
-   "fills": 0.762
-  },
-  {
-   "id": "european-white-elm",
-   "kept": 0.529,
-   "fills": 0.739
-  },
-  {
    "id": "fat-snook",
    "kept": 0.529,
    "fills": 0.368
-  },
-  {
-   "id": "mexican-yellow",
-   "kept": 0.529,
-   "fills": 0.583
   },
   {
    "id": "roughnosed-rattail",
@@ -1911,64 +1171,9 @@
    "fills": 0.353
   },
   {
-   "id": "smallmouth-flounder",
-   "kept": 0.529,
-   "fills": 0.289
-  },
-  {
-   "id": "dalbergia-miscolobium",
-   "kept": 0.53,
-   "fills": 0.553
-  },
-  {
-   "id": "dwarf-yellow",
-   "kept": 0.53,
-   "fills": 0.513
-  },
-  {
-   "id": "fringed-filefish",
-   "kept": 0.53,
-   "fills": 0.579
-  },
-  {
-   "id": "great-duckweed",
-   "kept": 0.53,
-   "fills": 0.747
-  },
-  {
-   "id": "italian-three-toed-skink",
-   "kept": 0.53,
-   "fills": 0.146
-  },
-  {
-   "id": "mylothris-bernice",
-   "kept": 0.53,
-   "fills": 0.489
-  },
-  {
-   "id": "templetree",
-   "kept": 0.53,
-   "fills": 0.642
-  },
-  {
-   "id": "thick-top-shell",
-   "kept": 0.53,
-   "fills": 0.35
-  },
-  {
    "id": "indigo-snake",
    "kept": 0.531,
    "fills": 0.327
-  },
-  {
-   "id": "missouri-gourd",
-   "kept": 0.531,
-   "fills": 0.877
-  },
-  {
-   "id": "sallya-natalensis",
-   "kept": 0.531,
-   "fills": 0.5
   },
   {
    "id": "allis-shad",
@@ -1976,24 +1181,9 @@
    "fills": 0.349
   },
   {
-   "id": "caimito",
-   "kept": 0.532,
-   "fills": 0.45
-  },
-  {
-   "id": "least-lettuce",
-   "kept": 0.532,
-   "fills": 0.958
-  },
-  {
    "id": "mecistops-leptorhynchus",
    "kept": 0.532,
    "fills": 0.178
-  },
-  {
-   "id": "scarlet-pea",
-   "kept": 0.532,
-   "fills": 0.711
   },
   {
    "id": "slender-threeawn",
@@ -2006,11 +1196,6 @@
    "fills": 0.294
   },
   {
-   "id": "canary-grass",
-   "kept": 0.533,
-   "fills": 0.875
-  },
-  {
    "id": "huss",
    "kept": 0.533,
    "fills": 0.198
@@ -2019,41 +1204,6 @@
    "id": "kroyers-lantern-fish",
    "kept": 0.533,
    "fills": 0.364
-  },
-  {
-   "id": "lottia-digitalis",
-   "kept": 0.533,
-   "fills": 0.34
-  },
-  {
-   "id": "rough-periwinkle",
-   "kept": 0.533,
-   "fills": 0.34
-  },
-  {
-   "id": "saltwater-cordgrass",
-   "kept": 0.533,
-   "fills": 0.712
-  },
-  {
-   "id": "scarce-tortoiseshell",
-   "kept": 0.533,
-   "fills": 0.466
-  },
-  {
-   "id": "american-slipper-limpet",
-   "kept": 0.534,
-   "fills": 0.385
-  },
-  {
-   "id": "pale-blueberry",
-   "kept": 0.534,
-   "fills": 0.712
-  },
-  {
-   "id": "salix-starkeana",
-   "kept": 0.534,
-   "fills": 0.231
   },
   {
    "id": "california-headlightfish",
@@ -2071,16 +1221,6 @@
    "fills": 0.415
   },
   {
-   "id": "miconia-holosericea",
-   "kept": 0.535,
-   "fills": 0.582
-  },
-  {
-   "id": "plant-limpet",
-   "kept": 0.535,
-   "fills": 0.321
-  },
-  {
    "id": "ribbon-scabbardfish",
    "kept": 0.535,
    "fills": 0.062
@@ -2091,34 +1231,509 @@
    "fills": 0.388
   },
   {
-   "id": "feather-plume",
-   "kept": 0.536,
-   "fills": 0.503
+   "id": "upland-bully",
+   "kept": 0.539,
+   "fills": 0.361
   },
   {
-   "id": "river-walnut",
-   "kept": 0.536,
-   "fills": 0.641
+   "id": "roughhead-grenadier",
+   "kept": 0.54,
+   "fills": 0.267
   },
   {
-   "id": "coyotebrush",
-   "kept": 0.537,
-   "fills": 0.658
+   "id": "chinook-salmon",
+   "kept": 0.541,
+   "fills": 0.359
   },
   {
-   "id": "ivy-gourd",
-   "kept": 0.537,
-   "fills": 0.142
+   "id": "false-scad",
+   "kept": 0.544,
+   "fills": 0.408
   },
   {
-   "id": "scolopia-braunii",
-   "kept": 0.537,
-   "fills": 0.691
+   "id": "softhead-grenadier",
+   "kept": 0.544,
+   "fills": 0.329
   },
   {
-   "id": "virginia-bower",
-   "kept": 0.537,
-   "fills": 0.691
+   "id": "spotted-woodslave",
+   "kept": 0.544,
+   "fills": 0.285
+  },
+  {
+   "id": "lake-whitefish",
+   "kept": 0.545,
+   "fills": 0.356
+  },
+  {
+   "id": "threadfin-shad",
+   "kept": 0.545,
+   "fills": 0.355
+  },
+  {
+   "id": "snake-blenny",
+   "kept": 0.546,
+   "fills": 0.241
+  },
+  {
+   "id": "silverking",
+   "kept": 0.547,
+   "fills": 0.335
+  },
+  {
+   "id": "inconnu",
+   "kept": 0.548,
+   "fills": 0.34
+  },
+  {
+   "id": "largescale-mullet",
+   "kept": 0.548,
+   "fills": 0.36
+  },
+  {
+   "id": "spinner-shark",
+   "kept": 0.549,
+   "fills": 0.26
+  },
+  {
+   "id": "jewel-lanternfish",
+   "kept": 0.55,
+   "fills": 0.346
+  },
+  {
+   "id": "pacific-tomcod",
+   "kept": 0.552,
+   "fills": 0.299
+  },
+  {
+   "id": "rock-bacu",
+   "kept": 0.552,
+   "fills": 0.433
+  },
+  {
+   "id": "offshore-hake",
+   "kept": 0.553,
+   "fills": 0.211
+  },
+  {
+   "id": "ide",
+   "kept": 0.554,
+   "fills": 0.421
+  },
+  {
+   "id": "piraiba",
+   "kept": 0.555,
+   "fills": 0.274
+  },
+  {
+   "id": "ninespine-stickleback",
+   "kept": 0.556,
+   "fills": 0.257
+  },
+  {
+   "id": "pencil-cardinal",
+   "kept": 0.557,
+   "fills": 0.346
+  },
+  {
+   "id": "conejo",
+   "kept": 0.558,
+   "fills": 0.219
+  },
+  {
+   "id": "egyptian-tomb-bat",
+   "kept": 0.558,
+   "fills": 0.243
+  },
+  {
+   "id": "pikeperch",
+   "kept": 0.559,
+   "fills": 0.303
+  },
+  {
+   "id": "zambezi-parrotfish",
+   "kept": 0.559,
+   "fills": 0.358
+  },
+  {
+   "id": "tomcod",
+   "kept": 0.56,
+   "fills": 0.345
+  },
+  {
+   "id": "western-rat-snake",
+   "kept": 0.56,
+   "fills": 0.155
+  },
+  {
+   "id": "northern-pikeminnow",
+   "kept": 0.561,
+   "fills": 0.252
+  },
+  {
+   "id": "olm",
+   "kept": 0.561,
+   "fills": 0.168
+  },
+  {
+   "id": "pirate-perch",
+   "kept": 0.561,
+   "fills": 0.401
+  },
+  {
+   "id": "seaboard-goby",
+   "kept": 0.561,
+   "fills": 0.262
+  },
+  {
+   "id": "senegal-sole",
+   "kept": 0.561,
+   "fills": 0.605
+  },
+  {
+   "id": "greenland-turbot",
+   "kept": 0.562,
+   "fills": 0.493
+  },
+  {
+   "id": "alaska-blackfish",
+   "kept": 0.563,
+   "fills": 0.265
+  },
+  {
+   "id": "marsh-mongoose",
+   "kept": 0.563,
+   "fills": 0.295
+  },
+  {
+   "id": "patchwork-lampfish",
+   "kept": 0.564,
+   "fills": 0.351
+  },
+  {
+   "id": "arapaima",
+   "kept": 0.565,
+   "fills": 0.332
+  },
+  {
+   "id": "greater-long-nosed-armadillo",
+   "kept": 0.566,
+   "fills": 0.445
+  },
+  {
+   "id": "pink-salmon",
+   "kept": 0.566,
+   "fills": 0.33
+  },
+  {
+   "id": "waxen-silverside",
+   "kept": 0.567,
+   "fills": 0.179
+  },
+  {
+   "id": "leatherjacket",
+   "kept": 0.568,
+   "fills": 0.352
+  },
+  {
+   "id": "sablefish",
+   "kept": 0.568,
+   "fills": 0.38
+  },
+  {
+   "id": "rock-grenadier",
+   "kept": 0.569,
+   "fills": 0.222
+  },
+  {
+   "id": "kamchatka-flounder",
+   "kept": 0.57,
+   "fills": 0.506
+  },
+  {
+   "id": "rudd",
+   "kept": 0.572,
+   "fills": 0.339
+  },
+  {
+   "id": "yacare-caiman",
+   "kept": 0.572,
+   "fills": 0.141
+  },
+  {
+   "id": "blue-lanternfish",
+   "kept": 0.574,
+   "fills": 0.286
+  },
+  {
+   "id": "shortbelly-rockfish",
+   "kept": 0.574,
+   "fills": 0.349
+  },
+  {
+   "id": "common-atlantic-grenadier",
+   "kept": 0.575,
+   "fills": 0.318
+  },
+  {
+   "id": "lubangu",
+   "kept": 0.575,
+   "fills": 0.341
+  },
+  {
+   "id": "common-carp",
+   "kept": 0.579,
+   "fills": 0.42
+  },
+  {
+   "id": "pacific-pomfret",
+   "kept": 0.579,
+   "fills": 0.426
+  },
+  {
+   "id": "blackmouth-bass",
+   "kept": 0.58,
+   "fills": 0.365
+  },
+  {
+   "id": "megrim",
+   "kept": 0.58,
+   "fills": 0.367
+  },
+  {
+   "id": "shortfinned-eel",
+   "kept": 0.581,
+   "fills": 0.302
+  },
+  {
+   "id": "issyk-kul-gudgeon",
+   "kept": 0.582,
+   "fills": 0.272
+  },
+  {
+   "id": "zamurito",
+   "kept": 0.582,
+   "fills": 0.244
+  },
+  {
+   "id": "glacier-lantern-fish",
+   "kept": 0.584,
+   "fills": 0.274
+  },
+  {
+   "id": "blacknose-shark",
+   "kept": 0.587,
+   "fills": 0.22
+  },
+  {
+   "id": "flatwhiskered-catfish",
+   "kept": 0.588,
+   "fills": 0.309
+  },
+  {
+   "id": "northern-kingcroaker",
+   "kept": 0.589,
+   "fills": 0.33
+  },
+  {
+   "id": "big-eye-shark",
+   "kept": 0.592,
+   "fills": 0.296
+  },
+  {
+   "id": "lanternfish",
+   "kept": 0.595,
+   "fills": 0.276
+  },
+  {
+   "id": "freshwater-drum",
+   "kept": 0.596,
+   "fills": 0.396
+  },
+  {
+   "id": "margined-flyingfish",
+   "kept": 0.597,
+   "fills": 0.24
+  },
+  {
+   "id": "rakery-beaconlamp",
+   "kept": 0.598,
+   "fills": 0.313
+  },
+  {
+   "id": "spoonhead-sculpin",
+   "kept": 0.599,
+   "fills": 0.301
+  },
+  {
+   "id": "large-scaled-gurnard",
+   "kept": 0.6,
+   "fills": 0.362
+  },
+  {
+   "id": "rex-sole",
+   "kept": 0.6,
+   "fills": 0.512
+  },
+  {
+   "id": "malawi-spinyeel",
+   "kept": 0.601,
+   "fills": 0.239
+  },
+  {
+   "id": "lodde",
+   "kept": 0.602,
+   "fills": 0.227
+  },
+  {
+   "id": "sacramento-blackfish",
+   "kept": 0.602,
+   "fills": 0.33
+  },
+  {
+   "id": "plainfin-midshipman",
+   "kept": 0.605,
+   "fills": 0.31
+  },
+  {
+   "id": "sand-goby",
+   "kept": 0.606,
+   "fills": 0.192
+  },
+  {
+   "id": "twospot-astyanax",
+   "kept": 0.607,
+   "fills": 0.421
+  },
+  {
+   "id": "thistle-broomrape",
+   "kept": 0.608,
+   "fills": 0.211
+  },
+  {
+   "id": "bonga",
+   "kept": 0.609,
+   "fills": 0.292
+  },
+  {
+   "id": "pilot-fish",
+   "kept": 0.611,
+   "fills": 0.372
+  },
+  {
+   "id": "common-shiner",
+   "kept": 0.612,
+   "fills": 0.329
+  },
+  {
+   "id": "belica",
+   "kept": 0.616,
+   "fills": 0.208
+  },
+  {
+   "id": "roughtail-stingray",
+   "kept": 0.616,
+   "fills": 0.245
+  },
+  {
+   "id": "polar-cod",
+   "kept": 0.617,
+   "fills": 0.276
+  },
+  {
+   "id": "butterfly-sculpin",
+   "kept": 0.62,
+   "fills": 0.326
+  },
+  {
+   "id": "scup",
+   "kept": 0.621,
+   "fills": 0.467
+  },
+  {
+   "id": "blackfin-grenadier",
+   "kept": 0.627,
+   "fills": 0.191
+  },
+  {
+   "id": "amazonian-nectomys",
+   "kept": 0.628,
+   "fills": 0.196
+  },
+  {
+   "id": "porbeagle-shark",
+   "kept": 0.632,
+   "fills": 0.322
+  },
+  {
+   "id": "common-dace",
+   "kept": 0.633,
+   "fills": 0.244
+  },
+  {
+   "id": "dotted-scad",
+   "kept": 0.64,
+   "fills": 0.263
+  },
+  {
+   "id": "bigeye-dogfish",
+   "kept": 0.641,
+   "fills": 0.219
+  },
+  {
+   "id": "kelee-shad",
+   "kept": 0.647,
+   "fills": 0.359
+  },
+  {
+   "id": "moloneys-mimic-bat",
+   "kept": 0.648,
+   "fills": 0.307
+  },
+  {
+   "id": "indiantree-spurge",
+   "kept": 0.651,
+   "fills": 0.133
+  },
+  {
+   "id": "blue-iguana",
+   "kept": 0.652,
+   "fills": 0.194
+  },
+  {
+   "id": "hairfish",
+   "kept": 0.662,
+   "fills": 0.421
+  },
+  {
+   "id": "orange-throated-whiptail",
+   "kept": 0.665,
+   "fills": 0.08
+  },
+  {
+   "id": "grey-seal",
+   "kept": 0.672,
+   "fills": 0.224
+  },
+  {
+   "id": "tanezumi-rat",
+   "kept": 0.687,
+   "fills": 0.179
+  },
+  {
+   "id": "russian-desman",
+   "kept": 0.713,
+   "fills": 0.2
+  },
+  {
+   "id": "european-ling",
+   "kept": 0.912,
+   "fills": 0.258
+  },
+  {
+   "id": "giant-snakeneck-turtle",
+   "kept": 0.95,
+   "fills": 0.174
   }
  ]
 }
