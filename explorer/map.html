@@ -967,16 +967,16 @@ window.polygroveRelief = on => { if (ready) setRelief(!!on); else pendingRelief 
 // off since 2026-10-06. A constant paint change — no re-tiling.
 // On the dark map they are DOTTED GREY, darker than the coast line (user,
 // 2026-10-07 — first "less bright when they aren't selected", then this);
-// on the colour map the dashed green they always were. The pinned region's
+// on the colour map dashed GOLD. The pinned region's
 // glowing border is a separate layer. Constant paint: no re-tiling.
 let bordersOn = false, reliefOn = false;
 function setBorders(on) {
   bordersOn = !!on;
   for (const id of ['ecoline', 'ecoline_hd']) {
     if (!map.getLayer(id)) continue;
-    map.setPaintProperty(id, 'line-color', reliefOn ? '#81C784' : '#646a71');
+    map.setPaintProperty(id, 'line-color', reliefOn ? '#FFD700' : '#646a71');   // GOLD on the colour map (user, 2026-10-07; it was the green, which sank into the green lowlands)
     map.setPaintProperty(id, 'line-dasharray', reliefOn ? [1.6, 1.9] : [0.2, 2.4]);   // round caps turn the short dash into a dot
-    map.setPaintProperty(id, 'line-opacity', !bordersOn ? 0 : reliefOn ? 0.6 : 0.85);
+    map.setPaintProperty(id, 'line-opacity', !bordersOn ? 0 : reliefOn ? 0.7 : 0.85);
   }
 }
 let pendingBorders = null;
