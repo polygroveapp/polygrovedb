@@ -662,7 +662,7 @@ let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;
 // THE FRAME LOOP IS BACK (user, 2026-10-06: "put everything back that wasn't
 // gyro related … and the glimmering"): the 3D terrain was the lag, not this.
 // The region under the pin pulses, the ✕ marks glisten — every other frame;
-// below z8 the shimmer ticks at 4 fps so collision placement can settle.
+// (the shimmer once ticked at 4 fps below z8; with constant per-layer colours it need not).
 function flashLoop() {
   if (PASSIVE || flashRaf) return;
   const step = () => {
@@ -676,7 +676,13 @@ function flashLoop() {
     if (selState.size) applySel();
     // (flashTick is odd here — the even frames returned above — so the far-out
     // tick is `=== 1`; `=== 0` never fired and the ✕s sat still when zoomed out, 2026-10-06)
-    if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 1)) shimmerMarks(performance.now());
+    // THE GLOW BREATHES IN WIDTH TOO, as the website's highlighted border does
+    // (6.5 ± 3 there): a constant paint value, so a plain repaint. Steady once
+    // zoomed in, like the pulse.
+    const gw = 9 + amp * 3.2 * Math.sin((performance.now() / 1100) * 2 * Math.PI);
+    for (const id of ['selglow', 'selglow_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-width', +gw.toFixed(2));
+    // every tick, at every zoom (it was 4 fps below z8 while the shimmer still re-tiled the source)
+    if (marksShown) shimmerMarks(performance.now());
   };
   step();
 }
@@ -968,11 +974,19 @@ window.polygroveSetMarks = (pts) => {
   // green → green → light green — and a near-black halo stays as the edge
   // that keeps a ✕ legible on a region filled the same colour.
   if (!map.hasImage('markx')) {
-    const z = 40, cv = document.createElement('canvas'); cv.width = cv.height = z;
-    const g = cv.getContext('2d'), c = z / 2, r = z / 2 - 10;
-    g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath();
-    g.moveTo(c - r, c - r); g.lineTo(c + r, c + r); g.moveTo(c - r, c + r); g.lineTo(c + r, c - r); g.stroke();
-    map.addImage('markx', g.getImageData(0, 0, z, z), { pixelRatio: 2, sdf: true });
+    // A TRUE DISTANCE FIELD (2026-10-07): the ✕ used to be a plain stroked
+    // canvas flagged as SDF, which tints fine but gives a halo wider than a
+    // pixel or two a square edge (the image's own box). Each pixel now holds
+    // its distance to the ✕ — 0.75 on the edge, falling 1/8 per pixel outward,
+    // which is what MapLibre's halo shader expects — so the glow hugs the ✕.
+    const z = 64, c = z / 2, r = 10, half = 2.5, img = new ImageData(z, z);
+    const segD = (x, y, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy))); return Math.hypot(x - x1 - t * dx, y - y1 - t * dy); };
+    for (let y = 0; y < z; y++) for (let x = 0; x < z; x++) {
+      const d = Math.min(segD(x + 0.5, y + 0.5, c - r, c - r, c + r, c + r), segD(x + 0.5, y + 0.5, c - r, c + r, c + r, c - r)) - half;
+      const i = (y * z + x) * 4; img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+      img.data[i + 3] = Math.round(255 * Math.max(0, Math.min(1, 0.75 - d / 8)));
+    }
+    map.addImage('markx', img, { pixelRatio: 2, sdf: true });
   }
   // sightings a short walk apart piled up into a smudge of ✕s (the six at
   // Sedona, 2026-10-05): marks closer than a few points on screen draw as ONE
@@ -996,8 +1010,17 @@ window.polygroveSetMarks = (pts) => {
   // busy coast reads as a scatter rather than a blanket; zoom in and all of
   // them appear
   const firstLabel = ['parkdot', 'parklbl', 'citydot', 'citylbl', 'lakelbl', 'adminlbl', 'ecolbl', 'oceanlbl'].find(l => map.getLayer(l));
-  for (const [id, kind] of [['marks_p', 2], ['marks_w', 0], ['marks', 1]]) {
-    map.addLayer({ id, type: 'symbol', source: 'marks', filter: ['==', ['get', 'ok'], kind],
+  // EACH ✕ ON ITS OWN CLOCK, AS ON THE WEBSITE (user, 2026-10-07: "the
+  // animations are really simple, look at the website … random x's"). The
+  // website gives every ✕ its own phase with a data-driven paint expression
+  // changed every frame — which, with thousands of marks here, makes MapLibre
+  // re-tile the source every frame (the lag of 2026-10-07). So the marks are
+  // dealt into MARK_GROUPS phase groups by their hash, one layer per group
+  // and kind, and each layer gets its own CONSTANT colour and glow per frame:
+  // plain repaints. Eight tempos and phases read as a field of sparkles.
+  for (const [base, kind] of [['marks_p', 2], ['marks_w', 0], ['marks', 1]]) for (let grp = 0; grp < MARK_GROUPS; grp++) {
+    const id = base + '_' + grp;
+    map.addLayer({ id, type: 'symbol', source: 'marks', filter: ['all', ['==', ['get', 'ok'], kind], ['==', ['%', ['get', 'h'], MARK_GROUPS], grp]],
       layout: { 'icon-image': 'markx', visibility: marksShown ? 'visible' : 'none',   // the obs button's choice survives a rebuild of the layers
                 // more of them further out (user, 2026-10-06): overlaps allowed from z6.5, and
                 // the spacing marks keep from each other is tight — only a ✕ sitting on another is held back
@@ -1012,28 +1035,55 @@ window.polygroveSetMarks = (pts) => {
                 // smaller ✕s at the regional zooms, so more of them fit before they are allowed to pile up
                 'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.36, 4, 0.5, 6, 0.62, 8, 0.9, 10, 1.15] },
       paint: { 'icon-color': kind === 0 ? '#4caf50' : kind === 2 ? '#9a9a9a' : '#ffd03a',
-               'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6 } }, firstLabel);
+               'icon-halo-color': 'rgba(10,10,10,0.9)', 'icon-halo-width': 1.6, 'icon-halo-blur': 1 } }, firstLabel);
   }
   flashLoop();   // the shimmer rides the selection's frame loop
 };
 // the website's irregular twinkle: per-mark phase (h) and tempo, two
 // incommensurate sines, so the field sparkles rather than breathing in unison
+const MARK_GROUPS = 8;
+const MARK_LAYERS = []; for (const b of ['marks_p', 'marks_w', 'marks']) for (let g = 0; g < MARK_GROUPS; g++) MARK_LAYERS.push(b + '_' + g);
+// [dark, mid, pale] for the ✕ itself, and the rgb of its glow
+const MARK_TONES = {
+  marks:   [[255, 200, 60], [255, 225, 77], [255, 245, 160], '255,215,0'],     // deep yellow → yellow → pale yellow, gold glow
+  marks_w: [[46, 125, 50], [76, 175, 80], [165, 232, 169], '129,199,132'],     // dark green → green → light green
+  marks_p: [[110, 110, 110], [154, 154, 154], [205, 205, 205], '210,210,210'], // grey, a quiet glisten
+};
+// the ✕'s drawn scale at a zoom — the layers' own icon-size ramp
+const MARK_SIZE = [[1.3, 0.36], [4, 0.5], [6, 0.62], [8, 0.9], [10, 1.15]];
+function markSizeAt(z) {
+  if (z <= MARK_SIZE[0][0]) return MARK_SIZE[0][1];
+  for (let i = 1; i < MARK_SIZE.length; i++) if (z <= MARK_SIZE[i][0]) { const [z0, s0] = MARK_SIZE[i - 1], [z1, s1] = MARK_SIZE[i]; return s0 + (s1 - s0) * (z - z0) / (z1 - z0); }
+  return MARK_SIZE[MARK_SIZE.length - 1][1];
+}
 function shimmerMarks(t) {
-  if (!map.getLayer('marks')) return;
-  // ONE colour for all marks per frame (2026-10-07): the per-mark phase was a
-  // data-driven paint change every frame, which makes MapLibre re-tile the
-  // marks source every frame — the ✕s jiggled and the whole map lagged.
-  // A plain colour change is a repaint. The marks breathe together.
-  const ph = t / 900, m = 0.5 + 0.25 * Math.sin(ph) + 0.25 * Math.sin(1.618 * ph);
-  const mix = (a, b, c) => { const k = m < 0.5 ? m * 2 : (m - 0.5) * 2, [x, y] = m < 0.5 ? [a, b] : [b, c]; return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * k)).join(',')})`; };
-  map.setPaintProperty('marks', 'icon-color', mix([255, 200, 60], [255, 225, 77], [255, 245, 160]));   // deep yellow → yellow → pale yellow
-  map.setPaintProperty('marks_w', 'icon-color', mix([46, 125, 50], [76, 175, 80], [165, 232, 169]));   // dark green → green → light green
-  map.setPaintProperty('marks_p', 'icon-color', mix([110, 110, 110], [154, 154, 154], [205, 205, 205]));   // grey, a quiet glisten
+  if (!map.getLayer('marks_0')) return;
+  // the distance field reaches ~5 px from the ✕ at full size; a halo asked to
+  // go further fills the image's whole box (squares), so the glow is capped
+  // to what the field can carry at this zoom's icon size
+  const reach = Math.max(0.8, 4.2 * markSizeAt(map.getZoom()) - 1.1);   // less the 1 px blur
+  for (let g = 0; g < MARK_GROUPS; g++) {
+    // the website's irregular flicker: a tempo of its own (0.6×–1.5×), a phase
+    // of its own, and two incommensurate sines (golden ratio) so no group ever
+    // settles into a clean repeating beat
+    const ph = (t / 400) * (0.6 + 0.9 * ((g * 5) % MARK_GROUPS) / (MARK_GROUPS - 1)) + g * 2.399;
+    const m = 0.5 + 0.25 * Math.sin(ph) + 0.25 * Math.sin(1.618 * ph);
+    for (const base in MARK_TONES) {
+      const id = base + '_' + g; if (!map.getLayer(id)) continue;
+      const [a, b, c, glow] = MARK_TONES[base], k = m < 0.5 ? m * 2 : (m - 0.5) * 2, [x, y] = m < 0.5 ? [a, b] : [b, c];
+      map.setPaintProperty(id, 'icon-color', `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * k)).join(',')})`);
+      // a real glow, as on the website: a blurred halo in the mark's own light,
+      // swelling and brightening with the same breath (grey keeps it faint)
+      const quiet = base === 'marks_p' ? 0.45 : 1;
+      map.setPaintProperty(id, 'icon-halo-color', `rgba(${glow},${(quiet * (0.22 + 0.5 * m)).toFixed(3)})`);
+      map.setPaintProperty(id, 'icon-halo-width', +Math.min(reach, 1.2 + 2.6 * m * quiet).toFixed(2));
+    }
+  }
 }
 // observations on / off (the app's ✕ obs button, 2026-10-06): hides the three mark layers
 window.polygroveShowMarks = (on) => {
   marksShown = !!on;
-  for (const id of ['marks', 'marks_w', 'marks_p']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', marksShown ? 'visible' : 'none');
+  for (const id of MARK_LAYERS) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', marksShown ? 'visible' : 'none');
   if (!marksShown && lastUnder) { lastUnder = ''; send({ type: 'under', marks: [] }); } else if (marksShown) reportUnder();
 };
 // THE RANGE MAP (the website's renderRangeMap, for the app): fill by share of
