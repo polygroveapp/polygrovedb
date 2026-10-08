@@ -99,40 +99,56 @@ map.on('load', async () => {
   // every feature carries its ecoregion id as its feature id (2026-10-07) —
   // set on the data itself; promoteId is not honoured by this build
   const ROUND_COAST = { 'line-join': 'round', 'line-cap': 'round' };
-// the shore of a set of ecoregions: every ring segment that only one region owns, chained into lines
+// the shore of a set of ecoregions: every ring segment that only one region
+// owns, chained into loops. COASTS ONLY, NOT LAKES (user, 2026-10-07): each
+// lone segment is kept pointing so that land is on its LEFT; a closed loop
+// that then runs clockwise has land all round its outside — it encloses
+// water, a lake — and is dropped unless it is sea-sized (the Caspian and a
+// closed-off Black Sea keep their shores; the Great Lakes do not).
+const LAKE_MAX = 30;   // square degrees; the Great Lakes together are ~23, the Caspian ~40
 function coastOf(fc) {
   const K = (p) => Math.round(p[0] * 1e5) + ',' + Math.round(p[1] * 1e5);
-  const count = new Map(), pts = new Map();
+  const seg = new Map(), pts = new Map();
   for (const f of fc.features) {
     const g = f.geometry, polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
-    for (const poly of polys) for (const ring of poly) {
+    for (const poly of polys) for (let ri = 0; ri < poly.length; ri++) {
+      const ring = poly[ri];
+      let A = 0; for (let i = 1; i < ring.length; i++) A += ring[i - 1][0] * ring[i][1] - ring[i][0] * ring[i - 1][1];
+      const landLeft = (ri === 0) === (A > 0);   // an outer ring holds land inside, a hole holds it outside
       let ka = K(ring[0]); pts.set(ka, ring[0]);
       for (let i = 1; i < ring.length; i++) {
         const kb = K(ring[i]);
-        if (kb !== ka) { pts.set(kb, ring[i]); const k = ka < kb ? ka + '|' + kb : kb + '|' + ka; count.set(k, (count.get(k) || 0) + 1); }
+        if (kb !== ka) {
+          pts.set(kb, ring[i]);
+          const k = ka < kb ? ka + '|' + kb : kb + '|' + ka, e = seg.get(k);
+          if (e) e.n++; else seg.set(k, { n: 1, from: landLeft ? ka : kb, to: landLeft ? kb : ka });
+        }
         ka = kb;
       }
     }
   }
   // lone segments, minus the cuts along the antimeridian and the south pole
-  const adj = new Map(), add = (a, b) => { let l = adj.get(a); if (!l) adj.set(a, l = []); l.push(b); };
-  for (const [k, n] of count) {
-    if (n !== 1) continue;
-    const [a, b] = k.split('|'), pa = pts.get(a), pb = pts.get(b);
+  const out = new Map();
+  for (const e of seg.values()) {
+    if (e.n !== 1) continue;
+    const pa = pts.get(e.from), pb = pts.get(e.to);
     if ((Math.abs(pa[0]) > 179.99 && Math.abs(pb[0]) > 179.99) || (pa[1] < -89.9 && pb[1] < -89.9)) continue;
-    add(a, b); add(b, a);
+    let l = out.get(e.from); if (!l) out.set(e.from, l = []); l.push(e.to);
   }
   const lines = [];
-  for (const start of adj.keys()) {
+  for (const start of out.keys()) {
     for (;;) {
-      const first = adj.get(start); if (!first || !first.length) break;
-      const line = [pts.get(start)]; let cur = start;
+      const first = out.get(start); if (!first || !first.length) break;
+      const line = [pts.get(start)]; let cur = start, A = 0;
       for (;;) {
-        const l = adj.get(cur); if (!l || !l.length) break;
-        const nxt = l.pop(), back = adj.get(nxt); back.splice(back.indexOf(cur), 1);
-        line.push(pts.get(nxt)); cur = nxt;
+        const l = out.get(cur); if (!l || !l.length) break;
+        const nxt = l.pop(), p = pts.get(cur), q = pts.get(nxt);
+        A += p[0] * q[1] - q[0] * p[1];
+        line.push(q); cur = nxt;
+        if (cur === start) break;
       }
-      if (line.length > 1) lines.push(line);
+      const lake = cur === start && A < 0 && -A / 2 < LAKE_MAX;
+      if (line.length > 1 && !lake) lines.push(line);
     }
   }
   return { type: 'Feature', geometry: { type: 'MultiLineString', coordinates: lines }, properties: {} };
@@ -177,8 +193,7 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
   // THE COAST, A WHITE LINE (user, 2026-10-07: "a white line for the coasts to
   // make that more distinct"). No coastline file: neighbouring ecoregions
   // share their borders exactly, so a border segment that belongs to only
-  // ONE region has no land on its other side — it is the shore (or a lake
-  // shore, or an ice edge). coastOf() counts the segments and chains the
+  // ONE region has no land on its other side — it is the shore. coastOf() counts the segments and chains the
   // lone ones into lines; it runs once per geometry (first paint, then the
   // detailed file). Drawn above the land and the colour relief, below names.
   map.addSource('coast', { type: 'geojson', data: coastOf(geo) });
