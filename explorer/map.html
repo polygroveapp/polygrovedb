@@ -364,6 +364,23 @@ map.on('load', async () => {
   if (MINI != null) {
     // the site's minimap: just the region, green, in continental context
     for (const id of ['ecolbl', 'parkdot', 'parklbl', 'lakelbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    // A COLOUR MAP OF THE WORLD (user, 2026-10-07): the Camp page's picture
+    // wears the website's natural-earth relief — bathymetric blues, green
+    // lowlands, tan, brown, snow — under the ecoregion outlines, instead of
+    // the picker's black land. The region's green sits on top.
+    try {
+      map.setPaintProperty('bg', 'background-color', '#14324a');
+      if (map.getLayer('land')) map.setPaintProperty('land', 'fill-opacity', 0);
+      if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', 'none');
+      map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
+      map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
+        paint: { 'color-relief-opacity': 0.95,
+                 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
+                   -6000, '#10263a', -1500, '#183650', -100, '#214a66', 0, '#2f5a36',
+                   300, '#3b6a3f', 800, '#5c7f4a', 1400, '#8a8d57', 2100, '#9a834f',
+                   2900, '#846a56', 3800, '#8d8578', 4800, '#b8b7af', 6500, '#e6e6e2'] } },
+        map.getLayer('land_pick') ? 'land_pick' : undefined);
+    } catch (e) {}
     // the minimap's region is the same steady green — it never flashes (the
     // flash loop only runs on the picker), so the picture the app keeps is
     // always the same
