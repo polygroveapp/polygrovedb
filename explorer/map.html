@@ -413,7 +413,10 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
   // z2.5, mid-sized by z5, everything drawn by z7 — with room around each name
   if (lakes) map.addLayer({ id: 'lakelbl', type: 'symbol', source: 'lakes', minzoom: 2.5,
     filter: ['all', ['!=', ['get', 'name'], ''],
-      ['step', ['zoom'], ['>=', ['get', 'a'], 6], 4, ['>=', ['get', 'a'], 1.2], 5, ['>=', ['get', 'a'], 0.25], 7, true]],
+      // TAHOE-SIZED LAKES ARE NAMED (user, 2026-10-07): from z5 the bar is Lake Tahoe's
+      // own size (a bounding box of 0.068 square degrees; it was 0.25, which left
+      // Tahoe and Pyramid Lake blank until z7)
+      ['step', ['zoom'], ['>=', ['get', 'a'], 6], 4, ['>=', ['get', 'a'], 1.2], 5, ['>=', ['get', 'a'], 0.06], 7, true]],
     layout: { 'symbol-placement': 'point', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
               // BIGGER on the phone (user, 2026-09-29; were 7.5 → 10.5)
               'text-size': ['interpolate', ['linear'], ['zoom'], 3, 10.5, 7, 14.5], 'text-max-width': 7, 'text-padding': 10,
