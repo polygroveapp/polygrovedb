@@ -578,6 +578,10 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
     return;
   }
   if (RANGE != null) { await drawRange(RANGE); return; }
+  // the free north–south scroll (see pinPoint): hold the pin's latitude and the zoom, nothing else
+  if (map.setTransformConstrain) map.setTransformConstrain((lngLat, zoom) => ({
+    center: new maplibregl.LngLat(lngLat.lng, Math.max(-84, Math.min(84, lngLat.lat))),
+    zoom: Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), zoom)) }));
   if (pendingState) applyState(pendingState);
   if (pendingRelief != null) { setRelief(pendingRelief); pendingRelief = null; }
   if (pendingBorders != null) { setBorders(pendingBorders); pendingBorders = null; }
@@ -613,6 +617,14 @@ function sendPan() {
 }
 // the pin: centre of the visible map (screen minus the app's chrome)
 let raf = 0;
+// THE PIN CAN GO ALL THE WAY NORTH AND SOUTH (user, 2026-10-07: "this is how
+// far max north I can go", the pin stuck at Seattle with the world's top edge
+// at the top of the screen, and the same at Patagonia; then "you can just
+// keep on scrolling"). MapLibre keeps the world's edge from entering the
+// view, which with a pin mid-screen put the far north and south out of
+// reach whenever zoomed out. The picker replaces that rule (ready handler):
+// only the pin's own latitude is held, to ±84°, so the map scrolls until the
+// pole is under the pin, and east–west it wraps round for ever as before.
 const pinPoint = () => { const c = map.getContainer(); return [c.clientWidth / 2, (PAD.top + (c.clientHeight - PAD.bottom)) / 2]; };
 // WHAT IS UNDER THE PIN, BY GEOMETRY (2026-10-07). The old read asked the map
 // what it had DRAWN at the pin — and after a fast move the tiles there were not
