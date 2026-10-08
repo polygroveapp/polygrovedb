@@ -736,8 +736,10 @@ function updateSelColors() {
   const pairs = [];
   for (const e of collected) pairs.push(+e, borderColorOf(e));
   // ON THE COLOUR MAP THE SELECTED REGION IS GOLD (user, 2026-10-07): green
-  // sinks into the green lowlands there; the other borders stay green
-  const expr = MINI != null ? FULL_YELLOW : reliefOn ? '#FFD700' : pairs.length ? ['match', ['get', 'eco'], ...pairs, OUTLINE_GREEN] : OUTLINE_GREEN;
+  // sinks into the green lowlands there; the other borders stay green. A
+  // softer gold than #FFD700, and a fainter glow (below) — the pure gold at
+  // full glow was "a bit too bright" (user, same day)
+  const expr = MINI != null ? FULL_YELLOW : reliefOn ? '#E0B83A' : pairs.length ? ['match', ['get', 'eco'], ...pairs, OUTLINE_GREEN] : OUTLINE_GREEN;
   for (const id of ['selglow', 'selline', 'selglow_hd', 'selline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', expr);
 }
 function setSelected(eid) {
@@ -954,7 +956,13 @@ function setRelief(on) {
     if (map.getLayer('relief')) map.setLayoutProperty('relief', 'visibility', on ? 'visible' : 'none');
     // the coast line is for the grey map only — the relief's blue sea already draws the shore (user, 2026-10-07)
     if (map.getLayer('coast')) map.setLayoutProperty('coast', 'visibility', on ? 'none' : 'visible');
-    if (!PASSIVE) { setBorders(bordersOn); updateSelColors(); }   // both depend on the look
+    if (!PASSIVE) {
+      setBorders(bordersOn); updateSelColors();   // both depend on the look
+      // the selected border's glow and line are dimmer on the colour map (set once per switch, not per frame)
+      const g = on ? 0.34 : SEL_OPACITY.glow, l = on ? 0.82 : SEL_OPACITY.line;
+      for (const id of ['selglow', 'selglow_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', ['min', 1, ['*', g, ['coalesce', ['feature-state', 'sel'], 0]]]);
+      for (const id of ['selline', 'selline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', ['min', 1, ['*', l, ['coalesce', ['feature-state', 'lin'], 0]]]);
+    }
     // the lakes read as water on the relief's blue already; keep them, a shade lighter
     if (map.getLayer('lakes')) map.setPaintProperty('lakes', 'fill-opacity', on ? 0.55 : 0.85);
     // no mastery fill on the colour map (user, 2026-10-07: "that's only for the black and white map")
