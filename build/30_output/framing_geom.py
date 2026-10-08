@@ -10,8 +10,8 @@ import numpy as np
 HW, HH = 188.0, 214.0
 KEEP = 0.97           # "in frame" = at least this much of the subject itself is inside the hexagon
 INSET = 0.96          # ...measured against a hexagon 4% smaller, so nothing sits on the border
-MAX_SHRINK = 0.50     # a wide photo (a side-on fish) shows whole as a band across the hexagon, on the blurred
-                      # backdrop (user, 2026-10-07; was 0.20, which gave up on two cards in five, and 902 fish of 1,198)
+MAX_SHRINK = 0.70     # as far as it takes (user, 2026-10-08, of an Atlantic Salmon still cut at the 50% limit: a
+                      # 2.9:1 photo the fish fills needs ~35%); a small whole subject beats a cropped middle
 G = 48
 
 def grid_points(grid):

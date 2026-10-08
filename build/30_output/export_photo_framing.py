@@ -114,6 +114,6 @@ json.dump({"cards": n, "kinds": dict(c), "detector": dict(collections.Counter(r[
            "swap_candidates": [{"id": r["id"], "kept": r["kept"], "fills": r["fills"]} for r in worst[:400]]},
           open(REPORT, "w"), indent=1)
 print(f"\n{n} cards")
-for k, label in [("ok", "already in frame"), ("slide", "fixed by sliding the photo"), ("zoom", "fixed by zooming out up to 50%"), ("far", "still cut: best slide kept")]:
+for k, label in [("ok", "already in frame"), ("slide", "fixed by sliding the photo"), ("zoom", "fixed by zooming out up to 70%"), ("far", "still cut: best slide kept")]:
     print(f"  {label:36} {c[k]:5}  {100*c[k]/max(1,n):5.1f}%")
 print(f"framing.json: {len(framing)} cards re-framed, {os.path.getsize(OUT)//1024} KB")
