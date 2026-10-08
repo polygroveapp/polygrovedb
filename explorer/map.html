@@ -17,6 +17,7 @@
      page → app: {type:'mark', ids:[observation id…], ok, lng, lat}  (a tap on a ✕)
      page → app: {type:'under', marks:[{id, kind}…]}  (the ✕ marks under the pin, nearest first)
      app → page: window.polygroveRelief(on)  (earth colours on the picker, or the grey/black look)
+     app → page: window.polygroveBorders(on)  (every ecoregion's dashed outline, on or off)
      page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg} · {type:'pan', dx, dy}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
@@ -404,6 +405,7 @@ map.on('load', async () => {
   if (RANGE != null) { await drawRange(RANGE); return; }
   if (pendingState) applyState(pendingState);
   if (pendingRelief != null) { setRelief(pendingRelief); pendingRelief = null; }
+  if (pendingBorders != null) { setBorders(pendingBorders); pendingBorders = null; }
   if (pendingMarks) { const m = pendingMarks; pendingMarks = null; window.polygroveSetMarks(m); }
   send({ type: 'ready' });
   // the sheet follows the pin WHILE the map moves (2026-09-30): report() dedupes,
@@ -812,25 +814,32 @@ function setRelief(on) {
     if (on && !map.getSource('demtint')) {
       map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
       map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
-        paint: { 'color-relief-opacity': 0.95,
+        paint: { 'color-relief-opacity': 0.62,
                  'color-relief-color': ['interpolate', ['linear'], ['elevation'],
                    -6000, '#10263a', -1500, '#183650', -100, '#214a66', 0, '#2f5a36',
                    300, '#3b6a3f', 800, '#5c7f4a', 1400, '#8a8d57', 2100, '#9a834f',
                    2900, '#846a56', 3800, '#8d8578', 4800, '#b8b7af', 6500, '#e6e6e2'] } },
         map.getLayer('land_pick') ? 'land_pick' : undefined);
     }
-    map.setPaintProperty('bg', 'background-color', on ? '#14324a' : '#0d0d0d');
+    map.setPaintProperty('bg', 'background-color', on ? '#0c1e2c' : '#0d0d0d');   // the relief sits at 62% over this dark blue: dimmer (user, 2026-10-07)
     for (const id of ['land', 'land_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0 : 1);
     if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', on ? 'none' : 'visible');
     if (map.getLayer('relief')) map.setLayoutProperty('relief', 'visibility', on ? 'visible' : 'none');
     // the lakes read as water on the relief's blue already; keep them, a shade lighter
     if (map.getLayer('lakes')) map.setPaintProperty('lakes', 'fill-opacity', on ? 0.55 : 0.85);
-    // the mastery fill is a tint over the terrain here, not a blot over it
-    for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0.26 : 0.42);
+    // no mastery fill on the colour map (user, 2026-10-07: "that's only for the black and white map")
+    for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0 : 0.42);
+    for (const id of ['campfill', 'campfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0 : 0.58);
   } catch (e) {}
 }
 let pendingRelief = null;
 window.polygroveRelief = on => { if (ready) setRelief(!!on); else pendingRelief = !!on; };
+// ECOREGION BORDERS (user, 2026-10-07: "another button for ecoregion borders"):
+// every region's dashed green outline, on or off; the picker has had them
+// off since 2026-10-06. A constant paint change — no re-tiling.
+function setBorders(on) { for (const id of ['ecoline', 'ecoline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', on ? 0.6 : 0); }
+let pendingBorders = null;
+window.polygroveBorders = on => { if (ready) setBorders(!!on); else pendingBorders = !!on; };
 window.polygroveZoom = d => { if (ready) map.easeTo({ zoom: map.getZoom() + d, duration: 300 }); };
 // SUBTLE MOTION (user, 2026-09-29: "as much as the new Photos widget, very
 // subtle"): the app feeds the phone's tilt as a few degrees of pitch and
