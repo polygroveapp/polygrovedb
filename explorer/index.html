@@ -172,6 +172,29 @@
   /* FACTS ARE TAPPABLE (user, 2026-10-05, "like the app"): a box opens its
      source popup, the field note opens Wikipedia */
   .dc-box.src{cursor:pointer}.dc-box.src:hover{background:#2a2a2a}
+  /* THE APP'S CARD, ON THE WEBSITE (user, 2026-10-08: "update the cards on the website"):
+     the size bar — where this size sits between the group's smallest and largest, log scale */
+  .szbar{margin-top:5px}
+  .szbar .trk{position:relative;height:3px;border-radius:2px;background:#3a3a3a}
+  .szbar .fill{height:3px;border-radius:2px}
+  .szbar .dot{position:absolute;top:-2.5px;width:8px;height:8px;border-radius:50%;margin-left:-4px;border:1.5px solid #222;box-sizing:border-box}
+  .szbar .ends{display:flex;justify-content:space-between;margin-top:3px;font-size:7.5px;color:#777}
+  /* the app's sound pill (user, 2026-10-08: "have this match the card look style" — it
+     was the browser's own white audio bar): grey pill, time bar, and an ⓘ for the source */
+  .snd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .snd .pill{flex:1;display:flex;align-items:center;gap:10px;background:#222;border:none;border-radius:16px;padding:7px 14px;cursor:pointer;color:#999;font:11px var(--sans)}
+  .snd .pill:hover{background:#2a2a2a}
+  .snd .gl{width:16px;font-size:11px;line-height:14px;text-align:left}
+  .snd .trk{flex:1;height:4px;border-radius:2px;background:#333;overflow:hidden}
+  .snd .fill{height:4px;border-radius:2px;background:#999;width:0}
+  .snd .tm{font-variant-numeric:tabular-nums}
+  .snd .i{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#6e6e6e;font:italic 700 11px var(--sans);cursor:pointer;padding:0;flex:none}
+  .sndpop-wrap{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:28px;cursor:pointer}
+  .sndpop{background:#222;border:1px solid #3a3a3a;border-radius:14px;padding:16px;width:100%;max-width:320px;cursor:default;text-align:left}
+  .sndpop .lbl{font-size:10px;font-weight:700;letter-spacing:.18em;color:#888;margin-bottom:6px}
+  .sndpop .by{font-size:13px;font-weight:700;color:var(--text)}
+  .sndpop .srcl{font-size:12px;color:#999;margin-top:4px}
+  .sndpop a{display:block;font-size:12px;color:#81C784;margin-top:8px;text-decoration:none}
   .dc-note.cardlead{cursor:pointer}.dc-note.cardlead:hover{filter:brightness(1.15)}
   .face{position:relative}
   .srcpop-wrap{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);border-radius:14px;cursor:pointer}
@@ -719,8 +742,7 @@ function showSpecies(c){
       <span class="gsci" style="font-size:15px">${c.sci}</span>
       <span style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:${tc};margin-left:auto">${c.group}</span><!-- badge follows the TROPHIC accent (user, 2026-09-09: "FISH in blue when it's a carnivore") -->
     </div>
-    ${AUDIO[c.sci]?`<h3 style="margin-top:0">Sound <span style="font-family:var(--sans);color:var(--dim);font-size:11px">iNaturalist via GBIF — ${AUDIO[c.sci][0].lic} ${AUDIO[c.sci][0].by?'· recorded by '+AUDIO[c.sci][0].by:''}</span></h3>
-    <audio controls preload="none" src="${AUDIO[c.sci][0].url}" style="width:100%;height:34px;margin-bottom:14px"></audio>`:''}
+    ${AUDIO[c.sci]?`<h3 style="margin-top:0">Sound</h3>${sndHTML(c)}`:''}
     <h3 style="margin-top:0">Range</h3>
     <div id="rangewrap"><div id="rangemap"></div><div id="habwrap"><button id="habfoldbtn" title="Fold the ecoregion list" onclick="toggleHabFold()">☰</button><div id="habsel"></div><div id="hablist"></div></div></div>
     ${c.climate?`<h3>Climate <span style="font-family:var(--sans);color:var(--dim);font-size:11px">${c.climate.tempC!=null?'range average — TetrapodTraits':'WCVP'}</span></h3>
@@ -1588,7 +1610,7 @@ function speciesCardHTML(c){   // THE card — shared by the species page and th
         ${factBox(c,'taxonomy','Group',c.group)}
       </div>
       <div class="dc-row">
-        ${factBox(c,'size','Size',c.size?niceSize(c.size):'—')}
+        ${factBox(c,'size','Size',c.size?niceSize(c.size):'—',null,sizeBarHTML(c,tc))}
         ${factBox(c,'slot5',c.habitat?'Habitat':c.origin?'Native origin':'Biome',c.habitat||c.origin||c.biome||'—')}
       </div>
       <div class="dc-note cardlead" onclick="noteWiki(event,this)" data-sci="${esc(c.sci)}" title="Read on Wikipedia" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
@@ -1603,6 +1625,7 @@ function speciesCardHTML(c){   // THE card — shared by the species page and th
       <div class="dc-name" style="font-size:18px">${c.name}</div>
       <div class="dc-sci">${c.sci}</div>
       <div style="font-size:12.5px;margin:6px 0 10px"><b style="color:${tc}">${c.trophic||'?'}</b>${fdot} <span style="color:#888888">· ${c.group}</span></div>
+      ${sndHTML(c)}
       <div style="border-top:1px solid rgba(255,255,255,.05);margin:0 -16px 10px"></div><!-- demo's faint section line (user, 2026-09-26) -->
       <div class="dc-note cardlead" onclick="noteWiki(event,this)" data-sci="${esc(c.sci)}" title="Read on Wikipedia" style="border-left-color:${tc};background:${tc}14"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="leadtxt">missing — commission this (batch 1)</span></div>
       <div class="dc-pill" style="margin-top:auto">Tap for details</div>
@@ -1630,11 +1653,63 @@ function niceSize(size){
     const inch=u==='cm'?v/2.54:v/25.4; imp=inch>=12?`${f(inch/12)} ft`:`${f(inch,inch<1?2:1)}in`; }
   return `${met} ${imp}`;
 }
-function factBox(c,slot,k,v,color){
+function factBox(c,slot,k,v,color,extra=''){
   const pv=(c.provenance||{})[slot];
   const style=color?` style="color:${color}"`:'';
-  if(!pv||!pv.source) return `<div class="dc-box"><div class="k">${k}</div><div class="v"${style}>${v}</div></div>`;
-  return `<div class="dc-box src" title="Where this comes from" onclick="srcPop(event,this)" data-k="${esc(k)}" data-src="${esc(pv.source)}" data-conf="${esc(pv.confidence||'')}"><div class="k">${k}</div><div class="v"${style}>${v}</div></div>`;
+  if(!pv||!pv.source) return `<div class="dc-box"><div class="k">${k}</div><div class="v"${style}>${v}</div>${extra}</div>`;
+  return `<div class="dc-box src" title="Where this comes from" onclick="srcPop(event,this)" data-k="${esc(k)}" data-src="${esc(pv.source)}" data-conf="${esc(pv.confidence||'')}"><div class="k">${k}</div><div class="v"${style}>${v}</div>${extra}</div>`;
+}
+// SIZE IN CONTEXT — the app's bar (catalog.ts sizeRange/sizeFrac): where the card's size
+// sits among every card of the same group measured in the same unit, on a log scale
+const _szRanges={};
+const _szParse=size=>{ const m=/^\s*([\d.,]+)\s*(cm|mm|g)\b/.exec(size||''); if(!m) return null; const v=parseFloat(m[1].replace(/,/g,'')); return v>0?{v,u:m[2]}:null; };
+function sizeBarHTML(c,tc){
+  const z=_szParse(c.size); if(!z) return '';
+  const key=c.group+'|'+z.u;
+  if(!(key in _szRanges)){ let lo=Infinity,hi=-Infinity,n=0;
+    for(const o of CARDS){ if(o.group!==c.group) continue; const q=_szParse(o.size); if(!q||q.u!==z.u) continue; if(q.v<lo)lo=q.v; if(q.v>hi)hi=q.v; n++; }
+    _szRanges[key]=n>=3&&hi>lo?{lo,hi}:null; }
+  const r=_szRanges[key]; if(!r) return '';
+  const f=Math.round(100*Math.max(0,Math.min(1,(Math.log(z.v)-Math.log(r.lo))/(Math.log(r.hi)-Math.log(r.lo)))));
+  return `<div class="szbar"><div class="trk"><div class="fill" style="width:${f}%;background:${tc}"></div><div class="dot" style="left:${f}%;background:${tc}"></div></div><div class="ends"><span>${niceSize(r.lo+' '+z.u)}</span><span>${niceSize(r.hi+' '+z.u)}</span></div></div>`;
+}
+// THE SOUND PILL — the app's SoundButton: tap plays, tap again pauses, the bar fills,
+// and the ⓘ opens who recorded it and under what licence. One recording plays at a time.
+function sndHTML(c){
+  const a=(AUDIO[c.sci]||[])[0]; if(!a) return '';
+  return `<div class="snd" data-url="${esc(a.url)}" data-by="${esc(a.by||'')}" data-lic="${esc(a.lic||'')}" data-ds="${esc(a.ds||'')}" onclick="event.stopPropagation()">
+    <button class="pill" onclick="sndToggle(event,this)" title="Play the recording"><span class="gl">▶</span><span class="trk"><span class="fill" style="display:block"></span></span><span class="tm">0:00</span></button>
+    <button class="i" onclick="sndInfo(event,this)" title="Recording source">i</button></div>`;
+}
+let _sndNow=null;
+const _sndFmt=t=>{ t=Math.max(0,Math.round(t||0)); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0'); };
+function sndToggle(ev,btn){
+  ev.stopPropagation();
+  const box=btn.closest('.snd');
+  if(!box._a){ const a=box._a=new Audio(box.dataset.url); a.preload='none';
+    const paint=()=>{ const d=isFinite(a.duration)?a.duration:0;
+      btn.querySelector('.gl').textContent=a.paused||a.ended?'▶':'❚❚';
+      btn.querySelector('.fill').style.width=(d?Math.round(100*Math.min(1,a.currentTime/d)):0)+'%';
+      btn.querySelector('.tm').textContent=d?`${_sndFmt(a.currentTime)} / ${_sndFmt(d)}`:_sndFmt(a.currentTime); };
+    for(const e of ['timeupdate','play','pause','ended','loadedmetadata']) a.addEventListener(e,paint);
+    a.addEventListener('error',()=>{ btn.querySelector('.tm').textContent='unavailable'; }); }
+  const a=box._a;
+  if(!a.paused){ a.pause(); return; }
+  if(_sndNow&&_sndNow!==a) _sndNow.pause();
+  if(a.ended||(isFinite(a.duration)&&a.currentTime>=a.duration-0.05)) a.currentTime=0;
+  _sndNow=a; a.play().catch(()=>{ btn.querySelector('.tm').textContent='unavailable'; });
+}
+function sndInfo(ev,btn){
+  ev.stopPropagation();
+  const d=btn.closest('.snd').dataset, url=d.url, lic=d.lic||'';
+  const host=d.ds||(/inaturalist/.test(url)?'iNaturalist':/xeno-canto/.test(url)?'xeno-canto':/wikimedia/.test(url)?'Wikimedia Commons':'the recording’s host');
+  const l=lic.toLowerCase().replace(/\s+/g,'-'), v=(/(\d\.\d)/.exec(lic)||[])[1]||'4.0';
+  const lurl=l.startsWith('cc0')?'https://creativecommons.org/publicdomain/zero/1.0/':l.startsWith('public')||l==='pd'?'https://creativecommons.org/publicdomain/mark/1.0/':l.includes('by-sa')?`https://creativecommons.org/licenses/by-sa/${v}/`:`https://creativecommons.org/licenses/by/${v}/`;
+  const w=document.createElement('div'); w.className='sndpop-wrap';
+  w.innerHTML=`<div class="sndpop"><div class="lbl">RECORDING</div>${d.by?`<div class="by">recorded by ${esc(d.by)}</div>`:''}<div class="srcl">${esc(host)}${/wikimedia/.test(url)?'':', via GBIF'}</div>
+    <a href="${esc(lurl)}" target="_blank" rel="noopener">${lic==='CC0'?'CC0 — public domain dedication':lic==='CC-BY'?'CC-BY 4.0 licence':esc(lic)+' licence'} ›</a><a href="${esc(url)}" target="_blank" rel="noopener">The recording ›</a></div>`;
+  w.onclick=()=>w.remove(); w.firstChild.onclick=e=>e.stopPropagation();
+  document.body.appendChild(w);
 }
 function srcPop(ev,box){
   ev.stopPropagation();
