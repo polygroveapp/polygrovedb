@@ -184,9 +184,13 @@ map.on('load', async () => {
   // out the edges a bit"); each layer has an HD twin on the ecohd source
   const ROUND = { 'line-join': 'round', 'line-cap': 'round' };
   const twin = (id, def) => { map.addLayer(Object.assign({ id, source: 'eco' }, def)); map.addLayer(Object.assign({ id: id + '_hd', source: 'ecohd' }, def)); };
+  // NO BASE BORDERS on the picker (user, 2026-10-07: "take out the borders of
+  // the ecoregions"): only the region under the pin, your camp and the
+  // mastered ones draw an outline. The layer stays (the Camp picture and the
+  // range map still use it) at opacity 0 here.
   twin('ecoline', { type: 'line', layout: ROUND,
     paint: { 'line-color': '#81C784', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.4, 5, 0.8, 7.5, 1.2],
-             'line-opacity': 0.6, 'line-dasharray': [1.6, 1.9] } });
+             'line-opacity': PASSIVE ? 0.6 : 0, 'line-dasharray': [1.6, 1.9] } });
   // ecoregions you've been to (hold cards in): a stronger, solid green
   // outline (user, 2026-09-28 — was gold)
   // (hidden since 2026-10-06 — user: "no borders should be highlighted besides
