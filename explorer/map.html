@@ -16,6 +16,7 @@
        app → page: window.polygroveSetMarks([[lng,lat]…])  (your sightings → yellow ✕ marks)
      page → app: {type:'mark', ids:[observation id…], ok, lng, lat}  (a tap on a ✕)
      page → app: {type:'under', marks:[{id, kind}…]}  (the ✕ marks under the pin, nearest first)
+     app → page: window.polygroveRelief(on)  (earth colours on the picker, or the grey/black look)
      page → app: {type:'ready'} · {type:'center', eid|null, name, bbox} · {type:'bearing', deg} · {type:'pan', dx, dy}
      PIN PICKING (user, 2026-09-28): the phone draws a fixed pin; the region
      under the pin is the selection (green) and is reported on every moveend.
@@ -94,7 +95,10 @@ map.on('load', async () => {
     fetch('data/cities.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
   ]);
   GEO = geo;
-  map.addSource('eco', { type: 'geojson', data: geo, promoteId: 'eco' });   // promoteId: the selection is feature-state, keyed by ecoregion id (2026-10-07)
+  // every feature carries its ecoregion id as its feature id (2026-10-07) —
+  // set on the data itself; promoteId is not honoured by this build
+  const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco; return fc; };
+  map.addSource('eco', { type: 'geojson', data: withIds(geo) });
   // the explorer's Ecoregions-page stack, in order
   map.addLayer({ id: 'land', type: 'fill', source: 'eco', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
   // PICKING LAYER (2026-09-30): invisible, never filtered. The visible 'land'
@@ -109,7 +113,7 @@ map.on('load', async () => {
   // vertices, shared borders intact, bay islands included). They live in a
   // second source with twin layers; a region that has its HD twin is filtered
   // out of the low-detail layers.
-  map.addSource('ecohd', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, promoteId: 'eco' });
+  map.addSource('ecohd', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({ id: 'land_hd', type: 'fill', source: 'ecohd', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
   // BLACK AND GREY (user, 2026-10-05: "the species map and the map on the app
   // have to go back to the black and grey look"): no colour relief — black
@@ -138,7 +142,7 @@ map.on('load', async () => {
     if (detail || PASSIVE || map.getZoom() < 3.2) return;
     detail = true; map.off('zoomend', loadDetail);
     fetch('data/eco_detail.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && map.getSource('eco')) map.getSource('eco').setData(d); else detail = false; })
+      .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); } else detail = false; })
       .catch(() => { detail = false; });
   };
   map.on('zoomend', loadDetail);
@@ -211,15 +215,20 @@ map.on('load', async () => {
   // out by a layer FILTER, and every change made MapLibre re-tile the whole
   // ecoregion layer, so the highlight trailed the pin by a beat; the fade
   // then needed a second set of layers (psel*) for the region being left.
-  // Now each region carries a `sel` state 0→1 and a `col` colour, and the
-  // layers paint from them: a change is a paint update, drawn next frame.
-  // The crossfade (user, 2026-09-30) is the two regions' states moving in
-  // opposite directions.
-  const FS = ['coalesce', ['feature-state', 'sel'], 0];
-  const COL = ['to-color', ['coalesce', ['feature-state', 'col'], SEL_GREEN]];
-  twin('selfill', { type: 'fill', paint: { 'fill-color': SEL_GREEN, 'fill-opacity': ['*', MINI != null ? SEL_OPACITY.fill : 0, FS] } });
-  twin('selglow', { type: 'line', layout: ROUND, paint: { 'line-color': COL, 'line-width': 9, 'line-blur': 7, 'line-opacity': ['*', SEL_OPACITY.glow, FS] } });
-  twin('selline', { type: 'line', layout: ROUND, paint: { 'line-color': COL, 'line-width': 2, 'line-opacity': ['*', SEL_OPACITY.line, FS] } });
+  // Now the glow and line layers cover every region, their opacity reads a
+  // per-region `sel`/`lin` state, and the paint EXPRESSIONS NEVER CHANGE —
+  // any per-frame change to a data-driven paint property makes MapLibre
+  // reload the source's tiles (which is what made every earlier version
+  // stall). The fade AND the pulse ride inside the state values, set per
+  // frame with setFeatureState, which is a plain repaint. The colour is a
+  // match over the visited regions' mastery, set only when the state changes.
+  // The picker never fills the selection (user, 2026-10-06); the Camp picture's
+  // gold fill is one fixed region, so a plain filter does there.
+  twin('selfill', { type: 'fill', filter: ['==', ['get', 'eco'], MINI != null ? MINI : -1], paint: { 'fill-color': SEL_GREEN, 'fill-opacity': MINI != null ? SEL_OPACITY.fill : 0 } });
+  twin('selglow', { type: 'line', layout: ROUND, paint: { 'line-color': SEL_GREEN, 'line-width': 9, 'line-blur': 7,
+    'line-opacity': ['min', 1, ['*', SEL_OPACITY.glow, ['coalesce', ['feature-state', 'sel'], 0]]] } });
+  twin('selline', { type: 'line', layout: ROUND, paint: { 'line-color': SEL_GREEN, 'line-width': 2,
+    'line-opacity': ['min', 1, ['*', SEL_OPACITY.line, ['coalesce', ['feature-state', 'lin'], 0]]] } });
   // YOUR CAMP — the ecoregion you are in — is bordered in a glowing bright
   // GREEN (user, 2026-09-30: "only the ecoregion you're in highlighted
   // green, don't use the brown"; brown from 2026-09-29, gold for an hour
@@ -377,19 +386,7 @@ map.on('load', async () => {
     // wears the website's natural-earth relief — bathymetric blues, green
     // lowlands, tan, brown, snow — under the ecoregion outlines, instead of
     // the picker's black land. The region's green sits on top.
-    try {
-      map.setPaintProperty('bg', 'background-color', '#14324a');
-      if (map.getLayer('land')) map.setPaintProperty('land', 'fill-opacity', 0);
-      if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', 'none');
-      map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
-      map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
-        paint: { 'color-relief-opacity': 0.95,
-                 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-                   -6000, '#10263a', -1500, '#183650', -100, '#214a66', 0, '#2f5a36',
-                   300, '#3b6a3f', 800, '#5c7f4a', 1400, '#8a8d57', 2100, '#9a834f',
-                   2900, '#846a56', 3800, '#8d8578', 4800, '#b8b7af', 6500, '#e6e6e2'] } },
-        map.getLayer('land_pick') ? 'land_pick' : undefined);
-    } catch (e) {}
+    setRelief(true);
     // the minimap's region is the same steady green — it never flashes (the
     // flash loop only runs on the picker), so the picture the app keeps is
     // always the same
@@ -406,6 +403,7 @@ map.on('load', async () => {
   }
   if (RANGE != null) { await drawRange(RANGE); return; }
   if (pendingState) applyState(pendingState);
+  if (pendingRelief != null) { setRelief(pendingRelief); pendingRelief = null; }
   if (pendingMarks) { const m = pendingMarks; pendingMarks = null; window.polygroveSetMarks(m); }
   send({ type: 'ready' });
   // the sheet follows the pin WHILE the map moves (2026-09-30): report() dedupes,
@@ -600,29 +598,33 @@ function flashLoop() {
     // eases back in as you zoom out, where the selected region is one of many
     const z = map.getZoom(), amp = z >= 6.5 ? 0 : z <= 5.5 ? 1 : 6.5 - z;
     flashP = 1 + amp * (-0.18 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI));
-    if (current != null) setSelPaint();
+    if (selState.size) applySel();
     // (flashTick is odd here — the even frames returned above — so the far-out
     // tick is `=== 1`; `=== 0` never fired and the ✕s sat still when zoomed out, 2026-10-06)
     if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 1)) shimmerMarks(performance.now());
   };
   step();
 }
-const fading = new Set();   // regions whose `sel` state is not 0
-function setSel(eid, v) {
-  for (const src of ['eco', 'ecohd']) { try { map.setFeatureState({ source: src, id: eid }, { sel: v }); } catch (e) {} }
-  if (v > 0) fading.add(eid); else fading.delete(eid);
-}
-function setCol(eid) {
-  const c = borderColorOf(eid);
-  for (const src of ['eco', 'ecohd']) { try { map.setFeatureState({ source: src, id: eid }, { col: c }); } catch (e) {} }
+const selState = new Map();   // region id → how far its highlight is in (0..1)
+function pushState(eid, g, l) { for (const src of ['eco', 'ecohd']) { try { map.setFeatureState({ source: src, id: eid }, { sel: g, lin: l }); } catch (e) {} } }
+function setSel(eid, v) { if (v > 0.001) selState.set(+eid, v); else { selState.delete(+eid); pushState(+eid, 0, 0); } }
+// every highlighted region's state, with the pulse folded in for the one under the pin
+function applySel() { for (const [e, v] of selState) { const p = e === current ? flashP : 1; pushState(e, v * p, v * (0.7 + 0.3 * p)); } }
+// the border colours: each visited region's mastery colour, the Camp picture
+// gold, everything else the outline green. A static data-driven expression,
+// set only when the state changes (paintScale) — never per selection
+function updateSelColors() {
+  const pairs = [];
+  for (const e of collected) pairs.push(+e, borderColorOf(e));
+  const expr = MINI != null ? FULL_YELLOW : pairs.length ? ['match', ['get', 'eco'], ...pairs, OUTLINE_GREEN] : OUTLINE_GREEN;
+  for (const id of ['selglow', 'selline', 'selglow_hd', 'selline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', expr);
 }
 function setSelected(eid) {
   if (eid === current) return;
   prevSel = current;
   current = eid == null ? null : eid;
   // anything still mid-fade from an earlier hop is dropped at once
-  for (const id of [...fading]) if (id !== prevSel && id !== current) setSel(id, 0);
-  if (current != null) setCol(current);
+  for (const id of [...selState.keys()]) if (id !== prevSel && id !== current) setSel(id, 0);
   // 490 ms when the pin drifts across a border; but in a FAST move the fade
   // made the highlight trail the pin (user, 2026-10-07: "the selection lags
   // behind the pin when you move it fast") — then it is all but instant
@@ -636,19 +638,11 @@ function setSelected(eid) {
     const t = Math.min(1, (performance.now() - t0) / D), e = t * (2 - t);   // ease-out
     if (to != null) setSel(to, e);
     if (from != null) setSel(from, 1 - e);
-    if (t < 1) fadeRaf = requestAnimationFrame(step); else { fadeRaf = 0; if (from != null) setSel(from, 0); prevSel = null; }
+    applySel();
+    if (t < 1) fadeRaf = requestAnimationFrame(step); else { fadeRaf = 0; if (from != null) setSel(from, 0); prevSel = null; applySel(); }
   };
   step();
   flashLoop();
-}
-// the pulse: the border's opacity breathes with flashP; the fill holds steady
-// (user, 2026-10-06: "remove the flashing altogether for the fill, just the
-// borders"). A paint update over the feature-state, nothing re-tiles.
-function setSelPaint() {
-  const set = (id, prop, v) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, v); if (map.getLayer(id + '_hd')) map.setPaintProperty(id + '_hd', prop, v); };
-  const FS = ['coalesce', ['feature-state', 'sel'], 0];
-  set('selglow', 'line-opacity', ['min', 1, ['*', SEL_OPACITY.glow * flashP, FS]]);
-  set('selline', 'line-opacity', ['min', 1, ['*', SEL_OPACITY.line * (0.7 + 0.3 * flashP), FS]]);
 }
 // every ecoregion layer's filter, in one place: the low-detail layer skips
 // regions that have their high-detail twin loaded
@@ -664,10 +658,11 @@ function applyFilters() {
   if (map.getLayer('ecoline')) map.setFilter('ecoline', notHD);
   // the pin's green draws over the camp as well — whatever is under the pin
   // flashes (2026-10-05); it was kept off the camp while the camp pulsed gold
-  // feature-state picks the region; the only filter is the HD split (a bare
+  // the paint picks the region; the only filter is the HD split (a bare
   // `true` operand here failed the worker's filter compile, and one failing
   // layer sinks the whole tile — the land vanished, 2026-10-07)
-  for (const id of ['selfill', 'selglow', 'selline']) { if (map.getLayer(id)) map.setFilter(id, notHD); if (map.getLayer(id + '_hd')) map.setFilter(id + '_hd', null); }
+  for (const id of ['selglow', 'selline']) { if (map.getLayer(id)) map.setFilter(id, notHD); if (map.getLayer(id + '_hd')) map.setFilter(id + '_hd', null); }
+  put('selfill', ['==', ['get', 'eco'], MINI != null ? MINI : -1]);
   put('visited', vis);
   put('visitfill', ['all', vis, notCamp]);
   for (const id of ['campfill', 'campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
@@ -713,7 +708,7 @@ function paintScale() {
   // the pinned border starts as the plain outline's green (#81C784, the colour
   // every unvisited region wears) and runs to yellow as the deck is mastered
   // (user, 2026-10-07)
-  if (current != null) setCol(current);
+  updateSelColors();
 }
 const OUTLINE_GREEN = '#81C784';
 const masteryAt = (e) => (completed.includes(+e) ? 1 : progress[e] || 0);
@@ -736,7 +731,7 @@ function loadHD() {
   if (!ids.length) return;
   ids.forEach(e => hdBusy.add(e));
   Promise.all(ids.map(e => fetch('data/eco_hd/' + e + '.json').then(r => r.ok ? r.json() : null).catch(() => null)
-    .then(fc => { const f = fc && (fc.features ? fc.features[0] : fc); if (f && f.geometry) { f.properties = Object.assign({}, f.properties, { eco: e }); HD.set(e, f); } })))
+    .then(fc => { const f = fc && (fc.features ? fc.features[0] : fc); if (f && f.geometry) { f.properties = Object.assign({}, f.properties, { eco: e }); f.id = +e; HD.set(e, f); } })))
     .then(() => {
       ids.forEach(e => hdBusy.delete(e));
       if (HD.size > 70) for (const k of [...HD.keys()].slice(0, HD.size - 70)) HD.delete(k);   // oldest out
@@ -807,6 +802,35 @@ window.polygroveBearing = (deg, animate) => { if (!ready) return;
 let _lastBearing = null;
 map.on('rotate', () => { const b = Math.round(map.getBearing() * 10) / 10;
   if (b !== _lastBearing) { _lastBearing = b; send({ type: 'bearing', deg: b }); } });
+// EARTH COLOURS OR GREY (user, 2026-10-07: "a button above the plus sign
+// that changes the map to have color like the actual earth or go back to the
+// grey and black"): the same natural-earth relief the Camp picture wears,
+// switched on and off under the picker. The relief source is added once;
+// after that it is a visibility flip plus the land fill and the background.
+function setRelief(on) {
+  try {
+    if (on && !map.getSource('demtint')) {
+      map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
+      map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
+        paint: { 'color-relief-opacity': 0.95,
+                 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
+                   -6000, '#10263a', -1500, '#183650', -100, '#214a66', 0, '#2f5a36',
+                   300, '#3b6a3f', 800, '#5c7f4a', 1400, '#8a8d57', 2100, '#9a834f',
+                   2900, '#846a56', 3800, '#8d8578', 4800, '#b8b7af', 6500, '#e6e6e2'] } },
+        map.getLayer('land_pick') ? 'land_pick' : undefined);
+    }
+    map.setPaintProperty('bg', 'background-color', on ? '#14324a' : '#0d0d0d');
+    for (const id of ['land', 'land_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0 : 1);
+    if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', on ? 'none' : 'visible');
+    if (map.getLayer('relief')) map.setLayoutProperty('relief', 'visibility', on ? 'visible' : 'none');
+    // the lakes read as water on the relief's blue already; keep them, a shade lighter
+    if (map.getLayer('lakes')) map.setPaintProperty('lakes', 'fill-opacity', on ? 0.55 : 0.85);
+    // the mastery fill is a tint over the terrain here, not a blot over it
+    for (const id of ['visitfill', 'visitfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0.26 : 0.42);
+  } catch (e) {}
+}
+let pendingRelief = null;
+window.polygroveRelief = on => { if (ready) setRelief(!!on); else pendingRelief = !!on; };
 window.polygroveZoom = d => { if (ready) map.easeTo({ zoom: map.getZoom() + d, duration: 300 }); };
 // SUBTLE MOTION (user, 2026-09-29: "as much as the new Photos widget, very
 // subtle"): the app feeds the phone's tilt as a few degrees of pitch and
@@ -897,11 +921,15 @@ window.polygroveSetMarks = (pts) => {
 // incommensurate sines, so the field sparkles rather than breathing in unison
 function shimmerMarks(t) {
   if (!map.getLayer('marks')) return;
-  const p = ['+', ['*', t / 400, ['+', 0.6, ['*', 0.0089, ['%', ['get', 'h'], 101]]]], ['*', ['get', 'h'], 0.0628]];
-  const m = ['+', 0.5, ['*', 0.25, ['sin', p]], ['*', 0.25, ['sin', ['*', 1.618, p]]]];
-  map.setPaintProperty('marks', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(255,200,60)', 0.5, 'rgb(255,225,77)', 1, 'rgb(255,245,160)']);   // deep yellow → yellow → pale yellow (less orange, user 2026-10-05)
-  map.setPaintProperty('marks_w', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(46,125,50)', 0.5, 'rgb(76,175,80)', 1, 'rgb(165,232,169)']);   // dark green → green → light green
-  map.setPaintProperty('marks_p', 'icon-color', ['interpolate', ['linear'], m, 0, 'rgb(110,110,110)', 0.5, 'rgb(154,154,154)', 1, 'rgb(205,205,205)']);   // grey, a quiet glisten
+  // ONE colour for all marks per frame (2026-10-07): the per-mark phase was a
+  // data-driven paint change every frame, which makes MapLibre re-tile the
+  // marks source every frame — the ✕s jiggled and the whole map lagged.
+  // A plain colour change is a repaint. The marks breathe together.
+  const ph = t / 900, m = 0.5 + 0.25 * Math.sin(ph) + 0.25 * Math.sin(1.618 * ph);
+  const mix = (a, b, c) => { const k = m < 0.5 ? m * 2 : (m - 0.5) * 2, [x, y] = m < 0.5 ? [a, b] : [b, c]; return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * k)).join(',')})`; };
+  map.setPaintProperty('marks', 'icon-color', mix([255, 200, 60], [255, 225, 77], [255, 245, 160]));   // deep yellow → yellow → pale yellow
+  map.setPaintProperty('marks_w', 'icon-color', mix([46, 125, 50], [76, 175, 80], [165, 232, 169]));   // dark green → green → light green
+  map.setPaintProperty('marks_p', 'icon-color', mix([110, 110, 110], [154, 154, 154], [205, 205, 205]));   // grey, a quiet glisten
 }
 // observations on / off (the app's ✕ obs button, 2026-10-06): hides the three mark layers
 window.polygroveShowMarks = (on) => {
