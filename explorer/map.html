@@ -384,6 +384,7 @@ map.on('load', async () => {
     // the minimap's region is the same steady green — it never flashes (the
     // flash loop only runs on the picker), so the picture the app keeps is
     // always the same
+    for (const id of ['selfill', 'selfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', FULL_YELLOW);   // gold (user, 2026-10-07)
     setSelected(MINI);
     const b = bboxOf(MINI);
     if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 28, duration: 0, maxZoom: 3.6 });
@@ -581,7 +582,7 @@ function setSelOpacity(prefix, k) {
   if (prefix === 'sel') selK = k;
   // only the BORDER pulses (user, 2026-10-06: "remove the flashing altogether
   // for the fill, just the borders"): the fill holds steady, glow and line breathe
-  set(prefix + 'fill', 'fill-opacity', 0);   // the fill is the region's own mastery colour, untouched by selection (user, 2026-10-06)
+  set(prefix + 'fill', 'fill-opacity', MINI != null ? SEL_OPACITY.fill * k : 0);   // the fill is the region's own mastery colour, untouched by selection (user, 2026-10-06) — except the Camp picture, which fills its region gold
   set(prefix + 'glow', 'line-opacity', Math.min(1, SEL_OPACITY.glow * k * p));
   set(prefix + 'line', 'line-opacity', SEL_OPACITY.line * k * (0.7 + 0.3 * p));
 }
@@ -648,7 +649,7 @@ function paintScale() {
   // every unvisited region wears) and runs to yellow as the deck is mastered
   // (user, 2026-10-07)
   const OUTLINE_GREEN = '#81C784';
-  const borderOf = (e) => (e == null || !collected.includes(+e) ? OUTLINE_GREEN : lerp(OUTLINE_GREEN, FULL_YELLOW, at(e)));
+  const borderOf = (e) => (MINI != null ? FULL_YELLOW : e == null || !collected.includes(+e) ? OUTLINE_GREEN : lerp(OUTLINE_GREEN, FULL_YELLOW, at(e)));   // the Camp picture's region is gold (user, 2026-10-07)
   for (const [prefix, e] of [['sel', current], ['psel', prevSel]]) {
     const c = borderOf(e);
     paint(prefix + 'glow', 'line-color', c); paint(prefix + 'line', 'line-color', c);
