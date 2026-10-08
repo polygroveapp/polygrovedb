@@ -616,19 +616,26 @@ for (_r,_g), _lst in _CAND.items():
 for _g in _BY_GRP:
     _BY_GRP[_g].sort(key=lambda x: (-FAME.get(x,0), -POPU.get(x,0), x))
 ENERGY = ['Photosynthesis', 'Decaying matter', 'Live prey', 'Leaves and plants']
+# the deck: the species that are cards, and so have a photo in the app. A decoy
+# is matched to the answer on this (user, 2026-10-07: "the answer always has no
+# photo" — the answer is whatever the records name, the decoys were mostly cards,
+# and the one empty hexagon gave it away)
+CATALOG_IDS = set(r[0] for r in con.sql("SELECT species_id FROM catalog").fetchall())
 def _distractors(sid, answer_sid, exclude, k=2):
     """Same group as the true answer (never crossed — a robin 'eating a hippo' is
-    worse than a short list), same trophic role where possible, similar size, and
-    preferring species this card shares NO ecoregion with, which is what makes
-    'wrong' defensible: they never meet."""
+    worse than a short list), same trophic role where possible, similar size, the
+    same card-or-not standing as the answer (see CATALOG_IDS), and preferring
+    species this card shares NO ecoregion with, which is what makes 'wrong'
+    defensible: they never meet."""
     role, grp, asz = FEED.get(answer_sid), _GRP(answer_sid), _sz(answer_sid)
     mine = ECO_SET.get(sid, set())
+    a_card = answer_sid in CATALOG_IDS
     def score(o):
         theirs = ECO_SET.get(o)
         overlap = 0 if (theirs is not None and not (mine & theirs)) else (1 if theirs is None else 2)
         osz = _sz(o)
         size_ok = 0 if (asz is not None and osz is not None and 0.25 <= osz/asz <= 4.0) else 1
-        return (overlap, size_ok)
+        return (0 if (o in CATALOG_IDS) == a_card else 1, overlap, size_ok)
     seen, cands = set(), []
     for pool in (_CAND.get((role, grp), []), _BY_GRP.get(grp, [])):
         for osid in pool[:400]:
