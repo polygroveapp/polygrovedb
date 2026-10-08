@@ -327,11 +327,6 @@
     display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:999px;overflow:hidden;
     background:rgba(14,21,18,.85);border:1px solid var(--line);backdrop-filter:blur(8px)}
   .obsamt .xk{color:#ffe14d;font-weight:700;font-size:11px;line-height:1}
-  /* the slider runs January → December; its label shows while it is dragged */
-  .obstip{position:absolute;left:50%;transform:translateX(-50%);bottom:48px;z-index:36;display:none;padding:5px 12px;border-radius:12px;white-space:nowrap;
-    background:rgba(10,15,10,.92);border:1px solid rgba(255,225,77,.35);color:#ffe14d;font-size:12px;font-weight:700;pointer-events:none}
-  .obstip.on{display:block}
-  .hasmon .obstip{bottom:82px}
   /* the ⓘ is a circle as tall as the bar beside it (user, 2026-10-08) */
   .maplibregl-ctrl-attrib.maplibregl-compact{min-height:30px!important;border-radius:15px!important}
   .maplibregl-ctrl-attrib-button{width:30px!important;height:30px!important;line-height:28px!important;box-sizing:border-box}
@@ -2976,9 +2971,7 @@ async function renderRangeMap(ids,sci,opts){
           // have no bitwise ops). Both persist across page navigations.
           filter:(window._obsFilter=()=>{ const conds=[]; const amt=window._obsAmt??1;
             if(amt<1) conds.push(['<',['get','q'],amt]);
-            // the timeline bar: recorded in any month from January up to this one
-            const up=window._obsUpTo??12;
-            if(hasMonths&&up<12) conds.push(up<=0?['<',['get','q'],-1]:['>=',['%',['get','ms'],Math.pow(2,up)],1]);
+            if(window._obsOff) return ['<',['get','q'],-1];   // the "All observations" button, off
             const m=window._obsMonth||0;
             if(m&&hasMonths) conds.push(['==',['%',['floor',['/',['get','ms'],Math.pow(2,m-1)]],2],1]);
             return conds.length>1?['all',...conds]:(conds[0]||['<',['get','q'],2]); })(),
@@ -3000,34 +2993,11 @@ async function renderRangeMap(ids,sci,opts){
         for(const id of ['adminlbl','citydot','citylbl','parkdot','parklbl','ecosel','foclbl']) if(map.getLayer(id)) map.moveLayer(id);
         // hold the sightings back until the flight lands, so they arrive as you do
         setTimeout(()=>{ if(map.getLayer('obsdots')) map.setPaintProperty('obsdots','icon-opacity',0.92); }, 2100);
-        // ✕ amount slider, bottom edge between − and i (user, 2026-09-25)
-        const amtWrap=document.createElement('div'); amtWrap.className='obsamt';
-        if(!hasMonths){
-        amtWrap.innerHTML=`<input type="range" min="0" max="100" value="${Math.round((window._obsAmt??1)*100)}" title="How many sightings show">`;
-        amtWrap.lastChild.oninput=e=>{ window._obsAmt=+e.target.value/100;
-          if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', window._obsFilter()); };
-        } else {
-          // OBSERVATIONS OVER TIME (user, 2026-10-08; it was a how-many slider). The dots
-          // here carry the MONTHS they were recorded in, not dates, so the slider runs
-          // January → December: the map shows what was recorded from January up to the
-          // thumb's month. Far right (where it rests) is the whole year; far left, nothing.
-          window._obsAmt=1;
-          const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-          // the PLAIN SLIDER again (user, 2026-10-08: "just have it a bar like before, but have
-          // it hooked up so it's observations over time" — the histogram bars lasted an hour)
-          amtWrap.innerHTML=`<input type="range" min="0" max="12" step="1" value="${window._obsUpTo??12}" title="Sightings through the year">`;
-          const inp=amtWrap.lastChild;
-          const tip=document.createElement('div'); tip.className='obstip'; el.appendChild(tip);
-          const paint=()=>{ const up=window._obsUpTo??12;
-            const seen=cells.filter(c=>up>=12||((c[3]||0)%Math.pow(2,up))>=1).length;
-            tip.textContent=up>=12?`all year · ${cells.length.toLocaleString()} places`:up<=0?'before January':`January – ${MO[up-1]} · ${seen.toLocaleString()} of ${cells.length.toLocaleString()} places`; };
-          inp.oninput=e=>{ window._obsUpTo=+e.target.value; paint(); tip.classList.add('on');
-            if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', window._obsFilter()); };
-          inp.onchange=inp.onblur=()=>tip.classList.remove('on');
-          inp.onpointerup=()=>tip.classList.remove('on');
-          paint();
-        }
-        el.appendChild(amtWrap);
+        // NOTHING BETWEEN − AND ⓘ NOW (user, 2026-10-08). It was a how-many slider from
+        // 2026-09-25; in one afternoon it became a month timeline, a plain month slider and
+        // an "All observations" button, then "remove the button". Every sighting shows;
+        // the month buttons below still pick a month.
+        window._obsAmt=1; window._obsOff=false;
         // MONTH buttons: one per month + All (user, 2026-09-25) — only once the
         // shards carry month bitmasks (hasMonths), so old data shows no dead row
         if(hasMonths){
