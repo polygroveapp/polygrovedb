@@ -422,7 +422,12 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
               // Tahoe-sized lakes had names; they were 10.5 → 14.5 from 2026-09-29)
               'text-size': ['interpolate', ['linear'], ['zoom'], 3, 9, 7, 11.5], 'text-max-width': 7, 'text-padding': 10,
               'symbol-sort-key': ['-', 0, ['get', 'a']] },
-    paint: { 'text-color': '#6ea8e0', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.1, 'text-opacity': 0.95 } });
+    paint: { 'text-color': '#6ea8e0', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.1, 'text-opacity': 0.95 } },
+    // PARK NAMES WIN OVER LAKE NAMES (user, 2026-10-07, of "Yellowstone Lake"
+    // sitting where "Yellowstone" should be): MapLibre places the layers
+    // nearest the top of the stack first, so the lake names go in BENEATH the
+    // park layers — a park's name claims its spot before a lake's can
+    map.getLayer('parkdot') ? 'parkdot' : undefined);
   if (labels) {
     map.addSource('admin', { type: 'geojson', data: labels });
     // COUNTRY and STATE names, as on the database's map (user, 2026-09-29):
@@ -1063,7 +1068,7 @@ function drawMarks(pts) {
   // on another's is held back, the kinds ranked yellow > green > grey), so a
   // busy coast reads as a scatter rather than a blanket; zoom in and all of
   // them appear
-  const firstLabel = ['parkdot', 'parklbl', 'citydot', 'citylbl', 'lakelbl', 'adminlbl', 'ecolbl', 'oceanlbl'].find(l => map.getLayer(l));
+  const firstLabel = ['lakelbl', 'parkdot', 'parklbl', 'citydot', 'citylbl', 'adminlbl', 'ecolbl', 'oceanlbl'].find(l => map.getLayer(l));   // lake names sit lowest of these now
   // EACH ✕ ON ITS OWN CLOCK, AS ON THE WEBSITE (user, 2026-10-07: "the
   // animations are really simple, look at the website … random x's"). The
   // website gives every ✕ its own phase with a data-driven paint expression
