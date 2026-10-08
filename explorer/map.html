@@ -96,7 +96,7 @@ map.on('load', async () => {
     fetch('data/parks.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('data/cities.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
   ]);
-  GEO = geo;
+  GEO = geo; SHAPES = geo; seaOf = fc => coastOf(fc, true);
   // every feature carries its ecoregion id as its feature id (2026-10-07) —
   // set on the data itself; promoteId is not honoured by this build
   const ROUND_COAST = { 'line-join': 'round', 'line-cap': 'round' };
@@ -107,7 +107,14 @@ map.on('load', async () => {
 // water, a lake — and is dropped unless it is sea-sized (the Caspian and a
 // closed-off Black Sea keep their shores; the Great Lakes do not).
 const LAKE_MAX = 30;   // square degrees; the Great Lakes together are ~23, the Caspian ~40
-function coastOf(fc) {
+// THE SEA, FOR THE COLOUR MAP (user, 2026-10-07: "why is the sf bay green?").
+// The colour relief paints by elevation, and the elevation tiles give sheltered
+// water — a bay, a sound, an estuary — its surface height, ~0 m, so it came
+// out lowland green. With `sea` the same loops become a mask instead: the
+// whole world as one polygon, every landmass a hole in it (the cuts along
+// the antimeridian are KEPT here, so those landmasses close). Painted sea-blue
+// over the relief, it makes water of everything outside the ecoregions.
+function coastOf(fc, sea) {
   const K = (p) => Math.round(p[0] * 1e5) + ',' + Math.round(p[1] * 1e5);
   const seg = new Map(), pts = new Map();
   for (const f of fc.features) {
@@ -133,25 +140,84 @@ function coastOf(fc) {
   for (const e of seg.values()) {
     if (e.n !== 1) continue;
     const pa = pts.get(e.from), pb = pts.get(e.to);
-    if ((Math.abs(pa[0]) > 179.99 && Math.abs(pb[0]) > 179.99) || (pa[1] < -89.9 && pb[1] < -89.9)) continue;
+    if (!sea && ((Math.abs(pa[0]) > 179.99 && Math.abs(pb[0]) > 179.99) || (pa[1] < -89.9 && pb[1] < -89.9))) continue;
     let l = out.get(e.from); if (!l) out.set(e.from, l = []); l.push(e.to);
   }
-  const lines = [];
-  for (const start of out.keys()) {
+  const lines = [], holes = [], opens = [], inland = [];   // inland: closed loops with water inside — lakes
+  // AT A FORK, KEEP THE WATER ON THE RIGHT. Where a crack between two regions
+  // (see `solid` below) meets the shore, the walk has two ways on: along the
+  // shore, or inland up one side of the crack. Taking the inland one made a
+  // crack that runs shore to shore cut its continent in two — Africa, from
+  // Gabon to Lake Victoria — with a hairline of "sea" between the halves. The
+  // way on is the one that turns least anticlockwise from the way back, which
+  // traces the WATER's edge: shores stay whole and each crack closes on itself.
+  // Walks begin at plain points first, so a fork is always entered, never begun at.
+  const TAU = Math.PI * 2;
+  const pick = (l, prev, cur) => {
+    if (l.length === 1 || !prev) return l.pop();
+    const c = pts.get(cur), b = pts.get(prev), back = Math.atan2(b[1] - c[1], b[0] - c[0]);
+    let bi = 0, best = Infinity;
+    for (let i = 0; i < l.length; i++) {
+      const o = pts.get(l[i]); let a = (Math.atan2(o[1] - c[1], o[0] - c[0]) - back) % TAU; if (a <= 1e-9) a += TAU;
+      if (a < best) { best = a; bi = i; }
+    }
+    return l.splice(bi, 1)[0];
+  };
+  const starts = [...out.keys()].sort((a, b) => out.get(a).length - out.get(b).length);
+  for (const start of starts) {
     for (;;) {
       const first = out.get(start); if (!first || !first.length) break;
-      const line = [pts.get(start)]; let cur = start, A = 0;
+      const line = [pts.get(start)]; let cur = start, prev = null, A = 0;
       for (;;) {
         const l = out.get(cur); if (!l || !l.length) break;
-        const nxt = l.pop(), p = pts.get(cur), q = pts.get(nxt);
+        const nxt = pick(l, prev, cur), p = pts.get(cur), q = pts.get(nxt); prev = cur;
         A += p[0] * q[1] - q[0] * p[1];
         line.push(q); cur = nxt;
         if (cur === start) break;
       }
       const lake = cur === start && A < 0 && -A / 2 < LAKE_MAX;
       if (line.length > 1 && !lake) lines.push(line);
+      if (cur === start) { if (A > 0 && line.length > 3) holes.push(line); else if (sea && A < 0) inland.push(line); }   // anticlockwise with land on the left: a landmass
+      else if (sea) opens.push(line);
     }
   }
+  if (sea) {
+    // STITCH THE BROKEN OUTLINES. About a hundred chains never return to their
+    // start — wherever two neighbours' borders do not share a vertex exactly
+    // the walk dead-ends — and those include the continents themselves (left
+    // as they were, eastern Russia was painted as sea). Each open chain's end
+    // is joined to the nearest open start, its own included, within 2°; the
+    // result matches the land's total area to within a tenth of a percent.
+    const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    const area = (l) => { let a = 0; for (let i = 1; i < l.length; i++) a += l[i - 1][0] * l[i][1] - l[i][0] * l[i - 1][1]; return a; };
+    while (opens.length) {
+      let c = opens.pop();
+      for (;;) {
+        const end = c[c.length - 1]; let best = d(end, c[0]), bi = -1;
+        for (let i = 0; i < opens.length; i++) { const dd = d(end, opens[i][0]); if (dd < best) { best = dd; bi = i; } }
+        if (best > 2) break;                                   // nothing near: leave this piece out
+        if (bi < 0) { c.push(c[0]); if (c.length > 3 && area(c) > 0) holes.push(c); break; }
+        c = c.concat(opens.splice(bi, 1)[0]);
+      }
+    }
+  }
+  // NO HAIRLINE "LANDMASSES". Where two neighbours' shared border was simplified
+  // to slightly different lines, the two versions form a closed loop of their
+  // own with almost no area — a crack. As a hole nested inside its continent's
+  // hole it turned the fill back ON: a blue sliver from Gabon to Rwanda. A
+  // loop whose area is under 1/2500 of its perimeter squared is such a crack
+  // (a circle scores 1/12.6, a 100:1 strip 1/400) and is left out.
+  const solid = (l) => { let a = 0, per = 0; for (let i = 1; i < l.length; i++) { a += l[i - 1][0] * l[i][1] - l[i][0] * l[i - 1][1]; per += Math.hypot(l[i][0] - l[i - 1][0], l[i][1] - l[i - 1][1]); } return Math.abs(a) / 2 > per * per / 2500; };
+  // NO ISLANDS IN LAKES. A lake is not cut out of its continent's hole, so an
+  // island in it (Ukerewe, in Lake Victoria) is a hole INSIDE a hole — and the
+  // triangulator joins a nested hole to the outer ring with a seam, drawn as a
+  // blue line from the lake to the Atlantic. A landmass whose first point lies
+  // inside a lake loop is left out: its lake is land-coloured in the mask anyway.
+  const boxes = inland.map(l => { let w = 180, s0 = 90, e = -180, n = -90; for (const p of l) { if (p[0] < w) w = p[0]; if (p[0] > e) e = p[0]; if (p[1] < s0) s0 = p[1]; if (p[1] > n) n = p[1]; } return [w, s0, e, n]; });
+  const within = (x, y, l) => { let c = false; for (let i = 0, j = l.length - 1; i < l.length; j = i++) { const a = l[i], b = l[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+  const inLake = (l) => { const [x, y] = l[0]; for (let i = 0; i < inland.length; i++) { const b = boxes[i]; if (x > b[0] && x < b[2] && y > b[1] && y < b[3] && within(x, y, inland[i])) return true; } return false; };
+  if (sea) return { type: 'Feature', properties: {}, geometry: { type: 'Polygon',
+    coordinates: [[[-180, -85.05], [180, -85.05], [180, 85.05], [-180, 85.05], [-180, -85.05]], ...holes.filter(l => solid(l) && !inLake(l))] } };
   return { type: 'Feature', geometry: { type: 'MultiLineString', coordinates: lines }, properties: {} };
 }
 const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco; return fc; };
@@ -207,14 +273,15 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
   // ~60k vertices; past z3.2 the ~450k-vertex file replaces it. Both are
   // topologically simplified, so neighbours share their borders exactly.
   let detail = false;
-  const loadDetail = () => {
-    if (detail || PASSIVE || map.getZoom() < 3.2) return;
+  const loadDetail = (force) => {
+    if (detail || PASSIVE || (force !== true && map.getZoom() < 3.2)) return;
     detail = true; map.off('zoomend', loadDetail);
     fetch('data/eco_detail.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); if (map.getSource('coast')) map.getSource('coast').setData(coastOf(d)); } else detail = false; })
+      .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); SHAPES = d; if (map.getSource('sea')) map.getSource('sea').setData(seaOf(d)); if (map.getSource('coast')) map.getSource('coast').setData(coastOf(d)); } else detail = false; })
       .catch(() => { detail = false; });
   };
   map.on('zoomend', loadDetail);
+  forceDetail = () => loadDetail(true);
   map.on('moveend', loadHD);
   map.on('idle', loadHD);   // and once the new view has actually drawn — a jump lands before its tiles do
   // PARK BOUNDARIES in the explorer's brown, as SOLID lines (user,
@@ -735,11 +802,8 @@ function applySel() { for (const [e, v] of selState) { const p = e === current ?
 function updateSelColors() {
   const pairs = [];
   for (const e of collected) pairs.push(+e, borderColorOf(e));
-  // ON THE COLOUR MAP THE SELECTED REGION IS GOLD (user, 2026-10-07): green
-  // sinks into the green lowlands there; the other borders stay green. A
-  // softer gold than #FFD700, and a fainter glow (below) — the pure gold at
-  // full glow was "a bit too bright" (user, same day)
-  const expr = MINI != null ? FULL_YELLOW : reliefOn ? '#E0B83A' : pairs.length ? ['match', ['get', 'eco'], ...pairs, OUTLINE_GREEN] : OUTLINE_GREEN;
+  // the same on the colour map (user, 2026-10-07: gold there for half an hour, then "green actually")
+  const expr = MINI != null ? FULL_YELLOW : pairs.length ? ['match', ['get', 'eco'], ...pairs, OUTLINE_GREEN] : OUTLINE_GREEN;
   for (const id of ['selglow', 'selline', 'selglow_hd', 'selline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', expr);
 }
 function setSelected(eid) {
@@ -930,6 +994,8 @@ map.on('rotate', () => { const b = Math.round(map.getBearing() * 10) / 10;
 // grey and black"): the same natural-earth relief the Camp picture wears,
 // switched on and off under the picker. The relief source is added once;
 // after that it is a visibility flip plus the land fill and the background.
+let forceDetail = null;   // fetch the detailed outlines now, whatever the zoom
+let SHAPES = null, seaOf = null;   // the outlines in use, and the mask builder (made where the outlines load)
 function setRelief(on) {
   reliefOn = !!on;
   try {
@@ -938,11 +1004,24 @@ function setRelief(on) {
       map.addLayer({ id: 'relief', type: 'color-relief', source: 'demtint',
         paint: { 'color-relief-opacity': 0.62,
                  'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-                   -6000, '#10263a', -1500, '#183650', -100, '#214a66', 0, '#2f5a36',
+                   // land below sea level (Death Valley, −86 m) is LAND now that the sea is a mask: the
+                   // blues end at −400 m and the lowland green starts at −120 (it was blue down from 0)
+                   -6000, '#10263a', -1500, '#183650', -400, '#214a66', -120, '#2f5a36', 0, '#2f5a36',
                    300, '#3b6a3f', 800, '#5c7f4a', 1400, '#8a8d57', 2100, '#9a834f',
                    2900, '#846a56', 3800, '#8d8578', 4800, '#b8b7af', 6500, '#e6e6e2'] } },
         map.getLayer('land_pick') ? 'land_pick' : undefined);
     }
+    // the first-paint outlines have real gaps between neighbours (a blue wedge
+    // across the Congo at world zoom): the mask wants the detailed ones, so
+    // they are fetched as soon as the colour map is on
+    if (on && forceDetail) forceDetail();
+    if (on && !map.getSource('sea') && seaOf && SHAPES) {
+      map.addSource('sea', { type: 'geojson', data: seaOf(SHAPES) });
+      // over the relief, under the hill texture and the borders; a little see-through, so the ocean floor's depth still shades it
+      map.addLayer({ id: 'sea', type: 'fill', source: 'sea', paint: { 'fill-color': '#173850', 'fill-opacity': 0.86, 'fill-antialias': false } },
+        map.getLayer('land_pick') ? 'land_pick' : undefined);
+    }
+    if (map.getLayer('sea')) map.setLayoutProperty('sea', 'visibility', on ? 'visible' : 'none');
     map.setPaintProperty('bg', 'background-color', on ? '#0c1e2c' : '#0d0d0d');   // the relief sits at 62% over this dark blue: dimmer (user, 2026-10-07)
     for (const id of ['land', 'land_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0 : 1);
     // THE HILL TEXTURE STAYS ON THE COLOUR MAP (user, 2026-10-07: "like the black
@@ -956,13 +1035,7 @@ function setRelief(on) {
     if (map.getLayer('relief')) map.setLayoutProperty('relief', 'visibility', on ? 'visible' : 'none');
     // the coast line is for the grey map only — the relief's blue sea already draws the shore (user, 2026-10-07)
     if (map.getLayer('coast')) map.setLayoutProperty('coast', 'visibility', on ? 'none' : 'visible');
-    if (!PASSIVE) {
-      setBorders(bordersOn); updateSelColors();   // both depend on the look
-      // the selected border's glow and line are dimmer on the colour map (set once per switch, not per frame)
-      const g = on ? 0.34 : SEL_OPACITY.glow, l = on ? 0.82 : SEL_OPACITY.line;
-      for (const id of ['selglow', 'selglow_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', ['min', 1, ['*', g, ['coalesce', ['feature-state', 'sel'], 0]]]);
-      for (const id of ['selline', 'selline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', ['min', 1, ['*', l, ['coalesce', ['feature-state', 'lin'], 0]]]);
-    }
+    if (!PASSIVE) setBorders(bordersOn);   // their look depends on the map's
     // the lakes read as water on the relief's blue already; keep them, a shade lighter
     if (map.getLayer('lakes')) map.setPaintProperty('lakes', 'fill-opacity', on ? 0.55 : 0.85);
     // no mastery fill on the colour map (user, 2026-10-07: "that's only for the black and white map")
