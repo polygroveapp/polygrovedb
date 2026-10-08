@@ -1079,14 +1079,10 @@ function drawMarks(pts) {
                 // the ones that fit draw; from z8 every sighting shows
                 // EVERY observation from z8 (user, 2026-10-06: "so you can see every
                 // observation"); further out the collision engine thins the pile
-                // WHERE THE PILE-UP STARTS (user, 2026-10-07, two screenshots of the Bay:
-                // the whole Bay at ~z8 piled with ✕s — "this view should have less x's" —
-                // then SF–Oakland at ~z9.6 — "this view should have more"). MapLibre
-                // evaluates these per TILE zoom, a whole number, so the choice is z8 / z9 /
-                // z10: every sighting shows from z9; below it a ✕ that would sit on
-                // another is held back, with only a point of room between them.
-                'icon-allow-overlap': ['step', ['zoom'], false, 9, true], 'icon-ignore-placement': ['step', ['zoom'], false, 9, true],
-                'icon-padding': ['interpolate', ['linear'], ['zoom'], 3, 4, 7, 2, 8, 1, 9, 0],
+                // EVERY ✕, AT EVERY ZOOM (user, 2026-10-07: "show all x's at all times").
+                // The thinning — overlaps held back below z8, then z10, then z9, over two
+                // days — is gone: nothing is hidden, and nothing under the pin is unseen.
+                'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-padding': 0,
                 'symbol-sort-key': kind === 1 ? 0 : kind === 0 ? 1 : 2,
                 // smaller ✕s at the regional zooms, so more of them fit before they are allowed to pile up
                 'icon-size': ['interpolate', ['linear'], ['zoom'], 1.3, 0.36, 4, 0.5, 6, 0.62, 8, 0.9, 10, 1.15] },
