@@ -680,6 +680,10 @@ def _distractors(sid, answer_sid, exclude, k=2):
         if len(cands) >= 12: break
     cands.sort(key=score)
     return cands[:k]
+# every species named in a food-web option, card or not: looked up on iNaturalist for a
+# common name and a licensed photo (fetch_inat_taxa.py), so no option is a bare Latin
+# name beside an empty hexagon (user, 2026-10-08)
+OPT_SIDS = set()
 def q4_lists(sid, trophic, eats, eb):
     partners = {p for p,_ in EATS.get(sid,[])} | {p for p,_ in EB.get(sid,[])} | {sid}
     # DIRECTION EVIDENCE RATIO (user, 2026-08-24): when both directions exist, only ask
@@ -701,12 +705,14 @@ def q4_lists(sid, trophic, eats, eb):
                        "options": sorted([ans]+random.Random(sid*23+7).sample(others, 2))}
     elif eats:
         a = EATS[sid][0][0]
-        opts = [NAME.get(a,str(a))] + [NAME.get(d,str(d)) for d in _distractors(sid, a, partners)]
+        _ds = _distractors(sid, a, partners); OPT_SIDS.update([a, *_ds])
+        opts = [NAME.get(a,str(a))] + [NAME.get(d,str(d)) for d in _ds]
         out['eats'] = {"question": "What is it known to eat?", "answer": NAME.get(a,str(a)),
                        "options": sorted(set(opts))}
     if eb:
         a = EB[sid][0][0]
-        opts = [NAME.get(a,str(a))] + [NAME.get(d,str(d)) for d in _distractors(sid, a, partners)]
+        _ds = _distractors(sid, a, partners); OPT_SIDS.update([a, *_ds])
+        opts = [NAME.get(a,str(a))] + [NAME.get(d,str(d)) for d in _ds]
         out['eatenBy'] = {"question": "What is it known to be eaten by?", "answer": NAME.get(a,str(a)),
                           "options": sorted(set(opts))}
     return out or None
@@ -770,6 +776,17 @@ for sid, canon, cls, kingdom, levels in con.sql("SELECT species_id,canonicalName
 quiz = {c["id"]: {k: c.pop(k) for k in ("q3", "q4") if k in c} for c in cards}
 json.dump(cards, open("catalog.json","w"), ensure_ascii=False, separators=(',',':'))
 json.dump(quiz, open("quiz.json","w"), ensure_ascii=False, separators=(',',':'))
+# the option species, for fetch_inat_taxa.py — and, from what it has already found, the
+# photos of the options that are not cards, keyed by the name the option shows
+_opt = sorted(int(x) for x in OPT_SIDS)
+_canon = dict(con.sql(f"SELECT species_id, canonicalName FROM species WHERE species_id IN ({','.join(map(str,_opt)) or 'NULL'})").fetchall())
+json.dump({str(k): _canon.get(k) for k in _opt if _canon.get(k)}, open("../cache/quiz_options.json","w"))
+_taxa = json.load(open("../cache/inat_taxa.json")) if os.path.exists("../cache/inat_taxa.json") else {}
+_card_sids = {c["species_id"] for c in cards}
+_optphotos = {NAME[k]: _taxa[_canon[k]]["photo"] for k in _opt
+              if k not in _card_sids and k in NAME and _canon.get(k) in _taxa and (_taxa[_canon[k]] or {}).get("photo")}
+json.dump(_optphotos, open("../../explorer/data/option_photos.json","w"), ensure_ascii=False, separators=(',',':'))
+print(f"quiz options: {len(_opt):,} species, {sum(1 for k in _opt if k not in _card_sids):,} not cards, {len(_optphotos):,} with an iNaturalist photo")
 print(f"wrote catalog.json + quiz.json — {len(cards):,} cards ({time.time()-t0:.0f}s total)")
 
 # ---- explorer sync: pipeline pool WITH resolved values (not just flags) --------

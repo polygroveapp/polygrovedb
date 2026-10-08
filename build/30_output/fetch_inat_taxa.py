@@ -24,6 +24,12 @@ cards = json.load(open(os.path.join(ROOT, "explorer", "data", "catalog.json")))
 photos = json.load(open(os.path.join(ROOT, "explorer", "data", "photos.json")))
 cache = json.load(open(CACHE)) if os.path.exists(CACHE) else {}
 need = [c for c in cards if not photos.get(c["id"]) or c["name"].lower() == c["sci"].lower()]
+# …and every species a quiz option names that is not a card (generate_catalog.py writes the list):
+# an answer option should have a picture and an English name too (user, 2026-10-08)
+_qo = os.path.join(ROOT, "build", "cache", "quiz_options.json")
+_card_sids = {c["species_id"] for c in cards}
+extras = [{"sci": sci, "species_id": int(sid)} for sid, sci in (json.load(open(_qo)).items() if os.path.exists(_qo) else []) if int(sid) not in _card_sids]
+need += extras
 todo = [c for c in need if c["sci"] not in cache]
 print(f"{len(need)} cards want a photo or a name · {len(todo)} to look up", flush=True)
 
@@ -70,5 +76,8 @@ for c in cards:
     rec = cache.get(c["sci"]) or {}
     if not photos.get(c["id"]) and rec.get("photo"): inat_photos[c["id"]] = rec["photo"]
     if c["name"].lower() == c["sci"].lower() and rec.get("name"): names[str(c["species_id"])] = rec["name"]
+for e in extras:
+    rec = cache.get(e["sci"]) or {}
+    if rec.get("name"): names[str(e["species_id"])] = rec["name"]
 json.dump(inat_photos, open(OUT_P, "w"), separators=(",", ":")); json.dump(names, open(OUT_N, "w"), indent=0)
 print(f"photos found: {len(inat_photos)} of {sum(1 for c in cards if not photos.get(c['id']))} missing · names found: {len(names)} of {sum(1 for c in cards if c['name'].lower()==c['sci'].lower())} Latin-only  ({(time.time()-t0)/60:.1f}m)")
