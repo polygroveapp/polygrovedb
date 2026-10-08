@@ -875,6 +875,7 @@ map.on('rotate', () => { const b = Math.round(map.getBearing() * 10) / 10;
 // switched on and off under the picker. The relief source is added once;
 // after that it is a visibility flip plus the land fill and the background.
 function setRelief(on) {
+  reliefOn = !!on;
   try {
     if (on && !map.getSource('demtint')) {
       map.addSource('demtint', { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 13, tiles: [TERRAIN] });
@@ -892,6 +893,7 @@ function setRelief(on) {
     if (map.getLayer('relief')) map.setLayoutProperty('relief', 'visibility', on ? 'visible' : 'none');
     // the coast line is for the grey map only — the relief's blue sea already draws the shore (user, 2026-10-07)
     if (map.getLayer('coast')) map.setLayoutProperty('coast', 'visibility', on ? 'none' : 'visible');
+    if (!PASSIVE) setBorders(bordersOn);   // their brightness depends on the look
     // the lakes read as water on the relief's blue already; keep them, a shade lighter
     if (map.getLayer('lakes')) map.setPaintProperty('lakes', 'fill-opacity', on ? 0.55 : 0.85);
     // no mastery fill on the colour map (user, 2026-10-07: "that's only for the black and white map")
@@ -904,7 +906,10 @@ window.polygroveRelief = on => { if (ready) setRelief(!!on); else pendingRelief 
 // ECOREGION BORDERS (user, 2026-10-07: "another button for ecoregion borders"):
 // every region's dashed green outline, on or off; the picker has had them
 // off since 2026-10-06. A constant paint change — no re-tiling.
-function setBorders(on) { for (const id of ['ecoline', 'ecoline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', on ? 0.6 : 0); }
+// On the dark map they are dimmer (user, 2026-10-07: "less bright when they
+// aren't selected") — the pinned region's glowing border is a separate layer.
+let bordersOn = false, reliefOn = false;
+function setBorders(on) { bordersOn = !!on; for (const id of ['ecoline', 'ecoline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', !bordersOn ? 0 : reliefOn ? 0.6 : 0.28); }
 let pendingBorders = null;
 window.polygroveBorders = on => { if (ready) setBorders(!!on); else pendingBorders = !!on; };
 window.polygroveZoom = d => { if (ready) map.easeTo({ zoom: map.getZoom() + d, duration: 300 }); };
