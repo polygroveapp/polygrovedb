@@ -475,7 +475,7 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
   send({ type: 'ready' });
   // the sheet follows the pin WHILE the map moves (2026-09-30): report() dedupes,
   // so a pan that stays in one region sends nothing extra
-  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!PASSIVE) { report(); sendPan(); } else if (MINI != null) highlightPin(); }); });
+  map.on('move', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (!PASSIVE) { report(); reportUnder(); sendPan(); } else if (MINI != null) highlightPin(); }); });
   // report at moveend AND once the tiles for the new view have rendered —
   // right after a fly-to the region under the pin often isn't drawn yet, and
   // queryRenderedFeatures only sees what's drawn
@@ -557,7 +557,7 @@ function highlightPin() {
 let settleTimers = [];
 function settle() {
   report();
-  reportUnder();   // the ✕s under the pin: once the map has settled, not per frame (it walks every mark)
+  reportUnder();
   panSpeed = 0;
   if (settleTimers.length) return;
   settleTimers = [250, 700, 1500, 3000].map(ms => setTimeout(report, ms));
@@ -573,15 +573,23 @@ let lastReported;
 let candidate, candidateSince = 0;
 const STEADY_MS = 0;
 // the ✕ marks within reach of the pin, nearest first (user, 2026-10-06: "a list
-// of all the x's under the pin") — sent with every settle; the app shows them
+// of all the x's under the pin") — sent whenever the set changes, mid-drag included; the app shows them
 let lastUnder = '';
 const markInfo = m => ({ id: m[3], kind: m[2] ?? 1, lng: m[0], lat: m[1], name: m[4] ?? null, sci: m[5] ?? null, date: m[6] ?? null });
 function reportUnder() {
   if (!MARKS.length) { if (lastUnder) { lastUnder = ''; send({ type: 'under', marks: [] }); } return; }
   // literally UNDER THE PIN'S TIP (user, 2026-10-06): a mark counts when the
   // tip sits on its ✕ — a ✕ is ~14 px across on screen at mid zoom
+  // WHILE DRAGGING TOO (user, 2026-10-07: "even as dragging around, not only
+  // when it lands"): this runs every frame of a pan now, so the walk over the
+  // marks is plain arithmetic — a lng/lat box around the pin (the map is flat
+  // and north-up) — and only the few inside it are projected exactly
+  if (!marksShown) return;
   const pt = pinPoint(), R = 14, near = [];
+  const c = map.unproject(pt), rLng = (R + 2) * 360 / (512 * Math.pow(2, map.getZoom())), rLat = rLng * Math.cos(c.lat * Math.PI / 180);
   for (const m of MARKS) {
+    let dx = m[0] - c.lng; if (dx > 180) dx -= 360; else if (dx < -180) dx += 360;
+    if (dx > rLng || dx < -rLng || m[1] - c.lat > rLat || c.lat - m[1] > rLat) continue;
     const q = map.project([m[0], m[1]]);
     const d = Math.hypot(q.x - pt[0], q.y - pt[1]);
     if (d <= R) near.push([d, m]);
