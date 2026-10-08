@@ -30,15 +30,33 @@ ORDER BY n.species_id, mass_g DESC;
 print("AnimalTraits invert sizes:", con.sql("SELECT count(*) FROM animaltraits_size").fetchone()[0])
 
 # 2. GloBI-derived feeding from prey kingdoms
+# EVERY FOOD NAME COUNTS (2026-10-07): a record's target is often a genus,
+# family or order ("Agaricales", "Insecta"), and those used to be dropped
+# because only species-rank names resolved. Now a target that is not one of
+# our species is matched against the higher taxa our species table knows
+# (genus … phylum, kingdom) — unambiguous names only — for its kingdom. The
+# banana slug's 19 mushroom records are what this was for.
+con.sql("""
+CREATE OR REPLACE TEMP TABLE hk AS
+SELECT lower(nm) nm, any_value(kingdom) kingdom FROM (
+  SELECT genus nm, kingdom FROM species WHERE genus IS NOT NULL UNION ALL SELECT family, kingdom FROM species WHERE family IS NOT NULL
+  UNION ALL SELECT "order", kingdom FROM species WHERE "order" IS NOT NULL UNION ALL SELECT class, kingdom FROM species WHERE class IS NOT NULL
+  UNION ALL SELECT phylum, kingdom FROM species WHERE phylum IS NOT NULL UNION ALL SELECT kingdom, kingdom FROM species)
+GROUP BY 1 HAVING count(DISTINCT kingdom)=1;
+CREATE OR REPLACE TEMP TABLE tnames AS SELECT DISTINCT targetTaxonName tn FROM interactions WHERE interactionTypeName IN ('eats','preysOn');
+CREATE OR REPLACE TEMP TABLE tmap AS
+SELECT t.tn, any_value(nt.species_id) sid, any_value(tp.kingdom) kingdom FROM tnames t
+JOIN name2sid nt ON nt.norm_name = norm(t.tn) JOIN species tp ON tp.species_id = nt.species_id GROUP BY 1;
+INSERT INTO tmap SELECT t.tn, NULL, hk.kingdom FROM tnames t JOIN hk ON hk.nm = lower(trim(t.tn)) WHERE t.tn NOT IN (SELECT tn FROM tmap);
+""")
 con.sql("""
 CREATE OR REPLACE TABLE globi_feeding AS
 WITH prey AS (
-  SELECT ns.species_id AS sid, tp.kingdom AS pk, count(*) AS n
+  SELECT ns.species_id AS sid, m.kingdom AS pk, count(*) AS n
   FROM interactions i
   JOIN name2sid ns ON ns.norm_name = norm(i.sourceTaxonName)
-  JOIN name2sid nt ON nt.norm_name = norm(i.targetTaxonName)
-  JOIN species tp ON tp.species_id = nt.species_id
-  WHERE i.interactionTypeName IN ('eats','preysOn') AND ns.species_id <> nt.species_id
+  JOIN tmap m ON m.tn = i.targetTaxonName
+  WHERE i.interactionTypeName IN ('eats','preysOn') AND (m.sid IS NULL OR ns.species_id <> m.sid)
   GROUP BY 1,2
 ), agg AS (
   SELECT sid, coalesce(sum(n) FILTER (WHERE pk='Plantae'),0) AS plant,
