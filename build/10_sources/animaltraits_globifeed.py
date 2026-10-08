@@ -6,8 +6,8 @@
 # - **AnimalTraits** (Herberstein et al. 2022, CC-BY, animaltraits.org): body mass
 #   for 366 invertebrates (insects/arachnids/molluscs) → SIZE. Restricted to
 #   non-Chordata so mass-in-grams never mixes into the vertebrate size units.
-# - **GloBI-derived feeding**: a species' guild inferred from what it eats — prey
-#   mostly plants → Herbivore, mostly animals → Carnivore, mix → Omnivore. Pure
+# - **GloBI-derived feeding**: a species' guild inferred from what it eats — food
+#   mostly fungi → Decomposer, mostly plants → Herbivore, mostly animals → Carnivore, mix → Omnivore. Pure
 #   GloBI (CC-BY) + GBIF taxonomy (CC-BY). Fills feeding for insects etc.
 
 # %%
@@ -41,16 +41,23 @@ WITH prey AS (
   WHERE i.interactionTypeName IN ('eats','preysOn') AND ns.species_id <> nt.species_id
   GROUP BY 1,2
 ), agg AS (
-  SELECT sid, sum(n) FILTER (WHERE pk='Plantae') AS plant,
-              sum(n) FILTER (WHERE pk='Animalia') AS animal
+  SELECT sid, coalesce(sum(n) FILTER (WHERE pk='Plantae'),0) AS plant,
+              coalesce(sum(n) FILTER (WHERE pk='Animalia'),0) AS animal,
+              coalesce(sum(n) FILTER (WHERE pk='Fungi'),0) AS fungi      -- lichens are Fungi too
   FROM prey GROUP BY 1
 )
+-- DECOMPOSERS (user, 2026-10-07: the California banana slug came out Carnivore —
+-- its 19 mushroom and 3 lichen records were not counted at all, leaving 5 records
+-- of it on a dead mouse and a dead woodpecker). A species whose recorded food is
+-- mostly fungi is a decomposer in the game's five-role sense; the plant/animal
+-- split is judged only on what is left.
 SELECT sid AS species_id,
-  CASE WHEN coalesce(plant,0) >= 0.8*(coalesce(plant,0)+coalesce(animal,0)) THEN 'Herbivore'
-       WHEN coalesce(animal,0) >= 0.8*(coalesce(plant,0)+coalesce(animal,0)) THEN 'Carnivore'
+  CASE WHEN fungi >= 0.5*(plant+animal+fungi) THEN 'Decomposer'
+       WHEN plant >= 0.8*(plant+animal) THEN 'Herbivore'
+       WHEN animal >= 0.8*(plant+animal) THEN 'Carnivore'
        ELSE 'Omnivore' END AS niche
 FROM agg
-WHERE coalesce(plant,0)+coalesce(animal,0) > 0;
+WHERE plant+animal+fungi > 0;
 """)
 r=con.sql("SELECT niche, count(*) FROM globi_feeding WHERE niche IS NOT NULL GROUP BY 1").fetchall()
 print("GloBI-derived feeding:", dict(r))

@@ -116,6 +116,20 @@ SELECT sid, arg_min(t, lpad(pri::VARCHAR,2,'0')||'|'||t) AS t, arg_min(src, lpad
   -- GloBI record-count inference but below anything measured per-species.
   UNION ALL SELECT species_id, 'Carnivore', 4, 'taxonomy floor', 'definitional'
   FROM species WHERE "order" IN ('Odonata','Araneae')
+  -- DECOMPOSERS BY GROUP (user, 2026-10-07: "make sure there is an accurate
+  -- decomposer class"): the detritivores every ecology class names — earthworms,
+  -- millipedes, springtails, woodlice, termites, dung beetles, carrion and hide
+  -- beetles — are decomposers by what the whole group does, so 'definitional',
+  -- ranked above EOL's guilds (which call earthworms herbivores) and below a
+  -- per-species measurement. Scavenging birds and mammals are NOT here: a vulture
+  -- is a carnivore in the game's five roles, as the trait databases say.
+  UNION ALL SELECT species_id, 'Decomposer', 2, 'taxonomy floor', 'definitional'
+  FROM species WHERE class IN ('Diplopoda','Collembola') OR "order"='Collembola'
+     OR family IN ('Lumbricidae','Megascolecidae','Glossoscolecidae','Acanthodrilidae','Eudrilidae','Octochaetidae',
+                   'Armadillidiidae','Porcellionidae','Oniscidae','Philosciidae','Trichoniscidae','Trachelipodidae','Agnaridae','Cylisticidae','Platyarthridae',
+                   'Termitidae','Rhinotermitidae','Kalotermitidae','Termopsidae','Hodotermitidae','Mastotermitidae','Archotermopsidae',
+                   'Silphidae','Trogidae','Dermestidae')
+     OR (family='Scarabaeidae' AND genus IN ('Onthophagus','Aphodius','Phanaeus','Canthon','Scarabaeus','Copris','Geotrupes','Dichotomius','Deltochilum','Onitis','Sisyphus','Kheper','Gymnopleurus'))
   UNION ALL SELECT species_id, niche, 5, 'GloBI (from recorded prey)', 'inferred' FROM globi_feeding WHERE niche IS NOT NULL) sub
 WHERE t IS NOT NULL GROUP BY sid;""")
 # SIZE — only UNIT-TAGGED sources so a same-group comparison is like-with-like
