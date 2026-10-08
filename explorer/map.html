@@ -903,7 +903,14 @@ function setRelief(on) {
     }
     map.setPaintProperty('bg', 'background-color', on ? '#0c1e2c' : '#0d0d0d');   // the relief sits at 62% over this dark blue: dimmer (user, 2026-10-07)
     for (const id of ['land', 'land_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-opacity', on ? 0 : 1);
-    if (map.getLayer('hillshade')) map.setLayoutProperty('hillshade', 'visibility', on ? 'none' : 'visible');
+    // THE HILL TEXTURE STAYS ON THE COLOUR MAP (user, 2026-10-07: "like the black
+    // and white map has"): the same hillshade, drawn over the relief, with a
+    // little more light in the highlights so slopes read against colour
+    if (map.getLayer('hillshade')) {
+      map.setLayoutProperty('hillshade', 'visibility', 'visible');
+      map.setPaintProperty('hillshade', 'hillshade-highlight-color', on ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.09)');
+      map.setPaintProperty('hillshade', 'hillshade-shadow-color', on ? 'rgba(0,0,0,0.75)' : '#000000');
+    }
     if (map.getLayer('relief')) map.setLayoutProperty('relief', 'visibility', on ? 'visible' : 'none');
     // the coast line is for the grey map only — the relief's blue sea already draws the shore (user, 2026-10-07)
     if (map.getLayer('coast')) map.setLayoutProperty('coast', 'visibility', on ? 'none' : 'visible');
