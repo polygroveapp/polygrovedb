@@ -327,6 +327,22 @@
     display:flex;align-items:center;gap:7px;padding:0 12px;border-radius:999px;overflow:hidden;
     background:rgba(14,21,18,.85);border:1px solid var(--line);backdrop-filter:blur(8px)}
   .obsamt .xk{color:#ffe14d;font-weight:700;font-size:11px;line-height:1}
+  /* the app's timeline bar (ObsTimeline.tsx), in the slider's pill */
+  .obstl{cursor:pointer;touch-action:none;padding:0}
+  .obstl .bars{position:absolute;left:12px;right:12px;top:0;bottom:0;display:flex;align-items:center;gap:2px;pointer-events:none}
+  .obstl .bars i{flex:1;min-width:1px;border-radius:1.5px;background:rgba(255,255,255,.22)}
+  .obstl .bars i.on{background:#ffe14d;opacity:.9}
+  .obstl .rail{position:absolute;left:12px;right:12px;top:0;bottom:0;pointer-events:none}
+  .obstl .th{position:absolute;top:4px;bottom:4px;width:4px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .obstl.drag .th{top:2px;bottom:2px;width:6px;margin-left:-3px;background:#ffe14d}
+  .obstip{position:absolute;left:50%;transform:translateX(-50%);bottom:48px;z-index:36;display:none;padding:5px 12px;border-radius:12px;white-space:nowrap;
+    background:rgba(10,15,10,.92);border:1px solid rgba(255,225,77,.35);color:#ffe14d;font-size:12px;font-weight:700;pointer-events:none}
+  .obstip.on{display:block}
+  .hasmon .obstip{bottom:82px}
+  /* the ⓘ is a circle as tall as the bar beside it (user, 2026-10-08) */
+  .maplibregl-ctrl-attrib.maplibregl-compact{min-height:30px!important;border-radius:15px!important}
+  .maplibregl-ctrl-attrib-button{width:30px!important;height:30px!important;line-height:28px!important;box-sizing:border-box}
+  .maplibregl-ctrl-attrib.maplibregl-compact-show{padding-right:34px!important}
   /* month filter bar (user, 2026-09-25, final home): the ENTIRE bottom edge,
      below every other control — All Jan Feb ... Dec, horizontal */
   .obsmon{position:absolute;bottom:8px;left:10px;right:10px;z-index:35;height:26px;box-sizing:border-box;
@@ -2967,6 +2983,9 @@ async function renderRangeMap(ids,sci,opts){
           // have no bitwise ops). Both persist across page navigations.
           filter:(window._obsFilter=()=>{ const conds=[]; const amt=window._obsAmt??1;
             if(amt<1) conds.push(['<',['get','q'],amt]);
+            // the timeline bar: recorded in any month from January up to this one
+            const up=window._obsUpTo??12;
+            if(hasMonths&&up<12) conds.push(up<=0?['<',['get','q'],-1]:['>=',['%',['get','ms'],Math.pow(2,up)],1]);
             const m=window._obsMonth||0;
             if(m&&hasMonths) conds.push(['==',['%',['floor',['/',['get','ms'],Math.pow(2,m-1)]],2],1]);
             return conds.length>1?['all',...conds]:(conds[0]||['<',['get','q'],2]); })(),
@@ -2990,9 +3009,40 @@ async function renderRangeMap(ids,sci,opts){
         setTimeout(()=>{ if(map.getLayer('obsdots')) map.setPaintProperty('obsdots','icon-opacity',0.92); }, 2100);
         // ✕ amount slider, bottom edge between − and i (user, 2026-09-25)
         const amtWrap=document.createElement('div'); amtWrap.className='obsamt';
+        if(!hasMonths){
         amtWrap.innerHTML=`<input type="range" min="0" max="100" value="${Math.round((window._obsAmt??1)*100)}" title="How many sightings show">`;
         amtWrap.lastChild.oninput=e=>{ window._obsAmt=+e.target.value/100;
           if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', window._obsFilter()); };
+        } else {
+          // THE APP'S TIMELINE BAR (user, 2026-10-08: "have this bar be the same bar that
+          // shows observations over time as the app"; it was a how-many slider). The dots
+          // here carry the MONTHS they were recorded in, not dates, so the bar runs
+          // January → December: a bar per month, as tall as the places recorded in it, and
+          // a thumb you drag back through the year — the map shows what was recorded from
+          // January up to that month. Far right (where it rests) is the whole year; far
+          // left, nothing.
+          window._obsAmt=1;
+          const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const cnt=new Array(12).fill(0); for(const c of cells){ const ms=c[3]||0; for(let m=0;m<12;m++) if(ms&(1<<m)) cnt[m]++; }
+          const top=Math.max(1,...cnt);
+          amtWrap.classList.add('obstl'); amtWrap.title='Sightings through the year — drag';
+          amtWrap.innerHTML=`<div class="bars">${cnt.map(c=>`<i style="height:${c?4+18*Math.sqrt(c/top):2}px"></i>`).join('')}</div><div class="rail"><div class="th"></div></div>`;
+          const tip=document.createElement('div'); tip.className='obstip'; el.appendChild(tip);
+          const paint=()=>{ const up=window._obsUpTo??12;
+            amtWrap.querySelectorAll('.bars i').forEach((b,i)=>b.classList.toggle('on',i<up));
+            amtWrap.querySelector('.th').style.left=(up/12*100)+'%';
+            const seen=cells.filter(c=>up>=12||((c[3]||0)%Math.pow(2,up))>=1).length;
+            tip.textContent=up>=12?`all year · ${cells.length.toLocaleString()} places`:up<=0?'before January':`January – ${MO[up-1]} · ${seen.toLocaleString()} of ${cells.length.toLocaleString()} places`; };
+          const move=ev=>{ const r=amtWrap.getBoundingClientRect();
+            const up=Math.max(0,Math.min(12,Math.round(12*(ev.clientX-r.left-12)/Math.max(1,r.width-24))));
+            if(up===(window._obsUpTo??12)) return;
+            window._obsUpTo=up; paint();
+            if(_mapAlive(map)&&map.getLayer('obsdots')) map.setFilter('obsdots', window._obsFilter()); };
+          amtWrap.onpointerdown=ev=>{ ev.preventDefault(); ev.stopPropagation(); amtWrap.setPointerCapture(ev.pointerId); amtWrap.classList.add('drag'); tip.classList.add('on'); move(ev); };
+          amtWrap.onpointermove=ev=>{ if(amtWrap.classList.contains('drag')) move(ev); };
+          amtWrap.onpointerup=amtWrap.onpointercancel=()=>{ amtWrap.classList.remove('drag'); tip.classList.remove('on'); };
+          paint();
+        }
         el.appendChild(amtWrap);
         // MONTH buttons: one per month + All (user, 2026-09-25) — only once the
         // shards carry month bitmasks (hasMonths), so old data shows no dead row
