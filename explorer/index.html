@@ -2389,6 +2389,27 @@ async function renderRangeMap(ids,sci,opts){
              'line-width':['interpolate',['linear'],['zoom'],1,0.4,5,0.8,7.5,1.2],
              'line-opacity':opts.focusEco!=null?0.6:0.85},
              opts.focusEco!=null?{'line-dasharray':[1.6,1.9]}:{})});
+    // THE HILL TEXTURE, ACTUALLY SEEN (user, 2026-10-07: "add that texture to the
+    // website maps as well"). The hillshade layer is added once, when the map
+    // loads; every page then re-adds 'land' (opaque) and the colour relief
+    // ABOVE it, which buried the shading — it only resurfaced on species pages
+    // that have ✕ dots (the moveLayer further down). Whenever it sits below the
+    // land it is lifted to just under the borders, over the land and the
+    // relief; on the colour pages its highlights are a little brighter and the
+    // shadows a little softer, as on the app's colour map. Retried, because on
+    // a first visit the hillshade can arrive after this.
+    const liftShade=()=>{ try{
+      if(!_mapAlive(map)||!map.getLayer('hillshade')) return;
+      const ids=map.getStyle().layers.map(l=>l.id);
+      if(ids.indexOf('hillshade')<ids.indexOf('land')){
+        const before=['ecoline','range','focushl-glow','focushl','lakes'].find(l=>map.getLayer(l));
+        map.moveLayer('hillshade',before);
+      }
+      const tint=!!map.getLayer('relief');
+      map.setPaintProperty('hillshade','hillshade-highlight-color',tint?'rgba(255,255,255,0.16)':'rgba(255,255,255,0.09)');
+      map.setPaintProperty('hillshade','hillshade-shadow-color',tint?'rgba(0,0,0,0.75)':'#000000');
+    }catch(e){} };
+    liftShade(); setTimeout(liftShade,1500); setTimeout(liftShade,4500);
     // markers live INSIDE the symbol layers (generated canvas icons), so the
     // collision engine culls dot+name as one unit — no orphan dots without names
     // (user, 2026-09-08). Parks get a dashed ring: the cartographic mark for a
