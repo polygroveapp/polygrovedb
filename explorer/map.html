@@ -89,14 +89,17 @@ let PAD = { top: 0, bottom: 0 };
 const TERRAIN = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
 map.on('load', async () => {
-  const [geo, lakes, labels, parks, cities] = await Promise.all([
+  const [geo, lakes, labels, parks, cities, sea1] = await Promise.all([
     fetch('data/eco_simple.geojson', { cache: 'no-cache' }).then(r => r.json()),
     fetch('data/lakes.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('data/admin_labels.geojson', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('data/parks.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
     fetch('data/cities.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
+    // the sea at first-paint detail (see THE SEA FILES below); null if the file is missing
+    fetch('data/sea_simple.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(d => d && normSea(d)).catch(() => null),
   ]);
   GEO = geo; SHAPES = geo; seaOf = fc => coastOf(fc, true);
+  if (sea1) { SEA = sea1; seaTier = 1; }
   // every feature carries its ecoregion id as its feature id (2026-10-07) —
   // set on the data itself; promoteId is not honoured by this build
   const ROUND_COAST = { 'line-join': 'round', 'line-cap': 'round' };
@@ -106,7 +109,6 @@ map.on('load', async () => {
 // that then runs clockwise has land all round its outside — it encloses
 // water, a lake — and is dropped unless it is sea-sized (the Caspian and a
 // closed-off Black Sea keep their shores; the Great Lakes do not).
-const LAKE_MAX = 30;   // square degrees; the Great Lakes together are ~23, the Caspian ~40
 // THE SEA, FOR THE COLOUR MAP (user, 2026-10-07: "why is the sf bay green?").
 // The colour relief paints by elevation, and the elevation tiles give sheltered
 // water — a bay, a sound, an estuary — its surface height, ~0 m, so it came
@@ -257,17 +259,15 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
     map.addSource('lakes', { type: 'geojson', data: lakes });
     map.addLayer({ id: 'lakes', type: 'fill', source: 'lakes', paint: { 'fill-color': '#1d4266', 'fill-opacity': 0.85, 'fill-outline-color': '#2f5e8c' } });
   }
-  // THE COAST, A WHITE LINE (user, 2026-10-07: "a white line for the coasts to
-  // make that more distinct"). No coastline file: neighbouring ecoregions
-  // share their borders exactly, so a border segment that belongs to only
-  // ONE region has no land on its other side — it is the shore. coastOf() counts the segments and chains the
-  // lone ones into lines; it runs once per geometry (first paint, then the
-  // detailed file). Drawn above the land and the colour relief, below names.
-  map.addSource('coast', { type: 'geojson', data: coastOf(geo) });
+  // THE COAST, A GREY LINE (user, 2026-10-07: "a white line for the coasts to
+  // make that more distinct", then "more grey"). From the sea files when they
+  // are there (the landmass outlines of the mask — coasts, no lakes); else
+  // derived from the ecoregion outlines: a border segment that belongs to only
+  // ONE region has no land on its other side, so it is the shore (coastOf()).
+  // Drawn above the land and the colour relief, below names.
+  map.addSource('coast', { type: 'geojson', data: SEA ? coastFromSea(SEA) : coastOf(geo) });
   map.addLayer({ id: 'coast', type: 'line', source: 'coast', layout: ROUND_COAST,
-    // it fades out by z8.5: it is drawn from the mid-detail outlines, and once the
-    // high-detail ones take over, its straighter chords cut across bays (seen at San Francisco)
-    paint: { 'line-color': '#9aa1a8', 'line-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.7, 8.5, 0],   // white at first, then "more grey" (user, 2026-10-07)
+    paint: { 'line-color': '#9aa1a8', 'line-opacity': 0.7,
              'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.45, 4, 0.8, 7, 1.2, 10, 1.6] } });
   // DETAILED BORDERS once zoomed in (2026-09-29): the first-paint geometry is
   // ~60k vertices; past z3.2 the ~450k-vertex file replaces it. Both are
@@ -276,8 +276,11 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
   const loadDetail = (force) => {
     if (detail || PASSIVE || (force !== true && map.getZoom() < 3.2)) return;
     detail = true; map.off('zoomend', loadDetail);
+    fetchSea(2);   // and the sea at matching detail
     fetch('data/eco_detail.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); SHAPES = d; if (map.getSource('sea')) map.getSource('sea').setData(seaOf(d)); if (map.getSource('coast')) map.getSource('coast').setData(coastOf(d)); } else detail = false; })
+      .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); SHAPES = d;
+        // without the sea files, the mask and the coast come from these outlines
+        if (!SEA) { if (map.getSource('sea')) map.getSource('sea').setData(seaOf(d)); if (map.getSource('coast')) map.getSource('coast').setData(coastOf(d)); } } else detail = false; })
       .catch(() => { detail = false; });
   };
   map.on('zoomend', loadDetail);
@@ -561,7 +564,7 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
     // the minimap's region is the same steady green — it never flashes (the
     // flash loop only runs on the picker), so the picture the app keeps is
     // always the same
-    for (const id of ['selfill', 'selfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', FULL_YELLOW);   // gold (user, 2026-10-07)
+    for (const id of ['selfill', 'selfill_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-color', SEL_GREEN);   // green (user, 2026-10-07: gold for the day, then "make this green actually")
     setSelected(MINI);
     const b = bboxOf(MINI);
     if (b) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 28, duration: 0, maxZoom: 3.6 });
@@ -803,7 +806,7 @@ function updateSelColors() {
   const pairs = [];
   for (const e of collected) pairs.push(+e, borderColorOf(e));
   // the same on the colour map (user, 2026-10-07: gold there for half an hour, then "green actually")
-  const expr = MINI != null ? FULL_YELLOW : pairs.length ? ['match', ['get', 'eco'], ...pairs, OUTLINE_GREEN] : OUTLINE_GREEN;
+  const expr = MINI != null ? SEL_GREEN : pairs.length ? ['match', ['get', 'eco'], ...pairs, OUTLINE_GREEN] : OUTLINE_GREEN;
   for (const id of ['selglow', 'selline', 'selglow_hd', 'selline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-color', expr);
 }
 function setSelected(eid) {
@@ -900,7 +903,7 @@ function paintScale() {
 const OUTLINE_GREEN = '#81C784';
 const masteryAt = (e) => (completed.includes(+e) ? 1 : progress[e] || 0);
 // the Camp picture's region is gold (user, 2026-10-07)
-const borderColorOf = (e) => (MINI != null ? FULL_YELLOW : e == null || !collected.includes(+e) ? OUTLINE_GREEN : lerp(OUTLINE_GREEN, FULL_YELLOW, masteryAt(e)));
+const borderColorOf = (e) => (MINI != null ? SEL_GREEN : e == null || !collected.includes(+e) ? OUTLINE_GREEN : lerp(OUTLINE_GREEN, FULL_YELLOW, masteryAt(e)));
 // load the high-detail outline of everything on screen, once zoomed in
 const hdBusy = new Set();
 function loadHD() {
@@ -995,7 +998,45 @@ map.on('rotate', () => { const b = Math.round(map.getBearing() * 10) / 10;
 // switched on and off under the picker. The relief source is added once;
 // after that it is a visibility flip plus the land fill and the background.
 let forceDetail = null;   // fetch the detailed outlines now, whatever the zoom
-let SHAPES = null, seaOf = null;   // the outlines in use, and the mask builder (made where the outlines load)
+let SHAPES = null, seaOf = null;   // the outlines in use, and the runtime mask builder (made where the outlines load)
+// THE SEA FILES (2026-10-07 — "needs some work still": the runtime mask followed
+// eco_detail's coast, 3–13 km inside the East Bay shore, and painted Oakland
+// as water). data/sea_simple.geojson and data/sea_detail.geojson are built by
+// build/30_output/export_sea.sh: the raw RESOLVE polygons dissolved into one
+// land shape and erased from a world rectangle, the coast kept at far higher
+// fidelity than the ecoregion tiers can afford. The ocean is the big polygon
+// whose holes are the landmasses; enclosed waters are their own small polygons.
+// Both the mask (colour map) and the coast line (dark map) come from them;
+// the runtime builder stays as the fallback when a file is missing.
+const LAKE_MAX = 30;   // square degrees: enclosed water smaller than this is a lake (the Great Lakes together are ~23, the Caspian ~40)
+let SEA = null, seaTier = 0;   // the sea in use; 1 = simple, 2 = detail
+// mapshaper writes the attribute-less layer as a bare GeometryCollection: made a Feature
+const normSea = (g) => g.type === 'GeometryCollection' ? { type: 'Feature', properties: {}, geometry: g.geometries.length === 1 ? g.geometries[0] : { type: 'MultiPolygon', coordinates: g.geometries.flatMap(x => x.type === 'Polygon' ? [x.coordinates] : x.coordinates) } }
+  : g.type === 'Feature' || g.type === 'FeatureCollection' ? g : { type: 'Feature', properties: {}, geometry: g };
+function coastFromSea(fc) {
+  const geoms = fc.type === 'FeatureCollection' ? fc.features.map(f => f.geometry) : [fc.geometry || fc];
+  const area = (l) => { let a = 0; for (let i = 1; i < l.length; i++) a += l[i - 1][0] * l[i][1] - l[i][0] * l[i - 1][1]; return Math.abs(a) / 2; };
+  const lines = [];
+  for (const g of geoms) { if (!g) continue; for (const poly of (g.type === 'Polygon' ? [g.coordinates] : g.coordinates)) {
+    const A = area(poly[0]);
+    if (A > 1000) { for (let i = 1; i < poly.length; i++) lines.push(poly[i]); }   // the ocean: its holes are the landmasses
+    else if (A >= LAKE_MAX) lines.push(poly[0]);                                   // an enclosed sea (the Caspian) keeps its shore
+    // smaller enclosed water is a lake: no line (user, 2026-10-07: "lakes should not have this border")
+  } }
+  return { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: lines } };
+}
+function applySea(fc, tier) {
+  if (tier < seaTier) return;
+  SEA = fc; seaTier = tier;
+  if (map.getSource('coast')) map.getSource('coast').setData(coastFromSea(fc));
+  if (map.getSource('sea')) map.getSource('sea').setData(fc);
+}
+let seaFetched = 0;
+function fetchSea(tier) {
+  if (seaFetched >= tier) return; seaFetched = tier;
+  fetch(`data/sea_${tier === 2 ? 'detail' : 'simple'}.geojson`, { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
+    .then(d => { if (d) applySea(normSea(d), tier); else if (seaFetched === tier) seaFetched = tier - 1; }).catch(() => { if (seaFetched === tier) seaFetched = tier - 1; });
+}
 function setRelief(on) {
   reliefOn = !!on;
   try {
@@ -1015,8 +1056,8 @@ function setRelief(on) {
     // across the Congo at world zoom): the mask wants the detailed ones, so
     // they are fetched as soon as the colour map is on
     if (on && forceDetail) forceDetail();
-    if (on && !map.getSource('sea') && seaOf && SHAPES) {
-      map.addSource('sea', { type: 'geojson', data: seaOf(SHAPES) });
+    if (on && !map.getSource('sea') && (SEA || (seaOf && SHAPES))) {
+      map.addSource('sea', { type: 'geojson', data: SEA || seaOf(SHAPES) });
       // over the relief, under the hill texture and the borders; a little see-through, so the ocean floor's depth still shades it
       map.addLayer({ id: 'sea', type: 'fill', source: 'sea', paint: { 'fill-color': '#173850', 'fill-opacity': 0.86, 'fill-antialias': false } },
         map.getLayer('land_pick') ? 'land_pick' : undefined);
