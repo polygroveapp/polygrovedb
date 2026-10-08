@@ -261,13 +261,14 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
   }
   // THE COAST, A GREY LINE (user, 2026-10-07: "a white line for the coasts to
   // make that more distinct", then "more grey"). From the sea files when they
-  // are there (the landmass outlines of the mask — coasts, no lakes); else
+  // came in pieces (see THE SEA FILES) the line is again
   // derived from the ecoregion outlines: a border segment that belongs to only
   // ONE region has no land on its other side, so it is the shore (coastOf()).
   // Drawn above the land and the colour relief, below names.
-  map.addSource('coast', { type: 'geojson', data: SEA ? coastFromSea(SEA) : coastOf(geo) });
+  map.addSource('coast', { type: 'geojson', data: coastOf(geo) });
   map.addLayer({ id: 'coast', type: 'line', source: 'coast', layout: ROUND_COAST,
-    paint: { 'line-color': '#9aa1a8', 'line-opacity': 0.7,
+    // it fades out by z8.5: drawn from the mid-detail outlines, its chords cut across bays up close
+    paint: { 'line-color': '#9aa1a8', 'line-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0.7, 8.5, 0],
              'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.45, 4, 0.8, 7, 1.2, 10, 1.6] } });
   // DETAILED BORDERS once zoomed in (2026-09-29): the first-paint geometry is
   // ~60k vertices; past z3.2 the ~450k-vertex file replaces it. Both are
@@ -280,7 +281,8 @@ const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco;
     fetch('data/eco_detail.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
       .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); SHAPES = d;
         // without the sea files, the mask and the coast come from these outlines
-        if (!SEA) { if (map.getSource('sea')) map.getSource('sea').setData(seaOf(d)); if (map.getSource('coast')) map.getSource('coast').setData(coastOf(d)); } } else detail = false; })
+        if (map.getSource('coast')) map.getSource('coast').setData(coastOf(d));
+        if (!SEA && map.getSource('sea')) map.getSource('sea').setData(seaOf(d)); } else detail = false; })
       .catch(() => { detail = false; });
   };
   map.on('zoomend', loadDetail);
@@ -1005,30 +1007,17 @@ let SHAPES = null, seaOf = null;   // the outlines in use, and the runtime mask 
 // build/30_output/export_sea.sh: the raw RESOLVE polygons dissolved into one
 // land shape and erased from a world rectangle, the coast kept at far higher
 // fidelity than the ecoregion tiers can afford. The ocean is the big polygon
-// whose holes are the landmasses; enclosed waters are their own small polygons.
-// Both the mask (colour map) and the coast line (dark map) come from them;
-// the runtime builder stays as the fallback when a file is missing.
+// The sea comes in 10° pieces: as one world-sized polygon it broke up in the
+// coarse tiles the small Camp picture uses (blue wedges across Nevada).
+// The runtime builder stays as the fallback when a file is missing.
 const LAKE_MAX = 30;   // square degrees: enclosed water smaller than this is a lake (the Great Lakes together are ~23, the Caspian ~40)
 let SEA = null, seaTier = 0;   // the sea in use; 1 = simple, 2 = detail
 // mapshaper writes the attribute-less layer as a bare GeometryCollection: made a Feature
-const normSea = (g) => g.type === 'GeometryCollection' ? { type: 'Feature', properties: {}, geometry: g.geometries.length === 1 ? g.geometries[0] : { type: 'MultiPolygon', coordinates: g.geometries.flatMap(x => x.type === 'Polygon' ? [x.coordinates] : x.coordinates) } }
+const normSea = (g) => g.type === 'GeometryCollection' ? { type: 'FeatureCollection', features: g.geometries.map(x => ({ type: 'Feature', properties: {}, geometry: x })) }
   : g.type === 'Feature' || g.type === 'FeatureCollection' ? g : { type: 'Feature', properties: {}, geometry: g };
-function coastFromSea(fc) {
-  const geoms = fc.type === 'FeatureCollection' ? fc.features.map(f => f.geometry) : [fc.geometry || fc];
-  const area = (l) => { let a = 0; for (let i = 1; i < l.length; i++) a += l[i - 1][0] * l[i][1] - l[i][0] * l[i - 1][1]; return Math.abs(a) / 2; };
-  const lines = [];
-  for (const g of geoms) { if (!g) continue; for (const poly of (g.type === 'Polygon' ? [g.coordinates] : g.coordinates)) {
-    const A = area(poly[0]);
-    if (A > 1000) { for (let i = 1; i < poly.length; i++) lines.push(poly[i]); }   // the ocean: its holes are the landmasses
-    else if (A >= LAKE_MAX) lines.push(poly[0]);                                   // an enclosed sea (the Caspian) keeps its shore
-    // smaller enclosed water is a lake: no line (user, 2026-10-07: "lakes should not have this border")
-  } }
-  return { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: lines } };
-}
 function applySea(fc, tier) {
   if (tier < seaTier) return;
   SEA = fc; seaTier = tier;
-  if (map.getSource('coast')) map.getSource('coast').setData(coastFromSea(fc));
   if (map.getSource('sea')) map.getSource('sea').setData(fc);
 }
 let seaFetched = 0;
