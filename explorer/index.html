@@ -2062,6 +2062,11 @@ function pageMap(create){
     for(const id of page.sources){ try{ if(real.getSource(id)) real.removeSource(id); }catch(e){} }
     // what the page hung on the container itself (legend, tooltip, sliders)
     for(const ch of [...real.getContainer().children]) if(!/(^|\s)maplibregl-/.test(ch.className||'')) ch.remove();
+    // …and the class that lifts the bottom controls above the month bar. The bar
+    // goes with the children above, but the class stayed on the shared container,
+    // so after a species page every other page's + − ⓘ floated 34px up over
+    // nothing (user, 2026-10-08: "these are floating up a little")
+    real.getContainer().classList.remove('hasmon');
   };
   const wrap=new Proxy(real,{ get(t,prop){
     if(prop==='remove') return end;
