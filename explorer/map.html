@@ -906,10 +906,20 @@ window.polygroveRelief = on => { if (ready) setRelief(!!on); else pendingRelief 
 // ECOREGION BORDERS (user, 2026-10-07: "another button for ecoregion borders"):
 // every region's dashed green outline, on or off; the picker has had them
 // off since 2026-10-06. A constant paint change — no re-tiling.
-// On the dark map they are dimmer (user, 2026-10-07: "less bright when they
-// aren't selected") — the pinned region's glowing border is a separate layer.
+// On the dark map they are DOTTED GREY, darker than the coast line (user,
+// 2026-10-07 — first "less bright when they aren't selected", then this);
+// on the colour map the dashed green they always were. The pinned region's
+// glowing border is a separate layer. Constant paint: no re-tiling.
 let bordersOn = false, reliefOn = false;
-function setBorders(on) { bordersOn = !!on; for (const id of ['ecoline', 'ecoline_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', !bordersOn ? 0 : reliefOn ? 0.6 : 0.28); }
+function setBorders(on) {
+  bordersOn = !!on;
+  for (const id of ['ecoline', 'ecoline_hd']) {
+    if (!map.getLayer(id)) continue;
+    map.setPaintProperty(id, 'line-color', reliefOn ? '#81C784' : '#646a71');
+    map.setPaintProperty(id, 'line-dasharray', reliefOn ? [1.6, 1.9] : [0.2, 2.4]);   // round caps turn the short dash into a dot
+    map.setPaintProperty(id, 'line-opacity', !bordersOn ? 0 : reliefOn ? 0.6 : 0.85);
+  }
+}
 let pendingBorders = null;
 window.polygroveBorders = on => { if (ready) setBorders(!!on); else pendingBorders = !!on; };
 window.polygroveZoom = d => { if (ready) map.easeTo({ zoom: map.getZoom() + d, duration: 300 }); };
