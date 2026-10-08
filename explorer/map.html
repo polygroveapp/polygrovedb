@@ -98,7 +98,46 @@ map.on('load', async () => {
   GEO = geo;
   // every feature carries its ecoregion id as its feature id (2026-10-07) —
   // set on the data itself; promoteId is not honoured by this build
-  const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco; return fc; };
+  const ROUND_COAST = { 'line-join': 'round', 'line-cap': 'round' };
+// the shore of a set of ecoregions: every ring segment that only one region owns, chained into lines
+function coastOf(fc) {
+  const K = (p) => Math.round(p[0] * 1e5) + ',' + Math.round(p[1] * 1e5);
+  const count = new Map(), pts = new Map();
+  for (const f of fc.features) {
+    const g = f.geometry, polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+    for (const poly of polys) for (const ring of poly) {
+      let ka = K(ring[0]); pts.set(ka, ring[0]);
+      for (let i = 1; i < ring.length; i++) {
+        const kb = K(ring[i]);
+        if (kb !== ka) { pts.set(kb, ring[i]); const k = ka < kb ? ka + '|' + kb : kb + '|' + ka; count.set(k, (count.get(k) || 0) + 1); }
+        ka = kb;
+      }
+    }
+  }
+  // lone segments, minus the cuts along the antimeridian and the south pole
+  const adj = new Map(), add = (a, b) => { let l = adj.get(a); if (!l) adj.set(a, l = []); l.push(b); };
+  for (const [k, n] of count) {
+    if (n !== 1) continue;
+    const [a, b] = k.split('|'), pa = pts.get(a), pb = pts.get(b);
+    if ((Math.abs(pa[0]) > 179.99 && Math.abs(pb[0]) > 179.99) || (pa[1] < -89.9 && pb[1] < -89.9)) continue;
+    add(a, b); add(b, a);
+  }
+  const lines = [];
+  for (const start of adj.keys()) {
+    for (;;) {
+      const first = adj.get(start); if (!first || !first.length) break;
+      const line = [pts.get(start)]; let cur = start;
+      for (;;) {
+        const l = adj.get(cur); if (!l || !l.length) break;
+        const nxt = l.pop(), back = adj.get(nxt); back.splice(back.indexOf(cur), 1);
+        line.push(pts.get(nxt)); cur = nxt;
+      }
+      if (line.length > 1) lines.push(line);
+    }
+  }
+  return { type: 'Feature', geometry: { type: 'MultiLineString', coordinates: lines }, properties: {} };
+}
+const withIds = (fc) => { for (const f of fc.features) f.id = +f.properties.eco; return fc; };
   map.addSource('eco', { type: 'geojson', data: withIds(geo) });
   // the explorer's Ecoregions-page stack, in order
   map.addLayer({ id: 'land', type: 'fill', source: 'eco', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
@@ -135,6 +174,17 @@ map.on('load', async () => {
     map.addSource('lakes', { type: 'geojson', data: lakes });
     map.addLayer({ id: 'lakes', type: 'fill', source: 'lakes', paint: { 'fill-color': '#1d4266', 'fill-opacity': 0.85, 'fill-outline-color': '#2f5e8c' } });
   }
+  // THE COAST, A WHITE LINE (user, 2026-10-07: "a white line for the coasts to
+  // make that more distinct"). No coastline file: neighbouring ecoregions
+  // share their borders exactly, so a border segment that belongs to only
+  // ONE region has no land on its other side — it is the shore (or a lake
+  // shore, or an ice edge). coastOf() counts the segments and chains the
+  // lone ones into lines; it runs once per geometry (first paint, then the
+  // detailed file). Drawn above the land and the colour relief, below names.
+  map.addSource('coast', { type: 'geojson', data: coastOf(geo) });
+  map.addLayer({ id: 'coast', type: 'line', source: 'coast', layout: ROUND_COAST,
+    paint: { 'line-color': '#ffffff', 'line-opacity': 0.72,
+             'line-width': ['interpolate', ['linear'], ['zoom'], 1, 0.45, 4, 0.8, 7, 1.2, 10, 1.6] } });
   // DETAILED BORDERS once zoomed in (2026-09-29): the first-paint geometry is
   // ~60k vertices; past z3.2 the ~450k-vertex file replaces it. Both are
   // topologically simplified, so neighbours share their borders exactly.
@@ -143,7 +193,7 @@ map.on('load', async () => {
     if (detail || PASSIVE || map.getZoom() < 3.2) return;
     detail = true; map.off('zoomend', loadDetail);
     fetch('data/eco_detail.geojson', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); } else detail = false; })
+      .then(d => { if (d && map.getSource('eco')) { for (const f of d.features) f.id = +f.properties.eco; map.getSource('eco').setData(d); if (map.getSource('coast')) map.getSource('coast').setData(coastOf(d)); } else detail = false; })
       .catch(() => { detail = false; });
   };
   map.on('zoomend', loadDetail);
