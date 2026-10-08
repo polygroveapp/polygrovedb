@@ -7,7 +7,7 @@
 # Efficient/set-based: precompute each signal once, window the food web top-N.
 
 # %%
-import duckdb, json, time
+import duckdb, json, os, time
 con = duckdb.connect("../../polygrove.duckdb")
 con.sql(r"""CREATE OR REPLACE MACRO norm(s) AS
   lower(array_to_string(list_filter(string_split(regexp_replace(coalesce(s,''),'\([^)]*\)','','g'),' '),
@@ -258,6 +258,17 @@ for sid, common, canon0 in con.sql("""SELECT s.species_id, cn.common_name, s.can
         NAME[sid] = fixcase(wt)          # article title IS an English name -> use it
     else:
         NAME[sid] = fixcase(common) if common else canon0
+# iNaturalist's preferred common name, for species with no other English name
+# (2026-10-08: 2,769 cards were "Acantholycosa pedestris · Acantholycosa pedestris");
+# fetched by fetch_inat_taxa.py, cached, applied last so every other source wins
+_inat_names_path = "../cache/inat_names.json"
+if os.path.exists(_inat_names_path):
+    _n = 0
+    for _sid, _nm in json.load(open(_inat_names_path)).items():
+        _sid = int(_sid)
+        if _sid in NAME and NAME[_sid] == con.sql("SELECT canonicalName FROM species WHERE species_id=?", params=[_sid]).fetchone()[0]:
+            NAME[_sid] = fixcase(_nm); _n += 1
+    print(f"iNaturalist common names applied: {_n}")
 FEED = as_map("SELECT sid, t FROM feed")
 # GLOBAL fame = Wikidata sitelink count (languages with an article) — language-neutral.
 # English cited-sentence depth is deliberately NOT used for ranking (a worse version).
@@ -315,7 +326,12 @@ BIOME = as_map("""SELECT species_id, eco_name FROM (
 # the PHYLACINE range filter below. Ranked on PURE observation counts (obs_eco),
 # not the mixed species_ecoregions weights; expert ranges (PHYLACINE/GARD) stay
 # the fallback for species with no observations at all.
-MIN_RECS, MIN_SHARE = 2, 0.0
+# RAISED TO 10 (user, 2026-10-08: "why are there so many species in each
+# ecoregion" — half of every deck was species with fewer than ten records
+# there; a deck should feel like the place), with every species keeping its
+# best ecoregion whatever the count (below). Expert ranges (PHYLACINE/GARD)
+# are untouched: a mammal's range still floors its membership.
+MIN_RECS, MIN_SHARE = 10, 0.0
 # MAMMAL RANGE FILTER (part 2): a mammal's observed ecoregion counts only if it lies
 # inside its PHYLACINE 1.2 CURRENT range (mammal_ranges, written by
 # 20_derive/phylacine.py — NOT species_ecoregions, which occurrence_integrate.py
@@ -340,10 +356,16 @@ for sid, eco, _rn in con.sql(f"""SELECT species_id, ecoregion_id, rn FROM (
       SELECT species_id, ecoregion_id, max(w) AS w FROM (
       SELECT o.species_id, o.ecoregion_id, o.recs AS w
       FROM (SELECT species_id, ecoregion_id, recs,
-                   recs * 1.0 / sum(recs) OVER (PARTITION BY species_id) AS frac
+                   recs * 1.0 / sum(recs) OVER (PARTITION BY species_id) AS frac,
+                   row_number() OVER (PARTITION BY species_id ORDER BY recs DESC, ecoregion_id) AS rnk
             FROM obs_eco) o
       JOIN species s ON s.species_id = o.species_id
-      WHERE o.recs >= {MIN_RECS} AND o.frac >= {MIN_SHARE}
+      -- a species' BEST ecoregion always counts (user, 2026-10-08: "are there any
+      -- cards that are left out of the game now that we set a floor?" — at a flat
+      -- floor of 10, 1,148 cards would have belonged to no deck: GBIF is thin
+      -- outside North America and Europe, so a Goliath Frog has 2 records
+      -- anywhere). The floor trims a species' OTHER, stray memberships only.
+      WHERE (o.recs >= {MIN_RECS} OR o.rnk = 1) AND o.frac >= {MIN_SHARE}
         AND (s.class <> 'Mammalia'
              OR o.species_id NOT IN (SELECT species_id FROM mam_mapped)
              OR (o.species_id, o.ecoregion_id) IN (SELECT species_id, ecoregion_id FROM mam_range))

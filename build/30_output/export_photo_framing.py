@@ -32,6 +32,10 @@ BOXES = os.path.join(ROOT, "data", "photo_boxes.jsonl")
 OUT = os.path.join(ROOT, "explorer", "data", "framing.json")
 REPORT = os.path.join(ROOT, "build", "cache", "photo_framing_report.json")
 photos = {k: v for k, v in json.load(open(os.path.join(ROOT, "explorer", "data", "photos.json"))).items() if v}
+# iNaturalist fill-ins (fetch_inat_taxa.py) are framed too; their URLs are used as they are
+_ip = os.path.join(ROOT, "explorer", "data", "inat_photos.json")
+if os.path.exists(_ip):
+    for k, v in json.load(open(_ip)).items(): photos.setdefault(k, v["url"])
 cards = {c["id"]: c for c in json.load(open(os.path.join(ROOT, "explorer", "data", "catalog.json")))}
 ids = sorted(k for k in photos if k in cards)
 LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else None
@@ -44,7 +48,7 @@ path = lambda cid: os.path.join(IMG, cid + ".jpg")
 def fetch(cid):
     p = path(cid)
     if os.path.exists(p) and os.path.getsize(p) > 1500: return True
-    url = re.sub(r"/\d+px-", "/330px-", photos[cid]).split("?")[0]
+    url = re.sub(r"/\d+px-", "/330px-", photos[cid]).split("?")[0] if "wikimedia" in photos[cid] else photos[cid]
     for attempt in range(4):
         try:
             r = requests.get(url, headers=UA, timeout=30)
