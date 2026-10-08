@@ -58,12 +58,22 @@ def measure(url):
         return url, {'dead': True, 'why': f'decode: {type(e).__name__}'}
 
 t0=time.time(); done=0
+def record(url, m):
+    global done
+    q[url]=m; done+=1
+    if done%100==0:
+        json.dump(q, open(Q,'w'))
+        print(f"  {done:,}/{len(urls):,} · dead so far {sum(1 for v in q.values() if v.get('dead')):,} · {(time.time()-t0)/60:.0f}m", flush=True)
+# Wikimedia asks for a gentle pace (429s on 2026-10-07 when six threads hit it):
+# its clips go one at a time, 2.5 s apart, and a 429 rests 90 s before retrying
+# Commons clips are NOT measured (2026-10-07): Wikimedia rate-limited the
+# download for hours on end, and these recordings are editor-curated — a
+# Wikipedia article's sound file is already someone's judgement that it is
+# worth hearing. They are taken as alive, and ranked ahead of the GBIF clips.
+wiki=[u for u in urls if 'wikimedia.org' in u]; rest=[u for u in urls if 'wikimedia.org' not in u]
 with ThreadPoolExecutor(6) as ex:
-    for url, m in ex.map(measure, urls):
-        q[url]=m; done+=1
-        if done%100==0:
-            json.dump(q, open(Q,'w'))
-            print(f"  {done:,}/{len(urls):,} · dead so far {sum(1 for v in q.values() if v.get('dead')):,} · {(time.time()-t0)/60:.0f}m", flush=True)
+    for url, m in ex.map(measure, rest): record(url, m)
+for url in wiki: record(url, {'dead': False, 'curated': True})
 json.dump(q, open(Q,'w'))
 
 # rebuild audio.json: dead clips out, best first, species with nothing left dropped
