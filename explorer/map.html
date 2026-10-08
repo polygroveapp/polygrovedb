@@ -256,15 +256,20 @@ map.on('load', async () => {
     // fits, the famous first (lowest sort key is placed first). Tight padding
     // and four candidate anchors let more names land.
     const famous = ['-', 0, ['coalesce', ['get', 'fame'], 0]];
-    map.addLayer({ id: 'parkdot', type: 'symbol', source: 'parks', minzoom: 0.8, filter: ['!=', ['get', 'hb'], 1],
+    // FEWER NAMES (user, 2026-10-07): fame tiers again — the big names at
+    // continental zoom (fame ≥ 50: Yellowstone, Grand Canyon, Carlsbad
+    // Caverns), the well-known from z4.5 (≥ 25), the rest only from z6.5 —
+    // and wider spacing between the ones that do show
+    const tier = ['step', ['zoom'], ['>=', ['coalesce', ['get', 'fame'], 0], 50], 4.5, ['>=', ['coalesce', ['get', 'fame'], 0], 25], 6.5, true];
+    map.addLayer({ id: 'parkdot', type: 'symbol', source: 'parks', minzoom: 0.8, filter: ['all', ['!=', ['get', 'hb'], 1], tier],
       layout: { 'icon-image': 'parkpt', 'icon-padding': 0, 'symbol-sort-key': famous } });
-    map.addLayer({ id: 'parklbl', type: 'symbol', source: 'parks', minzoom: 0.8,
+    map.addLayer({ id: 'parklbl', type: 'symbol', source: 'parks', minzoom: 0.8, filter: tier,
       layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
                 'text-size': ['interpolate', ['linear'], ['zoom'], 1, 8, 4, 9.5, 7, 11],
                 'symbol-sort-key': famous,
                 'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
                 'text-radial-offset': ['case', ['==', ['get', 'hb'], 1], 0.15, 0.55],
-                'text-max-width': 8, 'text-padding': 1 },
+                'text-max-width': 8, 'text-padding': 14 },
       paint: { 'text-color': '#c49a76', 'text-halo-color': '#0d0d0d', 'text-halo-width': 1.2 } });
   }
   // THE OCEANS (user, 2026-09-29): big, spaced-out names in water blue, world
