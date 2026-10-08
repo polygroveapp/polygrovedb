@@ -1,0 +1,18 @@
+# The Polygrove app as a website, served from /app (polygrove-app/scripts/deploy-web.sh).
+# It is a single-page app: every route gets /app/index.html and the app's router does the rest.
+# Listed route by route — a /app/* wildcard would also rewrite /app/_expo/… (its scripts).
+/app/about /app/ 200
+/app/collection /app/ 200
+/app/custom/* /app/ 200
+/app/db /app/ 200
+/app/deck /app/ 200
+/app/gallery /app/ 200
+/app/map /app/ 200
+/app/naturalist/* /app/ 200
+/app/pack /app/ 200
+/app/preview /app/ 200
+/app/quiz/* /app/ 200
+/app/sightings /app/ 200
+/app/social /app/ 200
+/app/species/* /app/ 200
+/app/web/* /app/ 200

@@ -38,6 +38,12 @@
 <div id="map"></div>
 <script>
 const RN = window.ReactNativeWebView;
+// IN A BROWSER (the app as a website, 2026-10-08): the app holds this page in an
+// iframe. What the phone gets through ReactNativeWebView goes to the parent
+// window instead, and the parent's calls arrive as messages (see the listener
+// by polygroveSetState): only functions named polygrove… are ever run — a
+// message can pass arguments, never code.
+const PARENT = !RN && window.parent !== window ? window.parent : null;
 // MINI MODE (user, 2026-09-28: "place on the map" on the home page): ?mini=EID
 // renders the region's place on the globe — non-interactive, fitted to the
 // region, no pin/labels chatter — for a small WebView on the phone's home
@@ -50,7 +56,7 @@ const MINI = (() => { const m = /[?&]mini=(\d+)/.exec(location.search); return m
 const RANGE = (() => { const m = /[?&]range=([^&]+)/.exec(location.search); return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : null; })();
 const LIVE = /[?&]live=1/.test(location.search);
 const PASSIVE = MINI != null || RANGE != null;   // no picker behaviour: no pin, no reports, no high-detail swaps
-const send = (m) => { try { RN ? RN.postMessage(JSON.stringify(m)) : console.log('msg', m); } catch (e) {} };
+const send = (m) => { try { RN ? RN.postMessage(JSON.stringify(m)) : PARENT ? PARENT.postMessage({ polygrove: JSON.stringify(m) }, '*') : console.log('msg', m); } catch (e) {} };
 
 const map = new maplibregl.Map({
   fadeDuration: 0,   // symbols appear and go without the 300ms cross-fade — the ✕s "jiggled" as placement re-ran (2026-10-06)
@@ -997,6 +1003,13 @@ const onMsg = ev => { try { applyState(JSON.parse(ev.data)); } catch (e) {} };
 window.addEventListener('message', onMsg);
 document.addEventListener('message', onMsg);
 window.polygroveSetState = applyState;   // injectJavaScript entry points
+// the same entry points for the browser app: {pgCall: 'polygroveX', args: [...]} from the parent window
+if (PARENT) window.addEventListener('message', (ev) => {
+  const d = ev.data;
+  if (ev.source !== PARENT || !d || typeof d !== 'object' || typeof d.pgCall !== 'string') return;
+  if (!/^polygrove[A-Z]\w*$/.test(d.pgCall) || typeof window[d.pgCall] !== 'function') return;
+  try { window[d.pgCall](...(Array.isArray(d.args) ? d.args : [])); } catch (e) {}
+});
 // the app's + / − buttons: zoom around the pin so what's under it stays put
 // the app's compass: set the bearing (degrees, around the pin); the page
 // reports its bearing back on every rotate so the needle follows the map

@@ -10,3 +10,6 @@ __pycache__/
 
 # scratch outputs of the photo-framing sample run
 /build/cache/focal_sample/
+
+# the app's web build — produced by polygrove-app/scripts/deploy-web.sh, not kept in git
+/explorer/app/
