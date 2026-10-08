@@ -94,7 +94,7 @@ map.on('load', async () => {
     fetch('data/cities.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => null),
   ]);
   GEO = geo;
-  map.addSource('eco', { type: 'geojson', data: geo });
+  map.addSource('eco', { type: 'geojson', data: geo, promoteId: 'eco' });   // promoteId: the selection is feature-state, keyed by ecoregion id (2026-10-07)
   // the explorer's Ecoregions-page stack, in order
   map.addLayer({ id: 'land', type: 'fill', source: 'eco', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
   // PICKING LAYER (2026-09-30): invisible, never filtered. The visible 'land'
@@ -109,7 +109,7 @@ map.on('load', async () => {
   // vertices, shared borders intact, bay islands included). They live in a
   // second source with twin layers; a region that has its HD twin is filtered
   // out of the low-detail layers.
-  map.addSource('ecohd', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addSource('ecohd', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, promoteId: 'eco' });
   map.addLayer({ id: 'land_hd', type: 'fill', source: 'ecohd', paint: { 'fill-color': '#1c1c1c', 'fill-outline-color': '#2e2e2e' } });
   // BLACK AND GREY (user, 2026-10-05: "the species map and the map on the app
   // have to go back to the black and grey look"): no colour relief — black
@@ -206,21 +206,20 @@ map.on('load', async () => {
   // journaled, 2026-09-29.)
   twin('visitfill', { type: 'fill', filter: ['in', ['get', 'eco'], ['literal', []]],
     paint: { 'fill-color': ZERO_GREEN, 'fill-opacity': 0.42 } });
-  // CROSSFADE (user, 2026-09-30: "have the changing green fill fade in and
-  // out to make it smoother"): the region the pin just left keeps its own
-  // set of layers (psel*) fading out while the new one fades in
-  twin('pselfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': SEL_GREEN, 'fill-opacity': 0 } });
-  twin('pselglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': SEL_GREEN, 'line-width': 9, 'line-blur': 7, 'line-opacity': 0 } });
-  twin('pselline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': SEL_PALE, 'line-width': 2, 'line-opacity': 0 } });
-  twin('selfill', { type: 'fill', filter: ['==', ['get', 'eco'], -1],
-    paint: { 'fill-color': SEL_GREEN, 'fill-opacity': 0.45 } });
-  twin('selglow', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': SEL_GREEN, 'line-width': 9, 'line-blur': 7, 'line-opacity': 0.6 } });
-  twin('selline', { type: 'line', layout: ROUND, filter: ['==', ['get', 'eco'], -1],
-    paint: { 'line-color': SEL_PALE, 'line-width': 2, 'line-opacity': 1 } });
+  // THE SELECTION IS FEATURE-STATE (2026-10-07 — user: "the ecoregions lag
+  // behind … it looks really clunky"). Before, the pinned region was picked
+  // out by a layer FILTER, and every change made MapLibre re-tile the whole
+  // ecoregion layer, so the highlight trailed the pin by a beat; the fade
+  // then needed a second set of layers (psel*) for the region being left.
+  // Now each region carries a `sel` state 0→1 and a `col` colour, and the
+  // layers paint from them: a change is a paint update, drawn next frame.
+  // The crossfade (user, 2026-09-30) is the two regions' states moving in
+  // opposite directions.
+  const FS = ['coalesce', ['feature-state', 'sel'], 0];
+  const COL = ['to-color', ['coalesce', ['feature-state', 'col'], SEL_GREEN]];
+  twin('selfill', { type: 'fill', paint: { 'fill-color': SEL_GREEN, 'fill-opacity': ['*', MINI != null ? SEL_OPACITY.fill : 0, FS] } });
+  twin('selglow', { type: 'line', layout: ROUND, paint: { 'line-color': COL, 'line-width': 9, 'line-blur': 7, 'line-opacity': ['*', SEL_OPACITY.glow, FS] } });
+  twin('selline', { type: 'line', layout: ROUND, paint: { 'line-color': COL, 'line-width': 2, 'line-opacity': ['*', SEL_OPACITY.line, FS] } });
   // YOUR CAMP — the ecoregion you are in — is bordered in a glowing bright
   // GREEN (user, 2026-09-30: "only the ecoregion you're in highlighted
   // green, don't use the brown"; brown from 2026-09-29, gold for an hour
@@ -303,7 +302,7 @@ map.on('load', async () => {
                 'text-size': ['interpolate', ['linear'], ['zoom'], 1, 6.5, 4, 7.5, 7, 8.5],
                 'symbol-sort-key': ['-', 0, weight],
                 'text-offset': [0, -0.55], 'text-anchor': 'bottom', 'text-max-width': 8, 'text-padding': 3 },
-      paint: { 'text-color': '#000000', 'text-halo-color': '#8a8f8a', 'text-halo-width': 1.3 } });
+      paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1.3 } });   // white on black (user, 2026-10-07; was black on grey)
   }
   // lake names in BLUE, and FEWER of them (user, 2026-09-29): a lake is named
   // only once it is big enough on screen for the zoom — the great lakes from
@@ -339,8 +338,9 @@ map.on('load', async () => {
                 'text-transform': ['case', country, 'uppercase', 'none'],
                 'text-letter-spacing': ['case', country, 0.18, 0.05],
                 'text-padding': 8 },
-      paint: { 'text-color': ['case', country, '#9aa1a8', '#878e97'],
-               'text-halo-color': '#0a0d12', 'text-halo-width': 1.3, 'text-opacity': 0.85 } });
+      // countries: white text with a black halo, like the cities (user, 2026-10-07); states keep their grey
+      paint: { 'text-color': ['case', country, '#ffffff', '#878e97'],
+               'text-halo-color': ['case', country, '#000000', '#0a0d12'], 'text-halo-width': 1.3, 'text-opacity': ['case', country, 0.95, 0.85] } });
   }
   // TRAILS (user, 2026-09-28): NPS Public Trails, orange dashed, lazy-loaded
   // (5 MB) the first time the map is zoomed in far enough to read them
@@ -439,10 +439,46 @@ function sendPan() {
 // the pin: centre of the visible map (screen minus the app's chrome)
 let raf = 0;
 const pinPoint = () => { const c = map.getContainer(); return [c.clientWidth / 2, (PAD.top + (c.clientHeight - PAD.bottom)) / 2]; };
+// WHAT IS UNDER THE PIN, BY GEOMETRY (2026-10-07). The old read asked the map
+// what it had DRAWN at the pin — and after a fast move the tiles there were not
+// drawn yet, so the sheet said "no ecoregion here" over the middle of Nevada
+// until something re-rendered. Now the pin's lng/lat is tested against the
+// outlines themselves: the high-detail ones first (exact borders), then the
+// first-paint set, smallest bounding box first. Instant, and right every frame.
+const BBOX = new Map(), BYECO = new Map(), NAME = new Map();
+function indexGeo() {
+  if (BBOX.size || !GEO) return;
+  for (const f of GEO.features) {
+    const e = f.properties.eco;
+    if (!BYECO.has(e)) BYECO.set(e, []);
+    BYECO.get(e).push(f);
+    if (f.properties.name) NAME.set(e, f.properties.name);
+  }
+  for (const e of BYECO.keys()) BBOX.set(e, bboxOf(e));
+}
+function inRing(x, y, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function inFeature(x, y, f) {
+  const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
+  for (const p of polys) if (inRing(x, y, p[0]) && !p.slice(1).some(h => inRing(x, y, h))) return true;
+  return false;
+}
 function regionAtPin() {
   try {
-    const pt = pinPoint();
-    return map.queryRenderedFeatures(pt, { layers: ['land_hd'] })[0] || map.queryRenderedFeatures(pt, { layers: ['land_pick'] })[0] || null;
+    if (!GEO) return null;
+    indexGeo();
+    const c = map.unproject(pinPoint());
+    const x = ((c.lng + 180) % 360 + 360) % 360 - 180, y = c.lat;
+    const hit = (e) => ({ properties: { eco: e, name: NAME.get(e) || '' } });
+    for (const [e, f] of HD) if (inFeature(x, y, f)) return hit(e);
+    for (const e of boxesAt(x, y)) { if (HD.has(e)) continue; for (const f of BYECO.get(e) || []) if (inFeature(x, y, f)) return hit(e); }
+    return null;
   } catch (e) { return null; }
 }
 function highlightPin() {
@@ -456,6 +492,7 @@ function highlightPin() {
 let settleTimers = [];
 function settle() {
   report();
+  reportUnder();   // the ✕s under the pin: once the map has settled, not per frame (it walks every mark)
   panSpeed = 0;
   if (settleTimers.length) return;
   settleTimers = [250, 700, 1500, 3000].map(ms => setTimeout(report, ms));
@@ -494,7 +531,6 @@ function reportUnder() {
   send({ type: 'under', marks: out });
 }
 function report() {
-  reportUnder();
   const f = regionAtPin(), eid = f ? f.properties.eco : null;
   if (eid !== candidate) { candidate = eid; candidateSince = performance.now(); if (eid !== current) setTimeout(report, STEADY_MS + 10); }
   if (eid === current && eid === lastReported) return;
@@ -564,19 +600,29 @@ function flashLoop() {
     // eases back in as you zoom out, where the selected region is one of many
     const z = map.getZoom(), amp = z >= 6.5 ? 0 : z <= 5.5 ? 1 : 6.5 - z;
     flashP = 1 + amp * (-0.18 + 0.5 * Math.sin((performance.now() / 1100) * 2 * Math.PI));
-    if (current != null) setSelOpacity('sel', selK);
+    if (current != null) setSelPaint();
     // (flashTick is odd here — the even frames returned above — so the far-out
     // tick is `=== 1`; `=== 0` never fired and the ✕s sat still when zoomed out, 2026-10-06)
     if (marksShown && (map.getZoom() >= 8 || (flashTick & 15) === 1)) shimmerMarks(performance.now());
   };
   step();
 }
+const fading = new Set();   // regions whose `sel` state is not 0
+function setSel(eid, v) {
+  for (const src of ['eco', 'ecohd']) { try { map.setFeatureState({ source: src, id: eid }, { sel: v }); } catch (e) {} }
+  if (v > 0) fading.add(eid); else fading.delete(eid);
+}
+function setCol(eid) {
+  const c = borderColorOf(eid);
+  for (const src of ['eco', 'ecohd']) { try { map.setFeatureState({ source: src, id: eid }, { col: c }); } catch (e) {} }
+}
 function setSelected(eid) {
   if (eid === current) return;
   prevSel = current;
   current = eid == null ? null : eid;
-  applyFilters();
-  // fade: the old region's layers 1 → 0, the new region's 0 → 1, over 320ms
+  // anything still mid-fade from an earlier hop is dropped at once
+  for (const id of [...fading]) if (id !== prevSel && id !== current) setSel(id, 0);
+  if (current != null) setCol(current);
   // 490 ms when the pin drifts across a border; but in a FAST move the fade
   // made the highlight trail the pin (user, 2026-10-07: "the selection lags
   // behind the pin when you move it fast") — then it is all but instant
@@ -584,31 +630,32 @@ function setSelected(eid) {
   const fast = panSpeed > 5 || t0 - lastSelAt < 450;
   lastSelAt = t0;
   const D = fast ? 60 : 490;   // 320 → "slower" 650 → "25% faster" (user, 2026-09-30)
+  const from = prevSel, to = current;
   if (fadeRaf) cancelAnimationFrame(fadeRaf);
   const step = () => {
     const t = Math.min(1, (performance.now() - t0) / D), e = t * (2 - t);   // ease-out
-    setSelOpacity('sel', e); setSelOpacity('psel', 1 - e);
-    if (t < 1) fadeRaf = requestAnimationFrame(step); else { fadeRaf = 0; prevSel = null; applyFilters(); }
+    if (to != null) setSel(to, e);
+    if (from != null) setSel(from, 1 - e);
+    if (t < 1) fadeRaf = requestAnimationFrame(step); else { fadeRaf = 0; if (from != null) setSel(from, 0); prevSel = null; }
   };
   step();
   flashLoop();
 }
-function setSelOpacity(prefix, k) {
+// the pulse: the border's opacity breathes with flashP; the fill holds steady
+// (user, 2026-10-06: "remove the flashing altogether for the fill, just the
+// borders"). A paint update over the feature-state, nothing re-tiles.
+function setSelPaint() {
   const set = (id, prop, v) => { if (map.getLayer(id)) map.setPaintProperty(id, prop, v); if (map.getLayer(id + '_hd')) map.setPaintProperty(id + '_hd', prop, v); };
-  const p = prefix === 'sel' ? flashP : 1;   // only the region under the pin flashes, not the one fading out
-  if (prefix === 'sel') selK = k;
-  // only the BORDER pulses (user, 2026-10-06: "remove the flashing altogether
-  // for the fill, just the borders"): the fill holds steady, glow and line breathe
-  set(prefix + 'fill', 'fill-opacity', MINI != null ? SEL_OPACITY.fill * k : 0);   // the fill is the region's own mastery colour, untouched by selection (user, 2026-10-06) — except the Camp picture, which fills its region gold
-  set(prefix + 'glow', 'line-opacity', Math.min(1, SEL_OPACITY.glow * k * p));
-  set(prefix + 'line', 'line-opacity', SEL_OPACITY.line * k * (0.7 + 0.3 * p));
+  const FS = ['coalesce', ['feature-state', 'sel'], 0];
+  set('selglow', 'line-opacity', ['min', 1, ['*', SEL_OPACITY.glow * flashP, FS]]);
+  set('selline', 'line-opacity', ['min', 1, ['*', SEL_OPACITY.line * (0.7 + 0.3 * flashP), FS]]);
 }
 // every ecoregion layer's filter, in one place: the low-detail layer skips
 // regions that have their high-detail twin loaded
 const HD = new Map();            // eco id → its high-detail feature
 function applyFilters() {
   const hd = ['literal', [...HD.keys()]], notHD = ['!', ['in', ['get', 'eco'], hd]];
-  const sel = ['==', ['get', 'eco'], current == null ? -1 : current], vis = ['in', ['get', 'eco'], ['literal', collected]];
+  const vis = ['in', ['get', 'eco'], ['literal', collected]];
   // the camp's gold pulses to TRANSPARENT, not to green (user, 2026-09-30):
   // neither the visited fill nor the pin's selection fill draws under it
   const notCamp = ['!=', ['get', 'eco'], camp == null ? -1 : camp];
@@ -617,9 +664,10 @@ function applyFilters() {
   if (map.getLayer('ecoline')) map.setFilter('ecoline', notHD);
   // the pin's green draws over the camp as well — whatever is under the pin
   // flashes (2026-10-05); it was kept off the camp while the camp pulsed gold
-  for (const id of ['selfill', 'selglow', 'selline']) put(id, sel);
-  const psel = ['==', ['get', 'eco'], prevSel == null ? -1 : prevSel];
-  for (const id of ['pselfill', 'pselglow', 'pselline']) put(id, psel);
+  // feature-state picks the region; the only filter is the HD split (a bare
+  // `true` operand here failed the worker's filter compile, and one failing
+  // layer sinks the whole tile — the land vanished, 2026-10-07)
+  for (const id of ['selfill', 'selglow', 'selline']) { if (map.getLayer(id)) map.setFilter(id, notHD); if (map.getLayer(id + '_hd')) map.setFilter(id + '_hd', null); }
   put('visited', vis);
   put('visitfill', ['all', vis, notCamp]);
   for (const id of ['campfill', 'campglow', 'campline']) put(id, ['==', ['get', 'eco'], camp == null ? -1 : camp]);
@@ -665,13 +713,12 @@ function paintScale() {
   // the pinned border starts as the plain outline's green (#81C784, the colour
   // every unvisited region wears) and runs to yellow as the deck is mastered
   // (user, 2026-10-07)
-  const OUTLINE_GREEN = '#81C784';
-  const borderOf = (e) => (MINI != null ? FULL_YELLOW : e == null || !collected.includes(+e) ? OUTLINE_GREEN : lerp(OUTLINE_GREEN, FULL_YELLOW, at(e)));   // the Camp picture's region is gold (user, 2026-10-07)
-  for (const [prefix, e] of [['sel', current], ['psel', prevSel]]) {
-    const c = borderOf(e);
-    paint(prefix + 'glow', 'line-color', c); paint(prefix + 'line', 'line-color', c);
-  }
+  if (current != null) setCol(current);
 }
+const OUTLINE_GREEN = '#81C784';
+const masteryAt = (e) => (completed.includes(+e) ? 1 : progress[e] || 0);
+// the Camp picture's region is gold (user, 2026-10-07)
+const borderColorOf = (e) => (MINI != null ? FULL_YELLOW : e == null || !collected.includes(+e) ? OUTLINE_GREEN : lerp(OUTLINE_GREEN, FULL_YELLOW, masteryAt(e)));
 // load the high-detail outline of everything on screen, once zoomed in
 const hdBusy = new Set();
 function loadHD() {
@@ -704,12 +751,8 @@ function loadHD() {
 // regions whose bounding box contains a point, smallest box first
 function boxesAt(x, y) {
   if (!GEO) return [];
-  const seen = new Map();
-  for (const f of GEO.features) {
-    const e = f.properties.eco; if (seen.has(e)) continue;
-    const b = bboxOf(e); seen.set(e, b);
-  }
-  return [...seen].filter(([, b]) => b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])
+  indexGeo();
+  return [...BBOX].filter(([, b]) => b && x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3])
     .sort((p, q) => (p[1][2] - p[1][0]) * (p[1][3] - p[1][1]) - (q[1][2] - q[1][0]) * (q[1][3] - q[1][1])).map(([e]) => e);
 }
 function bboxOf(eid) {
