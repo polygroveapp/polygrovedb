@@ -1,14 +1,14 @@
 {
- "cards": 13564,
+ "cards": 13723,
  "kinds": {
-  "ok": 2983,
-  "zoom": 9199,
-  "slide": 1377,
+  "ok": 3029,
+  "zoom": 9298,
+  "slide": 1391,
   "far": 5
  },
  "detector": {
-  "subject": 11488,
-  "attention": 2076
+  "subject": 11625,
+  "attention": 2098
  },
  "by_group": {
   "Amphibian": {
@@ -17,13 +17,13 @@
    "ok": 59
   },
   "Arachnid": {
-   "ok": 125,
-   "zoom": 147,
+   "ok": 126,
+   "zoom": 150,
    "slide": 33
   },
   "Bi/Annual Herb": {
-   "zoom": 688,
-   "ok": 208,
+   "zoom": 696,
+   "ok": 217,
    "slide": 76
   },
   "Bird": {
@@ -36,27 +36,28 @@
    "zoom": 1
   },
   "Epiphyte": {
-   "zoom": 21,
-   "ok": 4
+   "zoom": 22,
+   "ok": 4,
+   "slide": 1
   },
   "Fish": {
-   "zoom": 1241,
+   "zoom": 1246,
    "ok": 63,
    "slide": 50,
    "far": 5
   },
   "Geophyte": {
-   "ok": 86,
-   "zoom": 410,
+   "ok": 87,
+   "zoom": 419,
    "slide": 44
   },
   "Ginkgoopsida": {
    "zoom": 1
   },
   "Insect": {
-   "slide": 196,
-   "zoom": 838,
-   "ok": 436
+   "slide": 200,
+   "zoom": 842,
+   "ok": 440
   },
   "Mammal": {
    "zoom": 694,
@@ -64,44 +65,44 @@
    "slide": 131
   },
   "Mollusk": {
-   "zoom": 233,
+   "zoom": 234,
    "ok": 57,
-   "slide": 8
+   "slide": 9
   },
   "Perennial Herb": {
-   "zoom": 840,
-   "ok": 230,
-   "slide": 130
+   "zoom": 862,
+   "ok": 242,
+   "slide": 133
   },
   "Plant": {
-   "ok": 70,
-   "zoom": 182,
-   "slide": 24
+   "ok": 75,
+   "zoom": 188,
+   "slide": 25
   },
   "Reptile": {
-   "zoom": 794,
+   "zoom": 796,
    "slide": 59,
-   "ok": 67
+   "ok": 68
   },
   "Shrub": {
-   "ok": 115,
-   "zoom": 328,
+   "ok": 117,
+   "zoom": 332,
    "slide": 39
   },
   "Subshrub": {
-   "zoom": 351,
-   "ok": 122,
-   "slide": 34
+   "zoom": 365,
+   "ok": 127,
+   "slide": 35
   },
   "Tree": {
-   "zoom": 983,
-   "ok": 146,
+   "zoom": 993,
+   "ok": 147,
    "slide": 73
   },
   "Tree/Shrub": {
-   "ok": 132,
-   "zoom": 472,
-   "slide": 37
+   "ok": 137,
+   "zoom": 482,
+   "slide": 40
   },
   "Worm": {
    "zoom": 1

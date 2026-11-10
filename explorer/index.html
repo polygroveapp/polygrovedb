@@ -619,7 +619,7 @@ function renderList(){
             ||'<div class="placeholder" style="padding:10px">no matches</div>';
           if(items.length>800) body+=`<div class="placeholder" style="padding:10px">showing 800 of ${items.length.toLocaleString()} — narrow the search</div>`;
         } else {
-          if(qv.length<2) body='<div class="placeholder" style="padding:10px">type 2+ letters to search this tier (2.4M species)</div>';
+          if(qv.length<2) body='<div class="placeholder" style="padding:10px">type 2+ letters to search this tier (2.6M species)</div>';
           else if(tailPending) body='<div class="placeholder" style="padding:10px">searching…</div>';
           else body=tailBy[s].slice(0,400).map(c=>`<div class="row ${sel===c.sci?'sel':''}" data-tsci="${c.sci}">
             <span class="sci">${c.sci}</span><span class="grp">${c.grp}</span></div>`).join('')

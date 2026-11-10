@@ -75,7 +75,11 @@ inat_photos, names = {}, {}
 for c in cards:
     rec = cache.get(c["sci"]) or {}
     if not photos.get(c["id"]) and rec.get("photo"): inat_photos[c["id"]] = rec["photo"]
-    if c["name"].lower() == c["sci"].lower() and rec.get("name"): names[str(c["species_id"])] = rec["name"]
+    # every card iNaturalist has a name for, whether or not the catalog already shows it:
+    # the catalog applies it only where no other English name exists, and a rerun must
+    # not drop names a previous run applied (2026-11-10: the second run wrote only the
+    # still-Latin cards, so 1,142 cards reverted to Latin and lost their photo links)
+    if rec.get("name"): names[str(c["species_id"])] = rec["name"]
 for e in extras:
     rec = cache.get(e["sci"]) or {}
     if rec.get("name"): names[str(e["species_id"])] = rec["name"]
