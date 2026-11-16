@@ -47,17 +47,29 @@ def section_text(wt, names):
             nxt=re.search(r"(?m)^=+[^=\n].*?=+\s*$", rest)
             return rest[:nxt.start()] if nxt else rest
     return None
+# Wikipedia's pointer lines written as plain text, not templates, so strip_code
+# keeps them: "See Sierra Nevada for general information about the mountain
+# range …" stood in for the Sierra Nevada forests description (2026-11-16)
+HATNOTE=re.compile(r"(See\s.+\sfor\s|For\s.+,\s*see\s|Further information|Main article|This article is about|Not to be confused)", re.IGNORECASE)
+# abbreviations are not sentence ends: "located in the U.S. state of California"
+# was cut to "The ecology of the Sierra Nevada, located in the U.S." (2026-11-16)
+ABBREV=re.compile(r"\b(U\.S|U\.K|U\.N|e\.g|i\.e|St|Mt|Ft|Pt|approx|ca|c|No|Dr|vs|var|subsp|spp|sp)\.")
+def split_sentences(text):
+    """split on . ! ? without breaking after an abbreviation; § stands in for its dots"""
+    safe=ABBREV.sub(lambda m: m.group(0).replace(".", "\u00a7"), text.strip())
+    return re.split(r"(?<=[.!?])\s+", safe)
 def clean_sentences(body, n):
     body=render_converts(body)
     body=re.sub(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>","",body,flags=re.DOTALL)
     body=re.sub(r"(?m)^\s*\[\[(File|Image):[^\n]*$","",body)
     text=mw.parse(body).strip_code()
     out=[]
-    for s in re.split(r"(?<=[.!?])\s+",text.strip()):
-        s=re.sub(r"\s+"," ",s).strip()
+    for s in split_sentences(text):
+        s=re.sub(r"\s+"," ",s).strip().replace("\u00a7",".")
         s=re.sub(r"\(\s*[;,]\s*","(",s); s=re.sub(r"\(\s*\)","",s)
         if len(s.split())<6 or not s[:1].isupper(): continue
         if "|" in s or "{" in s or "}" in s or s.lower().startswith(("thumb","main article","see also")): continue
+        if HATNOTE.match(s): continue
         out.append(s)
         if len(out)>=n: break
     return out
@@ -75,11 +87,12 @@ def lead_sentences(wt, n=2):
     body=re.sub(r"<ref[^>]*/>|<ref[^>]*>.*?</ref>","",body,flags=re.DOTALL)
     text=mw.parse(body).strip_code()
     out=[]
-    for s in re.split(r"(?<=[.!?])\s+",text.strip()):
-        s=re.sub(r"\s+"," ",s).strip()
+    for s in split_sentences(text):
+        s=re.sub(r"\s+"," ",s).strip().replace("\u00a7",".")
         s=re.sub(r"\(\s*[;,]\s*","(",s); s=re.sub(r"\(\s*\)","",s)
         if len(s.split())<6 or not s[:1].isupper(): continue
         if "|" in s or "{" in s or "}" in s: continue
+        if HATNOTE.match(s): continue
         out.append(s)
         if len(out)>=n: break
     return out
