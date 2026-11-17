@@ -788,7 +788,7 @@ const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
 // in while it flashes.
 let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;
 const PULSE_MS = 1467;   // one beat of the pin region's pulse
-const PULSE_Z_OFF = 10;   // from this zoom the pulse is off; it is full a whole level below
+const PULSE_Z_OFF = 6.5;   // from this zoom the pulse is off; it is full a whole level below
 // THE FRAME LOOP IS BACK (user, 2026-10-06: "put everything back that wasn't
 // gyro related … and the glimmering"): the 3D terrain was the lag, not this.
 // The region under the pin pulses, the ✕ marks glisten — every other frame;
@@ -798,26 +798,27 @@ function flashLoop() {
   const step = () => {
     flashRaf = requestAnimationFrame(step);
     if (flashTick++ & 1) return;   // every other frame is plenty
-    // NO PULSE ONCE ZOOMED RIGHT IN (user, 2026-10-06: "there are no others on screen
-    // and it gets distracting"): the highlight holds steady from PULSE_Z_OFF and eases
-    // back in below it, where the selected region is one of many.
-    // The cut-off moved from z6.5 to z10 (user, 2026-11-17: "it's not flashing at this
-    // zoom level, only zoomed out"): an ecoregion made of scattered islands, like the Great
-    // Basin montane forests, still has dozens of pieces of other regions on screen at z7-9,
-    // and without the pulse the one under the pin was hard to tell from them.
+    // NO PULSE ONCE ZOOMED IN (user, 2026-10-06: "there are no others on screen
+    // and it gets distracting"): from PULSE_Z_OFF the highlight holds steady; the pulse
+    // eases back in as you zoom out, where the selected region is one of many.
+    // (For an hour on 2026-11-17 the cut-off was z10: "it's not flashing at this zoom
+    // level, only zoomed out" was read as a request to pulse closer in. It was not —
+    // the user meant the pulse's strength — so it is z6.5 again.)
     const z = map.getZoom(), amp = z >= PULSE_Z_OFF ? 0 : z <= PULSE_Z_OFF - 1 ? 1 : PULSE_Z_OFF - z;
     // A QUARTER SLOWER AND A QUARTER SMALLER (user, 2026-11-16: "make the pulsing speed and
     // size for the map 25% less"): one beat every PULSE_MS (1467 ms, was 1100), the swing
-    // 0.375 (was 0.5) and the glow's width ± 2.4 (was ± 3.2)
+    // 0.375 (was 0.5) and the glow's width ± 2.4 (was ± 3.2).
+    // THEN 15% GENTLER (user, 2026-11-17: "the intensity of the pulse make it like 15% less"):
+    // the swing is 0.319 and the glow's width ± 2.04
     const beat = Math.sin((performance.now() / PULSE_MS) * 2 * Math.PI);
-    flashP = 1 + amp * (-0.18 + 0.375 * beat);
+    flashP = 1 + amp * (-0.18 + 0.319 * beat);
     if (selState.size) applySel();
     // (flashTick is odd here — the even frames returned above — so the far-out
     // tick is `=== 1`; `=== 0` never fired and the ✕s sat still when zoomed out, 2026-10-06)
     // THE GLOW BREATHES IN WIDTH TOO, as the website's highlighted border does
     // (6.5 ± 3 there): a constant paint value, so a plain repaint. Steady once
     // zoomed in, like the pulse.
-    const gw = 9 + amp * 2.4 * beat;
+    const gw = 9 + amp * 2.04 * beat;
     for (const id of ['selglow', 'selglow_hd']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-width', +gw.toFixed(2));
     // every tick, at every zoom (it was 4 fps below z8 while the shimmer still re-tiled the source)
     if (marksShown) shimmerMarks(performance.now());
