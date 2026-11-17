@@ -1210,7 +1210,7 @@ function setRing(p) {
 // on:false when it lands, and the app holds the timeline still in between, so the date
 // never runs ahead of the map. A view already closer than FOLLOW_ZOOM keeps its zoom.
 let followKey = null, followZoom = FOLLOW_ZOOM, flyTok = 0;
-function followTo(p) {
+function followTo(p, ms) {
   const key = p[0] + ',' + p[1];
   if (key === followKey) return;            // already there, or on the way
   followKey = key;
@@ -1218,11 +1218,14 @@ function followTo(p) {
   send({ type: 'fly', on: true });
   const a = map.project([p[0], p[1]]), b = map.project(map.getCenter());
   const far = Math.hypot(a.x - b.x, a.y - b.y) > 600 || map.getZoom() < followZoom - 0.5;
-  if (far) map.flyTo({ center: [p[0], p[1]], zoom: followZoom, duration: 2600, curve: 1.4, essential: true });
-  else map.easeTo({ center: [p[0], p[1]], zoom: followZoom, duration: 700 });
+  // ms: how long a flight may take, from the app — its play quickens for an account with many
+  // sightings (user, 2026-11-17: "make the speed proportional to the number of observations")
+  const flyMs = ms > 0 ? ms : 2600;
+  if (far) map.flyTo({ center: [p[0], p[1]], zoom: followZoom, duration: flyMs, curve: 1.4, essential: true });
+  else map.easeTo({ center: [p[0], p[1]], zoom: followZoom, duration: Math.min(700, flyMs) });
   map.once('moveend', () => { if (tok === flyTok) send({ type: 'fly', on: false }); });
 }
-window.polygroveMarksUntil = (date, follow) => {
+window.polygroveMarksUntil = (date, follow, ms) => {
   marksUntil = date || null;
   if (!ready || PASSIVE) return;
   drawMarks(cutMarks());
@@ -1234,7 +1237,7 @@ window.polygroveMarksUntil = (date, follow) => {
       if (p[6] <= date && (!last || p[6] > last[6])) last = p;
     }
     // before the first sighting there is nowhere to go
-    if (last) followTo(last);
+    if (last) followTo(last, ms);
     setRing(last);
   } else if (!date && followHome) {
     followKey = null; flyTok++;
