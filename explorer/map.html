@@ -788,6 +788,7 @@ const SEL_OPACITY = { fill: 0.45, glow: 0.6, line: 1 };
 // in while it flashes.
 let selK = 1, flashP = 1, flashRaf = 0, flashTick = 0, marksShown = true;
 const PULSE_MS = 1467;   // one beat of the pin region's pulse
+const PULSE_Z_OFF = 10;   // from this zoom the pulse is off; it is full a whole level below
 // THE FRAME LOOP IS BACK (user, 2026-10-06: "put everything back that wasn't
 // gyro related … and the glimmering"): the 3D terrain was the lag, not this.
 // The region under the pin pulses, the ✕ marks glisten — every other frame;
@@ -797,10 +798,14 @@ function flashLoop() {
   const step = () => {
     flashRaf = requestAnimationFrame(step);
     if (flashTick++ & 1) return;   // every other frame is plenty
-    // NO PULSE ONCE ZOOMED IN (user, 2026-10-06: "there are no others on screen
-    // and it gets distracting"): from z6.5 the highlight holds steady; the pulse
-    // eases back in as you zoom out, where the selected region is one of many
-    const z = map.getZoom(), amp = z >= 6.5 ? 0 : z <= 5.5 ? 1 : 6.5 - z;
+    // NO PULSE ONCE ZOOMED RIGHT IN (user, 2026-10-06: "there are no others on screen
+    // and it gets distracting"): the highlight holds steady from PULSE_Z_OFF and eases
+    // back in below it, where the selected region is one of many.
+    // The cut-off moved from z6.5 to z10 (user, 2026-11-17: "it's not flashing at this
+    // zoom level, only zoomed out"): an ecoregion made of scattered islands, like the Great
+    // Basin montane forests, still has dozens of pieces of other regions on screen at z7-9,
+    // and without the pulse the one under the pin was hard to tell from them.
+    const z = map.getZoom(), amp = z >= PULSE_Z_OFF ? 0 : z <= PULSE_Z_OFF - 1 ? 1 : PULSE_Z_OFF - z;
     // A QUARTER SLOWER AND A QUARTER SMALLER (user, 2026-11-16: "make the pulsing speed and
     // size for the map 25% less"): one beat every PULSE_MS (1467 ms, was 1100), the swing
     // 0.375 (was 0.5) and the glow's width ± 2.4 (was ± 3.2)
