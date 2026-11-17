@@ -1151,8 +1151,12 @@ let pendingMarks = null, MARKS = [];   // the marks as given: [lng, lat, ok, id]
 // the observations"): the app's scrubber sends a date; only sightings made on
 // or before it are drawn — and only those are under the pin or tappable.
 // ALL_MARKS keeps everything the app sent; drawMarks() gets the cut.
-let ALL_MARKS = [], marksUntil = null;
-const cutMarks = () => (marksUntil ? ALL_MARKS.filter(p => !p[6] || p[6] <= marksUntil) : ALL_MARKS);
+let ALL_MARKS = [], marksUntil = null, marksUntilId = null;
+// with an id as well (a play step), the cut is "everything made before that sighting": earlier
+// days, and on its own day the sightings up to its id — so one day's sightings come one by one
+const cutMarks = () => (!marksUntil ? ALL_MARKS
+  : marksUntilId == null ? ALL_MARKS.filter(p => !p[6] || p[6] <= marksUntil)
+  : ALL_MARKS.filter(p => !p[6] || p[6] < marksUntil || (p[6] === marksUntil && (p[3] || 0) <= marksUntilId)));
 window.polygroveSetMarks = (pts) => {
   if (PASSIVE) return;
   ALL_MARKS = Array.isArray(pts) ? pts : [];
@@ -1217,24 +1221,29 @@ function followTo(p, ms) {
   const tok = ++flyTok;
   send({ type: 'fly', on: true });
   const a = map.project([p[0], p[1]]), b = map.project(map.getCenter());
-  const far = Math.hypot(a.x - b.x, a.y - b.y) > 600 || map.getZoom() < followZoom - 0.5;
+  const dist = Math.hypot(a.x - b.x, a.y - b.y);
+  const far = dist > 600 || map.getZoom() < followZoom - 0.5;
   // ms: how long a flight may take, from the app — its play quickens for an account with many
   // sightings (user, 2026-11-17: "make the speed proportional to the number of observations")
   const flyMs = ms > 0 ? ms : 2600;
   if (far) map.flyTo({ center: [p[0], p[1]], zoom: followZoom, duration: flyMs, curve: 1.4, essential: true });
-  else map.easeTo({ center: [p[0], p[1]], zoom: followZoom, duration: Math.min(700, flyMs) });
+  // a sighting a few steps from the last (the same walk) needs only a nudge
+  else map.easeTo({ center: [p[0], p[1]], zoom: followZoom, duration: ms > 0 ? (dist < 40 ? 180 : Math.min(450, ms)) : 700 });
   map.once('moveend', () => { if (tok === flyTok) send({ type: 'fly', on: false }); });
 }
-window.polygroveMarksUntil = (date, follow, ms) => {
-  marksUntil = date || null;
+window.polygroveMarksUntil = (date, follow, ms, id) => {
+  marksUntil = date || null; marksUntilId = date && id != null ? id : null;
   if (!ready || PASSIVE) return;
   drawMarks(cutMarks());
   if (follow && date) {
     if (!followHome) { followHome = { center: map.getCenter(), zoom: map.getZoom() }; followZoom = Math.max(map.getZoom(), FOLLOW_ZOOM); }
+    // the sighting to stand on: the one a play step names, else the latest made by that date
     let last = null;
     for (const p of ALL_MARKS) {
       if (!Array.isArray(p) || !isFinite(p[0]) || !isFinite(p[1]) || !p[6]) continue;
-      if (p[6] <= date && (!last || p[6] > last[6])) last = p;
+      if (marksUntilId != null) { if (p[3] === marksUntilId) { last = p; break; } }
+      // (a drag stands on the latest sighting that is a CARD: confirmed, kind 1 — as the play does)
+      else if ((p[2] ?? 1) === 1 && p[6] <= date && (!last || p[6] > last[6])) last = p;
     }
     // before the first sighting there is nowhere to go
     if (last) followTo(last, ms);
