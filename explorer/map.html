@@ -1167,6 +1167,41 @@ window.polygroveSetMarks = (pts) => {
 // is remembered and returned to when the timeline goes back to its end (date = null).
 let followHome = null;
 const FOLLOW_ZOOM = 7.5;   // how close the map sits while it follows the sightings
+// A RING AROUND THE SIGHTING THE MAP IS ON (user, 2026-11-17: "and have circles go around
+// them"): a yellow circle that ripples outward from the ✕ and fades, again and again, for
+// as long as the timeline holds the map there. One point in its own source; the radius
+// and the fade are constant paint values, so each frame is a plain repaint.
+let ringAt = null, ringRaf = 0;
+const RING_IDS = ['followring', 'followring2'];
+function setRing(p) {
+  if (!map.getSource('followring')) {
+    map.addSource('followring', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    // two rings half a beat apart, so one is always clearly on screen (a single ring spent
+    // half its life too faint to see)
+    for (const id of RING_IDS) map.addLayer({ id, type: 'circle', source: 'followring', paint: {
+      'circle-radius': 14, 'circle-color': 'rgba(0,0,0,0)',
+      'circle-stroke-color': '#ffd03a', 'circle-stroke-width': 2.6, 'circle-stroke-opacity': 0.9 } });
+  }
+  ringAt = p || null;
+  // …IN THE ✕'S OWN COLOUR (user: "that match the color"): yellow for a confirmed sighting,
+  // green for one still waiting, grey for one with no card yet — the marks layers' colours
+  if (ringAt) for (const id of RING_IDS) map.setPaintProperty(id, 'circle-stroke-color', ringAt[2] === 0 ? '#4caf50' : ringAt[2] === 2 ? '#9a9a9a' : '#ffd03a');
+  map.getSource('followring').setData({ type: 'FeatureCollection', features: ringAt
+    ? [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [ringAt[0], ringAt[1]] } }] : [] });
+  if (ringAt && !ringRaf) {
+    const step = () => {
+      if (!ringAt) { ringRaf = 0; return; }
+      const t0 = (performance.now() % 1600) / 1600;           // each ring ripples out over 1.6 s
+      RING_IDS.forEach((id, k) => {
+        const t = (t0 + k / RING_IDS.length) % 1;
+        map.setPaintProperty(id, 'circle-radius', 10 + 30 * t);
+        map.setPaintProperty(id, 'circle-stroke-opacity', 1 - t);
+      });
+      ringRaf = requestAnimationFrame(step);
+    };
+    ringRaf = requestAnimationFrame(step);
+  }
+}
 window.polygroveMarksUntil = (date, follow) => {
   marksUntil = date || null;
   if (!ready || PASSIVE) return;
@@ -1180,8 +1215,12 @@ window.polygroveMarksUntil = (date, follow) => {
     }
     // a view already closer than FOLLOW_ZOOM is kept; before the first sighting there is nowhere to go
     if (last) map.easeTo({ center: [last[0], last[1]], zoom: Math.max(map.getZoom(), FOLLOW_ZOOM), duration: 650 });
+    setRing(last);
   } else if (!date && followHome) {
     map.easeTo({ center: followHome.center, zoom: followHome.zoom, duration: 900 }); followHome = null;
+    setRing(null);
+  } else if (!date) {
+    setRing(null);
   }
 };
 function drawMarks(pts) {
@@ -1208,7 +1247,8 @@ function drawMarks(pts) {
     // pixel or two a square edge (the image's own box). Each pixel now holds
     // its distance to the ✕ — 0.75 on the edge, falling 1/8 per pixel outward,
     // which is what MapLibre's halo shader expects — so the glow hugs the ✕.
-    const z = 48, c = z / 2, r = 10, half = 2.5, img = new ImageData(z, z);   // 48: room for the glow (11 px beyond the ✕), no more — collision goes by this box
+    // the arms are 10% shorter (user, 2026-11-17: "make the lines of the x's a little bit shorter … like 10%"; r was 10)
+    const z = 48, c = z / 2, r = 9, half = 2.5, img = new ImageData(z, z);   // 48: room for the glow (12 px beyond the ✕), no more — collision goes by this box
     const segD = (x, y, x1, y1, x2, y2) => { const dx = x2 - x1, dy = y2 - y1, t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy))); return Math.hypot(x - x1 - t * dx, y - y1 - t * dy); };
     for (let y = 0; y < z; y++) for (let x = 0; x < z; x++) {
       const d = Math.min(segD(x + 0.5, y + 0.5, c - r, c - r, c + r, c + r), segD(x + 0.5, y + 0.5, c - r, c + r, c + r, c - r)) - half;
