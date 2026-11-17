@@ -1202,24 +1202,47 @@ function setRing(p) {
     ringRaf = requestAnimationFrame(step);
   }
 }
+// THE WEBSITE'S FLIGHT (user, 2026-11-17: "you know how on the website the map google earth
+// zooms in and out do that, but then also freeze the timeline while it's doing the
+// animation"): a hop to a sighting far from the one before lifts off, crosses and comes down
+// — MapLibre's flyTo, the curve the explorer's "fly to ecoregion" uses — while one close by
+// just glides. Either way the page tells the app {type:'fly', on:true} as it sets off and
+// on:false when it lands, and the app holds the timeline still in between, so the date
+// never runs ahead of the map. A view already closer than FOLLOW_ZOOM keeps its zoom.
+let followKey = null, followZoom = FOLLOW_ZOOM, flyTok = 0;
+function followTo(p) {
+  const key = p[0] + ',' + p[1];
+  if (key === followKey) return;            // already there, or on the way
+  followKey = key;
+  const tok = ++flyTok;
+  send({ type: 'fly', on: true });
+  const a = map.project([p[0], p[1]]), b = map.project(map.getCenter());
+  const far = Math.hypot(a.x - b.x, a.y - b.y) > 600 || map.getZoom() < followZoom - 0.5;
+  if (far) map.flyTo({ center: [p[0], p[1]], zoom: followZoom, duration: 2600, curve: 1.4, essential: true });
+  else map.easeTo({ center: [p[0], p[1]], zoom: followZoom, duration: 700 });
+  map.once('moveend', () => { if (tok === flyTok) send({ type: 'fly', on: false }); });
+}
 window.polygroveMarksUntil = (date, follow) => {
   marksUntil = date || null;
   if (!ready || PASSIVE) return;
   drawMarks(cutMarks());
   if (follow && date) {
-    if (!followHome) followHome = { center: map.getCenter(), zoom: map.getZoom() };
+    if (!followHome) { followHome = { center: map.getCenter(), zoom: map.getZoom() }; followZoom = Math.max(map.getZoom(), FOLLOW_ZOOM); }
     let last = null;
     for (const p of ALL_MARKS) {
       if (!Array.isArray(p) || !isFinite(p[0]) || !isFinite(p[1]) || !p[6]) continue;
       if (p[6] <= date && (!last || p[6] > last[6])) last = p;
     }
-    // a view already closer than FOLLOW_ZOOM is kept; before the first sighting there is nowhere to go
-    if (last) map.easeTo({ center: [last[0], last[1]], zoom: Math.max(map.getZoom(), FOLLOW_ZOOM), duration: 650 });
+    // before the first sighting there is nowhere to go
+    if (last) followTo(last);
     setRing(last);
   } else if (!date && followHome) {
-    map.easeTo({ center: followHome.center, zoom: followHome.zoom, duration: 900 }); followHome = null;
+    followKey = null; flyTok++;
+    map.flyTo({ center: followHome.center, zoom: followHome.zoom, duration: 2000, curve: 1.4, essential: true }); followHome = null;
+    send({ type: 'fly', on: false });
     setRing(null);
   } else if (!date) {
+    followKey = null;
     setRing(null);
   }
 };
