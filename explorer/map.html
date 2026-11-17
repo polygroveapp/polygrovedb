@@ -1159,9 +1159,31 @@ window.polygroveSetMarks = (pts) => {
   if (!ready) { pendingMarks = pts; return; }
   drawMarks(cutMarks());
 };
-window.polygroveMarksUntil = (date) => {
+// FOLLOW THE SIGHTINGS (user, 2026-11-17: "have the map follow the x's"): while the app's
+// timeline is PLAYING it passes follow = true with each date. The map then glides to the
+// newest sighting that step revealed, so the view travels where you travelled. The view it
+// started from is remembered and returned to when the play reaches the end (date = null).
+// Dragging the timeline by hand (follow false, a date) forgets it: the map stays where
+// you are looking.
+let followHome = null;
+window.polygroveMarksUntil = (date, follow) => {
+  const prev = marksUntil;
   marksUntil = date || null;
-  if (ready && !PASSIVE) drawMarks(cutMarks());
+  if (!ready || PASSIVE) return;
+  drawMarks(cutMarks());
+  if (follow && date) {
+    if (!followHome) followHome = { center: map.getCenter(), zoom: map.getZoom() };
+    let last = null;
+    for (const p of ALL_MARKS) {
+      if (!Array.isArray(p) || !isFinite(p[0]) || !isFinite(p[1]) || !p[6]) continue;
+      if (p[6] <= date && (!prev || p[6] > prev) && (!last || p[6] > last[6])) last = p;
+    }
+    if (last) map.easeTo({ center: [last[0], last[1]], duration: 650 });
+  } else if (!date && followHome) {
+    map.easeTo({ center: followHome.center, zoom: followHome.zoom, duration: 900 }); followHome = null;
+  } else if (!follow) {
+    followHome = null;
+  }
 };
 function drawMarks(pts) {
   MARKS = (Array.isArray(pts) ? pts : []).filter(p => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
