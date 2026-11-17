@@ -233,6 +233,16 @@ SELECT species_id, canonicalName, class, kingdom,
        has_feeding+has_size+has_foodweb+has_slot5+has_biome AS levels
 FROM card_pool
 WHERE has_feeding+has_size+has_foodweb+has_slot5+has_biome = 5;""")   # all 5 content levels present = every card has 6 questions
+# NOT IN THE GAME (user, 2026-11-17: "remove the human card — that shouldn't be in the
+# game"). These species are never cards, never a look-alike, a size opponent or a quiz
+# decoy. They stay as NAMED partners in other cards' food webs, marked as not a card:
+# people hunting the Goliath Frog or the pangolin is a real record, and for a dozen cards
+# the only food-web record they have. Keep in step with DROP in drop_cards.py, which makes
+# the same cut in the shipped data without a rebuild.
+NOT_IN_GAME_SCI = ('Homo sapiens',)
+_nig = ",".join("'" + n.replace("'", "''") + "'" for n in NOT_IN_GAME_SCI)
+NOT_IN_GAME = set(r[0] for r in con.sql(f"SELECT species_id FROM species WHERE canonicalName IN ({_nig})").fetchall())
+con.sql(f"DELETE FROM catalog WHERE canonicalName IN ({_nig})")
 N=con.sql("SELECT count(*) FROM catalog").fetchone()[0]
 print(f"catalog (every card = all 6 questions): {N:,} species  ({time.time()-t0:.0f}s)")
 con.sql("SELECT levels+1 AS total_levels, count(*) n FROM catalog GROUP BY 1 ORDER BY 1 DESC").show()
@@ -550,7 +560,7 @@ def q4_dir(sid, trophic, best_eats, best_eb):
     if best_eb >= 10*best_eats: return 'eatenBy'
     return 'eats' if random.Random(sid*13+3).random()<0.5 else 'eatenBy'
 def slugify(name): return name.lower().replace(' ','-').replace("'","")
-def node(sid,e): return {"name":NAME.get(sid,str(sid)),"evidence":e,"card":sid in CARDABLE,"inSet":sid in catset}
+def node(sid,e): return {"name":NAME.get(sid,str(sid)),"evidence":e,"card":sid in CARDABLE and sid not in NOT_IN_GAME,"inSet":sid in catset}
 import re
 def round_size(s):
     # trim raw float precision ("63.081208137225424 g" -> "63.1 g"); leave unit intact
@@ -604,7 +614,7 @@ def q3_opponents(sid, cls):
     measure, big_word, small_word = _MEASURE[u]
     buckets = {'same':[], 'bigger':[], 'smaller':[]}      # fame-ordered within each
     for osid, ov in _grp_members.get((GROUP.get(cls,cls), u), []):
-        if osid==sid or ov<=0: continue
+        if osid==sid or ov<=0 or osid in NOT_IN_GAME: continue
         d = abs(ov-v)/v                                    # opponent's offset from the card's mean
         if   d <= GRACE_PCT: b, ans = 'same', 'about the same'
         elif v > ov:         b, ans = 'bigger', big_word
@@ -675,7 +685,7 @@ def _distractors(sid, answer_sid, exclude, k=2):
     seen, cands = set(), []
     for pool in (_CAND.get((role, grp), []), _BY_GRP.get(grp, [])):
         for osid in pool[:400]:
-            if osid in (sid, answer_sid) or osid in exclude or osid in seen: continue
+            if osid in (sid, answer_sid) or osid in exclude or osid in seen or osid in NOT_IN_GAME: continue
             seen.add(osid); cands.append(osid)
         if len(cands) >= 12: break
     cands.sort(key=score)
@@ -808,6 +818,7 @@ if _os.path.isdir("../../explorer/data"):
         SELECT species_id, canonicalName, class, has_feeding, has_size, has_foodweb, has_slot5, has_biome
         FROM card_pool WHERE has_feeding+has_size+has_foodweb+has_slot5+has_biome >= 4
         ORDER BY canonicalName""").fetchall():
+        if sid in NOT_IN_GAME: continue
         og2 = ORIG.get(sid); og2 = og2.title() if og2 else None
         te = top_edge.get(sid)
         pool.append([canon, cls, f*16+s2*8+fw*4+s5*2+b,

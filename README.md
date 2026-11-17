@@ -2,7 +2,7 @@
 
 **An open, reproducible species database for every ecoregion on Earth.** It joins
 more than 20 openly licensed scientific datasets, over the 2.6 million species
-of the GBIF backbone, into a deck of 14,912 species across the 847 RESOLVE 2017
+of the GBIF backbone, into a deck of 14,911 species across the 847 RESOLVE 2017
 ecoregions, with taxonomy, feeding role, body size, food
 web, habitat, native origin and where each species is actually recorded.
 
@@ -18,8 +18,8 @@ card game, which also runs in the browser at https://polygrovedb.pages.dev/app/
 
 | | |
 |---|---|
-| Species cards | 14,912 across 847 ecoregions |
-| Feeding roles | 6,550 producers, 4,430 carnivores, 2,907 herbivores, 1,018 omnivores, 7 decomposers |
+| Species cards | 14,911 across 847 ecoregions |
+| Feeding roles | 6,550 producers, 4,430 carnivores, 2,906 herbivores, 1,018 omnivores, 7 decomposers |
 | Sources | more than 20 datasets, all CC0, CC BY or MIT, listed in [DATA_SOURCES.md](DATA_SOURCES.md) |
 | Provenance | every fact on a card records which source it came from and how confident it is |
 
