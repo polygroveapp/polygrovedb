@@ -1159,15 +1159,15 @@ window.polygroveSetMarks = (pts) => {
   if (!ready) { pendingMarks = pts; return; }
   drawMarks(cutMarks());
 };
-// FOLLOW THE SIGHTINGS (user, 2026-11-17: "have the map follow the x's"): while the app's
-// timeline is PLAYING it passes follow = true with each date. The map then glides to the
-// newest sighting that step revealed, so the view travels where you travelled. The view it
-// started from is remembered and returned to when the play reaches the end (date = null).
-// Dragging the timeline by hand (follow false, a date) forgets it: the map stays where
-// you are looking.
+// FOLLOW THE SIGHTINGS (user, 2026-11-17: "have the map follow the x's … have it zoom in
+// more … and wherever it is on the timeline zoom to it"): whenever the app's timeline sits
+// on a date — playing, or dragged by hand, forwards or backwards — it passes follow = true,
+// and the map glides, zoomed in to at least FOLLOW_ZOOM, to the LATEST sighting made on or
+// before that date: where you were at that point of the journey. The view it started from
+// is remembered and returned to when the timeline goes back to its end (date = null).
 let followHome = null;
+const FOLLOW_ZOOM = 7.5;   // how close the map sits while it follows the sightings
 window.polygroveMarksUntil = (date, follow) => {
-  const prev = marksUntil;
   marksUntil = date || null;
   if (!ready || PASSIVE) return;
   drawMarks(cutMarks());
@@ -1176,13 +1176,12 @@ window.polygroveMarksUntil = (date, follow) => {
     let last = null;
     for (const p of ALL_MARKS) {
       if (!Array.isArray(p) || !isFinite(p[0]) || !isFinite(p[1]) || !p[6]) continue;
-      if (p[6] <= date && (!prev || p[6] > prev) && (!last || p[6] > last[6])) last = p;
+      if (p[6] <= date && (!last || p[6] > last[6])) last = p;
     }
-    if (last) map.easeTo({ center: [last[0], last[1]], duration: 650 });
+    // a view already closer than FOLLOW_ZOOM is kept; before the first sighting there is nowhere to go
+    if (last) map.easeTo({ center: [last[0], last[1]], zoom: Math.max(map.getZoom(), FOLLOW_ZOOM), duration: 650 });
   } else if (!date && followHome) {
     map.easeTo({ center: followHome.center, zoom: followHome.zoom, duration: 900 }); followHome = null;
-  } else if (!follow) {
-    followHome = null;
   }
 };
 function drawMarks(pts) {
