@@ -1677,13 +1677,16 @@ function factBox(c,slot,k,v,color,extra=''){
 // sits among every card of the same group measured in the same unit, on a log scale
 const _szRanges={};
 const _szParse=size=>{ const m=/^\s*([\d.,]+)\s*(cm|mm|g)\b/.exec(size||''); if(!m) return null; const v=parseFloat(m[1].replace(/,/g,'')); return v>0?{v,u:m[2]}:null; };
+function _szRange(group,u){   // smallest and largest of a group in one unit (also the quiz's size bars)
+  const key=group+'|'+u;
+  if(!(key in _szRanges)){ let lo=Infinity,hi=-Infinity,n=0;
+    for(const o of CARDS){ if(o.group!==group) continue; const q=_szParse(o.size); if(!q||q.u!==u) continue; if(q.v<lo)lo=q.v; if(q.v>hi)hi=q.v; n++; }
+    _szRanges[key]=n>=3&&hi>lo?{lo,hi}:null; }
+  return _szRanges[key];
+}
 function sizeBarHTML(c,tc){
   const z=_szParse(c.size); if(!z) return '';
-  const key=c.group+'|'+z.u;
-  if(!(key in _szRanges)){ let lo=Infinity,hi=-Infinity,n=0;
-    for(const o of CARDS){ if(o.group!==c.group) continue; const q=_szParse(o.size); if(!q||q.u!==z.u) continue; if(q.v<lo)lo=q.v; if(q.v>hi)hi=q.v; n++; }
-    _szRanges[key]=n>=3&&hi>lo?{lo,hi}:null; }
-  const r=_szRanges[key]; if(!r) return '';
+  const r=_szRange(c.group,z.u); if(!r) return '';
   const f=Math.round(100*Math.max(0,Math.min(1,(Math.log(z.v)-Math.log(r.lo))/(Math.log(r.hi)-Math.log(r.lo)))));
   return `<div class="szbar"><div class="trk"><div class="fill" style="width:${f}%;background:${tc}"></div><div class="dot" style="left:${f}%;background:${tc}"></div></div><div class="ends"><span>${niceSize(r.lo+' '+z.u)}</span><span>${niceSize(r.hi+' '+z.u)}</span></div></div>`;
 }
@@ -1768,33 +1771,147 @@ function fwExpand(id){   // expands THIS card's web — `sel` is stale on the ec
 // Confirm, '✗ Not quite' reveal — ported from Demo App.jsx Quiz/getQuestion.
 function _hash32(s){let h=5381; for(const ch of s) h=((h*33)^ch.charCodeAt(0))>>>0; return h>>>0;}
 function _mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-function buildQuiz(c){
-  const rng=_mulberry(_hash32(c.sci));
-  const shuf=a=>{const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[x[i],x[j]]=[x[j],x[i]];}return x;};
+// THE SAME SIX QUESTIONS THE APP ASKS NOW (user, 2026-11-18: "the quiz questions need to be
+// updated"). This is a port of the app's src/lib/quiz.ts buildQuiz, kept in the same order
+// and drawing its random numbers in the same order, so a card is offered the same wrong
+// answers here as in the game. What changed since the first port:
+//   Q1  like with like — a plant is offered plant groups, an animal animal groups; no
+//       one-card groups (Ginkgoopsida), no decoy that is also true (Tree vs Tree/Shrub)
+//   Q3  five real sizes, smallest first, each "like a <species>", with the group's scale
+//       bar — not "bigger / smaller / about the same" against one opponent
+//   Q6  three cards to choose from: yours, a look-alike, and yours wearing the
+//       look-alike's field note; every name is hidden inside the notes
+//   and a retry (`attempt`) flips the true-or-false statements and reorders the options,
+//   while WHAT is offered stays fixed per card, so a second go never gives the answer away.
+const QZ_PLANT_GROUPS=['Tree','Tree/Shrub','Shrub','Subshrub','Perennial Herb','Bi/Annual Herb','Geophyte','Epiphyte','Plant','Fungus'];
+const _qzParseSize=s=>{ const m=/^\s*(\d+(?:\.\d+)?)\s*(.*)$/.exec(String(s??'')); return m?{v:parseFloat(m[1]),unit:m[2].trim()}:null; };
+function _qzSig2(v){ const mag=Math.floor(Math.log10(v)), r=Math.round(v/10**(mag-1))*10**(mag-1);
+  return r>=10?String(Math.round(r)):String(parseFloat(r.toFixed(Math.max(0,1-mag)))); }
+// "2140.8 g" → "2.1kg 4.7lb"; a wingspan keeps its word
+function _qzWithImp(size){ const n=niceSize(size); if(n===size||!/wingspan/i.test(size)) return n;
+  const i=n.indexOf(' '); return i<0?n:n.slice(0,i)+' wingspan'+n.slice(i); }
+function buildQuiz(c,attempt=0){
+  const rng=_mulberry(_hash32(`${c.sci}#${attempt}`)), fix=_mulberry(_hash32(`${c.sci}#offered`));
+  const shufWith=r=>a=>{const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[x[i],x[j]]=[x[j],x[i]];}return x;};
+  const shuf=shufWith(rng), shufFix=shufWith(fix);
+  const flip=attempt%2===1;   // odd attempts take the other true-or-false statement
   const qs=[];
-  const groups=shuf([...new Set(CARDS.map(o=>o.group))].filter(g=>g!==c.group)).slice(0,3);
+
+  // Q1 taxonomy
+  const GREEN=t=>t==='Producer'||t==='Decomposer';
+  const sizes=new Map(), green=new Set(QZ_PLANT_GROUPS);
+  for(const o of CARDS){ sizes.set(o.group,(sizes.get(o.group)||0)+1); if(GREEN(o.trophic)) green.add(o.group); }
+  const mine=GREEN(c.trophic)||green.has(c.group);
+  const OVERLAP={'Tree':['Tree/Shrub'],'Shrub':['Tree/Shrub'],'Tree/Shrub':['Tree','Shrub']};
+  const side=c.group==='Plant'?false:mine;
+  const groupPool=[...new Set([...[...sizes.keys()].filter(g=>(sizes.get(g)||0)>=5).filter(g=>green.has(g)===side),'Fungus'])];
+  const groups=shufFix(groupPool.filter(g=>g!==c.group&&g!=='Plant'&&!(OVERLAP[c.group]||[]).includes(g)).sort()).slice(0,3);
   qs.push({label:'Q1 · Taxonomy', type:'mc', q:`Which group does the ${c.name} belong to?`, opts:shuf([c.group,...groups]), a:c.group});
-  const t2=rng()<0.5;
-  qs.push({label:'Q2 · Feeding guild', type:'tf', q:`The ${c.name} is ${t2?c.role:c.falseRole}.`, a:t2, explain:t2?null:`The ${c.name} is ${c.role}.`});
-  if(c.q3&&c.q3.opponents&&c.q3.opponents.length){const o=c.q3.opponents[Math.floor(rng()*c.q3.opponents.length)];
-    qs.push({label:'Q3 · Size', type:'mc', q:`On average, is the ${c.name} ${c.q3.bigger}, ${c.q3.smaller}, or about the same as the ${o.name}?`,
-      opts:[c.q3.bigger,'about the same',c.q3.smaller], a:o.answer, explain:`${c.name}: ${niceSize(c.size)} · ${o.name}: ${niceSize(o.size)}`});}
+
+  // Q2 feeding guild
+  if(c.role&&c.falseRole){ const t2=(fix()<0.5)!==flip;
+    qs.push({label:'Q2 · Feeding guild', type:'tf', q:`The ${c.name} is ${t2?c.role:c.falseRole}.`, a:t2, explain:t2?null:`The ${c.name} is ${c.role}.`}); }
+
+  // Q3 size: five real sizes, one correct
+  const sv=_qzParseSize(c.size);
+  if(sv&&sv.v>0){
+    const measure=(c.q3&&c.q3.measure)||(sv.unit.includes('wingspan')?'wingspan':sv.unit==='g'?'mass':'length');
+    const ask=measure==='mass'?`How much does the ${c.name} weigh, on average?`
+      :measure==='height'?`How tall does the ${c.name} grow?`
+      :measure==='wingspan'?`How wide is the ${c.name}'s wingspan?`
+      :`How long is the ${c.name}, on average?`;
+    const right=_qzWithImp(c.size);
+    const cs=_szParse(c.size), range=cs?_szRange(c.group,cs.u):null;
+    const same=cs?CARDS.filter(o=>{ if(o.group!==c.group||o.sci===c.sci) return false; const p=_szParse(o.size); return !!p&&p.u===cs.u; }):[];
+    const named=same.filter(o=>o.name.toLowerCase()!==o.sci.toLowerCase());
+    const pool=(named.length>=8?named:same).map(o=>({id:o.id,name:o.name,size:o.size,v:_szParse(o.size).v}));
+    const rows=[{label:right,v:sv.v}];
+    const far=v=>rows.every(r=>Math.max(v,r.v)/Math.min(v,r.v)>=1.5);
+    const near=pool.filter(o=>Math.max(o.v,sv.v)/Math.min(o.v,sv.v)<=1.12&&_qzWithImp(o.size)!==right)
+      .sort((a,b)=>Math.abs(Math.log(a.v/sv.v))-Math.abs(Math.log(b.v/sv.v)))[0];
+    if(near){ rows[0].eg=near.name; rows[0].egId=near.id; }
+    const N=5, at=Math.floor(fix()*N), step=1.9+fix()*0.7;
+    for(let i=0;i<N;i++){
+      if(i===at) continue;
+      const target=sv.v*step**(i-at);
+      const pick=pool.filter(o=>far(o.v)&&Math.max(o.v,target)/Math.min(o.v,target)<=1.45&&!rows.some(r=>r.label===_qzWithImp(o.size)))
+        .sort((a,b)=>Math.abs(Math.log(a.v/target))-Math.abs(Math.log(b.v/target)))[0];
+      if(pick) rows.push({label:_qzWithImp(pick.size),v:pick.v,eg:pick.name,egId:pick.id});
+      else{ const plain=f=>_qzWithImp(`${_qzSig2(f)} ${sv.unit}`.trim());
+        let f=target, lbl=plain(f), tries=0;
+        while(rows.some(r=>r.label===lbl)&&tries++<4){ f*=i<at?1/1.4:1.4; lbl=plain(f); }
+        rows.push({label:lbl,v:f}); }
+    }
+    rows.sort((a,b)=>a.v-b.v);
+    const frac=v=>range?Math.max(0,Math.min(1,(Math.log(v)-Math.log(range.lo))/(Math.log(range.hi)-Math.log(range.lo)))):null;
+    qs.push({label:'Q3 · Size', type:'mc', q:ask, opts:rows.map(r=>r.label), a:right, explain:`${c.name}: ${right}`,
+      rows:Object.fromEntries(rows.map(r=>[r.label,{eg:r.eg,frac:frac(r.v)}]))});
+  }
+
+  // Q4 food web
   if(c.q4&&c.q4.eats&&c.q4.eatenBy) qs.push({label:'Q4 · Food web', type:'dual',
     s1:{title:'Consumes +', opts:c.q4.eats.options, a:c.q4.eats.answer},
     s2:{title:'Consumed by −', opts:c.q4.eatenBy.options, a:c.q4.eatenBy.answer}});
   else if(c.q4&&(c.q4.eats||c.q4.eatenBy)){const s=c.q4.eats||c.q4.eatenBy;
     qs.push({label:'Q4 · Food web', type:'mc', q:s.question, opts:s.options, a:s.answer});}
+
+  // Q5 habitat / origin / biome
   if(c.slot5){
     const pool=CARDS.filter(o=>o.slot5type===c.slot5type&&o.slot5&&o.slot5!==c.slot5);
-    const t5=rng()<0.5, wrong=pool.length?pool[Math.floor(rng()*pool.length)].slot5:null;
+    const t5=(fix()<0.5)!==flip, wrong=pool.length?pool[Math.floor(fix()*pool.length)].slot5:null;
     const truth=t5||!wrong, loc=truth?c.slot5:wrong;
     const phr=c.slot5type==='habitat'?`you would find it in ${loc} habitat`:c.slot5type==='origin'?`it is native to ${loc}`:`it is found in the ${loc} biome`;
     qs.push({label:'Q5 · '+(c.slot5type==='habitat'?'Habitat':c.slot5type==='origin'?'Origin':'Biome'), type:'tf',
       q:`The ${c.name} — ${phr}.`, a:truth, explain:truth?null:`It's ${c.slot5}.`});}
-  if(c.lookAlikes&&c.lookAlikes.length>=2)
-    qs.push({label:'Q6 · Is this your card?', type:'mc', q:`You drew the ${c.name}. Which of these three look-alike cards is yours?`,
+
+  // Q6 is this your card? — yours, a look-alike, and yours wearing the look-alike's field note
+  if(c.lookAlikes&&c.lookAlikes.length>=2){
+    const decoys=c.lookAlikes.map(n=>_byName[n]).filter(d=>d&&d.id!==c.id);
+    const other=decoys.length?decoys[Math.floor(fix()*decoys.length)]:null;
+    if(other){
+      const trio=[{key:'correct',card:c},{key:'other',card:other},{key:'chimera',card:c,noteFrom:other}];
+      let cards=shuf(trio);
+      if(attempt>0){   // a retry never deals the order just seen
+        const prev=buildQuiz(c,attempt-1).find(q=>q.type==='pick');
+        const same=(a,b)=>a.every((x,i)=>x.key===b[i].key);
+        let guard=0; while(prev&&same(cards,prev.cards)&&guard++<6) cards=shuf(trio);
+      }
+      qs.push({label:'Q6 · Is this your card?', type:'pick', q:`Which of these three cards is the ${c.name}?`, cards, a:'correct'});
+    } else qs.push({label:'Q6 · Is this your card?', type:'mc', q:`You drew the ${c.name}. Which of these three look-alike cards is yours?`,
       opts:shuf([c.name,...c.lookAlikes.slice(0,2)]), a:c.name});
+  }
   return qs;
+}
+// a card's Wikipedia lead sentence — the field note (shared with fillCardBits' source)
+async function _leadNote(sci){
+  try{ const sh=djb2(sci);
+    _shardCache[sh] ||= fetch(`data/dossier/${sh}.json`,{cache:'no-cache'}).then(r=>r.json());
+    const facts=(await _shardCache[sh])[sci]||[];
+    const lead=facts.find(f=>f[0]==='Wikipedia extracts (sourced)'&&f[1].startsWith('lead sentence'));
+    return lead?lead[2]:null;
+  }catch(e){ return null; }
+}
+// the app's maskName: blank the common name, the binomial, the genus and the name's last
+// "kind" word (hog, duck, warbler) in a field note — not every word of the name
+function _qzMask(note,c){
+  const rx=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const words=c.name.split(/[\s-]+/), kind=words[words.length-1];
+  let out=note;
+  for(const p of [c.name,c.sci,c.sci.split(' ')[0],...(kind&&kind.length>2?[kind]:[])]){
+    if(!p) continue;
+    out=out.replace(new RegExp(`\\b(?:the\\s+)?${rx(p)}s?\\b`,'gi'),'this species');
+  }
+  return out.replace(/\bthis species\b(\s+this species\b)+/g,'this species').replace(/^this species/,'This species');
+}
+// Q6's three cards: the photo and the masked note arrive after the cards are drawn
+function _qzFillPick(ov,z,q){
+  q.cards.forEach((pc,i)=>{
+    const el=ov.querySelector(`[data-pk="${i}"]`); if(!el) return;
+    const hex=el.querySelector('.in'), note=el.querySelector('.qznote'), nc=pc.noteFrom||pc.card;
+    (_wimgDone[pc.card.sci]?Promise.resolve(_wimgDone[pc.card.sci]):_wikiImg(pc.card.sci,pc.card.name))
+      .then(img=>{ if(img&&hex.isConnected) paintHex(hex,img.small,pc.card.id); }).catch(()=>{});
+    _leadNote(nc.sci).then(n=>{ if(note.isConnected) note.innerHTML=n?(z.done?n:_qzMask(n,nc)):'<span style="color:#777">no field note yet</span>'; });
+  });
 }
 let _qz=null;
 // the APP's mastery ladder — tier chip, dots and tab colors come from here
@@ -1812,17 +1929,19 @@ function _qzNextUnlocked(counts,from){
   for(let k=0;k<n;k++){const i=(from+k)%n; if((counts[i]||0)<QZ_LOCK) return i;}
   return -1;
 }
+// the quiz's own backdrop: the APP's background (same gradient as the page body)
+const QZ_BG='linear-gradient(135deg,#0a0f0a 0%,#1a2e1a 50%,#0f1a0f 100%)';
 function startQuiz(){
   const c=byId[sel]; if(!c) return;
   const qs=buildQuiz(c);
   const counts=_qzCounts[c.id] ||= Array(qs.length).fill(0);
   const first=_qzNextUnlocked(counts,0);
   if(first===-1){ delete _qzCounts[c.id]; return startQuiz(); }   // fully mastered: fresh ladder
-  _qz={c, qs, counts, i:first, d1:null, d2:null, done:false, lastRight:false};
+  _qz={c, qs, counts, i:first, d1:null, d2:null, done:false, lastRight:false, attempt:0};
   if(!document.getElementById('quizov')){
     const ov=document.createElement('div'); ov.id='quizov';
     // the APP's background (same gradient as the page body), quiz centered
-    ov.style.cssText='position:fixed;inset:0;background:linear-gradient(135deg,#0a0f0a 0%,#1a2e1a 50%,#0f1a0f 100%);z-index:400;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:24px 16px';
+    ov.style.cssText='position:fixed;inset:0;background:'+QZ_BG+';z-index:400;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:24px 16px';
     document.body.appendChild(ov);
   }
   qzRender();
@@ -1838,7 +1957,11 @@ function qzRender(){
     const [bg,bc,tc]=M[state];
     return `<button onclick="${on}" style="background:${bg};border:1.5px solid ${bc};border-radius:16px;padding:${center?'18px 16px':'16px 18px'};text-align:${center?'center':'left'};cursor:pointer;font-size:16px;color:${tc};line-height:1.35;${center?'font-family:var(--display);font-size:18px':''}">${txt}</button>`;};
   const N=z.qs.length;
-  if(z.i!==-1) ov.style.background='';   // celebration greys the backdrop; quiz screens keep the default
+  // celebration greys the backdrop; quiz screens put the gradient BACK. Setting it to ''
+  // (as this did) erased it, since the gradient only ever lived in this inline style —
+  // the quiz then sat on a see-through layer with the whole page showing behind it
+  // (user, 2026-11-18: "this is what happens when you try to take a quiz on the website")
+  if(z.i!==-1) ov.style.background=QZ_BG;
   if(z.i===-1){   // every question locked gold = SOLAR — the APP's celebration,
     // ported 1:1 from Demo App.jsx (rotating sun rays, SOLAR LEVEL, +5 Sol,
     // the card popping in with a gold pulse, tap anywhere to continue)
@@ -1876,7 +1999,24 @@ function qzRender(){
   let body='';
   if(q.type==='mc') body=q.opts.map((o,i)=>{
       const st=z.done?(o===q.a?'ok':(o===q.sel?'bad':'none')):(o===q.sel?'sel':'none');
-      return btn(o, st, z.done?'':`qzPick(${i})`);}).join('');
+      // the size question: each option names a species of that size and shows where it sits on the group's scale
+      const row=q.rows&&q.rows[o], col={none:'#8fa08f',sel:'#FFD700',ok:'#4CAF50',bad:'#E53935'}[st];
+      const txt=!row?o:`<span style="display:flex;align-items:center;gap:14px"><span style="flex:1;min-width:0"><span style="display:block">${o}</span>${row.eg?`<span style="display:block;font-size:12.5px;opacity:.75;margin-top:2px">like a ${esc(row.eg)}</span>`:''}</span>${row.frac!=null?`<span class="szbar" style="width:96px;flex:none;margin:0"><span class="trk" style="display:block"><span class="fill" style="display:block;width:${Math.round(row.frac*100)}%;background:${col}"></span><span class="dot" style="left:${Math.round(row.frac*100)}%;background:${col}"></span></span></span>`:''}</span>`;
+      return btn(txt, st, z.done?'':`qzPick(${i})`);}).join('');
+  else if(q.type==='pick'){
+    // three cards, all wearing the same name; only the photo and the field note tell them apart
+    const tc=troColor(z.c);
+    body=`<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px">`+q.cards.map((pc,i)=>{
+      const st=z.done?(pc.key===q.a?'ok':(q.sel===i?'bad':'none')):'none';
+      const bc={none:'#333',ok:'#4CAF50',bad:'#E53935'}[st];
+      const who=!z.done?`${esc(z.c.name)}?`:pc.key==='chimera'?`${esc(pc.card.name)}’s photo, ${esc(pc.noteFrom.name)}’s note`:esc(pc.card.name);
+      return `<div data-pk="${i}" style="flex:1 0 190px;min-width:0;background:#1a1a1a;border:2px solid ${bc};border-radius:20px;padding:12px 14px 14px;display:flex;flex-direction:column">
+        <div style="zoom:.74;margin:0 auto 8px"><div class="bighex" style="background:${tc}"><div class="in"></div></div></div>
+        <div style="font-family:var(--display);font-size:14px;color:${st==='ok'?'#4CAF50':st==='bad'?'#E53935':'#f5f0e8'};line-height:1.2;margin-bottom:8px;min-height:34px">${who}</div>
+        <div class="dc-note" style="border-left-color:${tc};background:${tc}14;flex:1;margin-bottom:10px;font-size:12.5px;line-height:1.4;color:#e8e4da"><span class="k" style="color:${tc}">✦ Field note</span><br><span class="qznote" style="color:#e8e4da">…</span></div>
+        ${z.done?'':`<button onclick="qzPickCard(${i})" style="padding:11px;background:rgba(0,0,0,.35);border:1.5px solid #3a443a;border-radius:14px;color:#e8e4da;font-family:var(--display);font-size:13px;cursor:pointer">This one</button>`}
+      </div>`;}).join('')+`</div>`;
+  }
   else if(q.type==='tf') body=[true,false].map(v=>{
       const st=z.done?(v===q.a?'ok':(v===q.sel?'bad':'none')):'none';
       return btn(v?'True':'False', st, z.done?'':`qzPickTF(${v})`, true);}).join('');
@@ -1888,9 +2028,11 @@ function qzRender(){
     body=`<div style="display:flex;flex-direction:column;gap:8px">${sec(q.s1,1)}</div><div style="display:flex;flex-direction:column;gap:8px">${sec(q.s2,2)}</div>`
       +(z.done?'':`<button onclick="qzConfirm()" style="margin-top:12px;padding:15px;background:${z.d1&&z.d2?'linear-gradient(135deg,#F5A623,#FFD700)':'#222'};border:none;border-radius:16px;color:${z.d1&&z.d2?'#1a1a1a':'#444'};font-family:var(--display);font-size:15px;cursor:${z.d1&&z.d2?'pointer':'default'}">Confirm</button>`);
   }
-  ov.innerHTML=`<div style="max-width:520px;width:100%;margin:auto">
+  ov.innerHTML=`<div style="max-width:${q.type==='pick'?780:520}px;width:100%;margin:auto">
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-      <div style="width:64px;height:72px;flex:none;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:${ph?`#111 url('${ph.small}') center/cover no-repeat`:'var(--accent)'}"></div>
+      <!-- the photo's border is the mastery tier's colour — clay, then up the ladder (user, 2026-11-18: "make the border clay") -->
+      <div style="width:72px;height:81px;flex:none;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:linear-gradient(135deg,${tier.colors[0]},${tier.colors[1]});display:flex;align-items:center;justify-content:center">
+        <div style="width:64px;height:72px;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);background:${ph?`#111 url('${ph.small}') center/cover no-repeat`:'var(--accent)'}"></div></div>
       <div style="flex:1">
         <div style="font-family:var(--display);font-size:24px;color:#f5f0e8;line-height:1.05;margin-bottom:8px">${z.c.name}</div>
         <div style="display:flex;align-items:center;gap:10px">
@@ -1905,9 +2047,11 @@ function qzRender(){
     ${z.done&&!z.lastRight?`<div style="margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(229,57,53,.08);border:1px solid #E5393522;text-align:center">
       <div style="font-family:var(--display);font-size:14px;color:#f5f0e8;margin-bottom:6px">\u2717 Not quite</div>
       <div style="font-size:12px;color:#aaa;margin-bottom:12px">${q.type==='dual'?`Consumes: <b style="color:#f5f0e8">${q.s1.a}</b> \u00b7 Consumed by: <b style="color:#f5f0e8">${q.s2.a}</b>`
+        :q.type==='pick'?`Your card is the one outlined in green: the ${esc(z.c.name)}’s photo with its own field note.`
         :(q.explain||`Answer: <b style="color:#f5f0e8">${q.type==='tf'?(q.a?'True':'False'):q.a}</b>`)}</div>
       <button onclick="qzRetry()" style="padding:9px 26px;background:rgba(255,255,255,.06);border:1px solid #444;border-radius:10px;color:#ccc;font-family:var(--display);font-size:12px;cursor:pointer">Try Again</button></div>`:''}
   </div>`;
+  if(q.type==='pick') _qzFillPick(ov,z,q);
 }
 function _qzScore(right){const z=_qz; z.done=true; z.lastRight=right;
   if(right) z.counts[z.i]=Math.min((z.counts[z.i]||0)+1, QZ_LOCK);   // second time = LOCKED GOLD
@@ -1916,12 +2060,16 @@ function _qzScore(right){const z=_qz; z.done=true; z.lastRight=right;
     z.i=_qzNextUnlocked(z.counts, z.i+1);   // skip locked questions; -1 = Solar
     z.done=false; z.d1=z.d2=null; z.qs.forEach(q=>{delete q.sel;}); qzRender(); }, 900); } }
 function qzPick(i){const z=_qz,q=z.qs[z.i]; if(z.done)return; q.sel=q.opts[i]; _qzScore(q.sel===q.a);}
+function qzPickCard(i){const z=_qz,q=z.qs[z.i]; if(z.done)return; q.sel=i; _qzScore(q.cards[i].key===q.a);}
 function qzPickTF(v){const z=_qz,q=z.qs[z.i]; if(z.done)return; q.sel=v; _qzScore(v===q.a);}
 function qzPickD(which,i){const z=_qz,q=z.qs[z.i]; if(z.done)return; if(which===1)z.d1=q.s1.opts[i]; else z.d2=q.s2.opts[i]; qzRender();}
 function qzConfirm(){const z=_qz,q=z.qs[z.i]; if(z.done||!z.d1||!z.d2)return; _qzScore(z.d1===q.s1.a&&z.d2===q.s2.a);}
 // WRONG = back to the start, exactly like the app (quizProgress resets to Q1)
 // WRONG = back to the start (first still-unlocked question), exactly like the app
-function qzRetry(){const z=_qz; z.i=_qzNextUnlocked(z.counts,0); z.done=false; z.d1=z.d2=null; z.qs.forEach(q=>{delete q.sel;}); qzRender();}
+// …and the questions are DEALT AGAIN (the app's `attempt`): true-or-false statements flip
+// and the options come in a new order, so the miss just shown does not answer the retry
+function qzRetry(){const z=_qz; z.attempt=(z.attempt||0)+1; z.qs=buildQuiz(z.c,z.attempt);
+  z.i=_qzNextUnlocked(z.counts,0); z.done=false; z.d1=z.d2=null; qzRender();}
 function fwDiagram(c){
   const preds=(c.foodweb.eatenBy||[]).slice(0,4), prey=(c.foodweb.eats||[]).slice(0,4);
   if(!preds.length&&!prey.length) return '';
