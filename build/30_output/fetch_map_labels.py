@@ -56,3 +56,5 @@ for b in rows:
                   "properties":{"name":strip_name(name),"fame":int(b.get("links",{}).get("value",0))}})
 json.dump({"type":"FeatureCollection","features":parks}, open("../../explorer/data/parks.json","w"), separators=(',',':'))
 print(f"parks: {len(parks)} (Wikidata, CC0)", flush=True)
+# parks added by hand (state parks and the like, which this national-park query never returns)
+exec(open('add_extra_parks.py').read())

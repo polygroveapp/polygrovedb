@@ -1524,7 +1524,7 @@ async function _parkWiki(nm){
   const cands=[nm];
   if(nm.includes('–')) cands.push(nm.replace(/–/g,'-'));   // Wikidata en-dash vs Wikipedia hyphen
   if(!/park|reserve|refuge|monument|forest|preserve/i.test(nm))
-    cands.push(...cands.map(c=>c+' National Park'));
+    cands.push(...cands.map(c=>c+' National Park'), ...cands.map(c=>c+' State Park'));   // a park added by hand may be a state park (Henry Cowell Redwoods, 2026-11-18)
   let d=null;
   for(const c of cands){ d=await tryT(c); if(d) break; }
   return _parkWikiCache[nm]=d;
@@ -2622,7 +2622,12 @@ async function renderRangeMap(ids,sci,opts){
     // ecoregion borders as a real line layer (user, 2026-09-08: 'put back the eco
     // region lines') — the 1px fill-outline was disappearing under everything.
     // Park pages skip them: "don't show ecoregions on parks" (user, 2026-09-22)
+    // SPECIES pages start with them OFF (user, 2026-11-18: "turn off the ecoregion borders
+    // on the species tab"): the range's own green shading shows where the species is, and
+    // the web of lines over it was noise. The layer is still added, hidden, so the legend's
+    // "Ecoregion borders" switch can bring them back.
     if(!opts.park) map.addLayer({id:'ecoline',type:'line',source:'eco',
+      layout:{visibility:sci&&opts.focusEco==null?'none':'visible'},
       // the FOCUSED region keeps only its shimmering border (user, 2026-09-22)
       filter:opts.focusEco!=null?['!=',['get','eco'],opts.focusEco]:true,
       // ECOREGION pages draw the other regions' borders GREEN and DOTTED — only

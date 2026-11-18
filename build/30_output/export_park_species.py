@@ -72,7 +72,8 @@ for i,f in enumerate(parks['features']):
     if boxes:
         for b in boxes:
             if b[0]-0.2<=x<=b[2]+0.2 and b[1]-0.2<=y<=b[3]+0.2: box=b; break
-    if not(box and (box[2]-box[0])*(box[3]-box[1])<64): box=(x-R,y-R,x+R,y+R)
+    r=f['properties'].get('r') or R   # a park added by hand names its own, smaller box (extra_parks.json)
+    if not(box and (box[2]-box[0])*(box[3]-box[1])<64): box=(x-r,y-r,x+r,y+r)
     for cx in range(int(box[0]*100)-1,int(box[2]*100)+2):
         for cy in range(int(box[1]*100)-1,int(box[3]*100)+2):
             cell2park[(cx,cy)].append(i)

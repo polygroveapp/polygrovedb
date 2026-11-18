@@ -85,7 +85,8 @@ for f in parks['features']:
     if box and (box[2]-box[0])*(box[3]-box[1])<64:   # sanity: huge multi-unit sprawl falls back to the radius
         f['properties']['obs']=cellsum(*box)
     else:
-        f['properties']['obs']=cellsum(x-R,y-R,x+R,y+R)
+        r=f['properties'].get('r') or R   # a park added by hand names its own, smaller box (extra_parks.json)
+        f['properties']['obs']=cellsum(x-r,y-r,x+r,y+r)
     f['properties']['eco']=eco_at(x,y)
     done+=1
     if done%500==0: print(f"  {done}/{len(parks['features'])}  ({time.time()-t0:.0f}s)", flush=True)
